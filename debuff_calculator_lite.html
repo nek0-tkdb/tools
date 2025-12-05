@@ -37,7 +37,7 @@
                     <label for="myPower" class="block text-sm font-medium text-gray-700">
                         自分の戦力 (万単位)
                     </label>
-                    <input type="number" id="myPower" value="1000" min="1"
+                    <input type="number" id="myPower" min="1"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 transition">
                 </div>
                 <!-- 属性選択エリアは削除しました -->
@@ -53,7 +53,7 @@
                     <label for="enemyPower" class="block text-sm font-medium text-gray-700">
                         相手の戦力 (万単位)
                     </label>
-                    <input type="number" id="enemyPower" value="1300" min="1"
+                    <input type="number" id="enemyPower" min="1"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-red-500 focus:ring-red-500 transition">
                 </div>
                 <!-- 属性選択エリアは削除しました -->
@@ -129,6 +129,7 @@
             const enemyPower = parseFloat(enemyPowerInput.value);
 
             if (isNaN(myPower) || myPower <= 0 || isNaN(enemyPower) || enemyPower <= 0) {
+                // 初期値が空欄（NaNになる）の場合、このエラーが表示されます
                 errorMessageDiv.textContent = '戦力には1以上の正の数を入力してください。';
                 errorMessageDiv.classList.remove('hidden');
                 document.getElementById('neededSquads').textContent = '- 班';
