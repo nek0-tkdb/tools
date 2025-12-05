@@ -90,9 +90,6 @@
                     <p id="time-constraint" class="mt-1 text-xs text-gray-500">※最大45分まで入力可能です。</p>
                 </div>
                 <!-- 自動計算を行うため、手動計算ボタンは削除しました -->
-                <div class="text-sm text-gray-500 italic text-center py-2">
-                    入力と同時に自動で計算結果が表示されます。
-                </div>
             </form>
             <div id="result-groups" class="mt-6 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-md result-box hidden">
                 <!-- 結果が表示されます -->
@@ -128,10 +125,13 @@
 
         <!-- フッターとその上部のボタン -->
         <div class="mt-8 pt-4 border-t border-gray-200 flex flex-col items-center space-y-4">
-            <!-- index.htmlに戻るボタン (aタグを使用) -->
-            <a href="index.html" class="btn-link text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                &larr; index.htmlに戻る
-            </a>
+        <!-- 修正: index.htmlに戻るボタンを、ブラウザの履歴で戻る機能に変更 -->
+        <div class="text-center mt-6">
+            <button onclick="history.back();" 
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out text-sm">
+                ← ツール集トップに戻る
+            </button>
+        </div>
             
             <!-- フッター情報 -->
             <footer class="text-xs text-gray-500">
