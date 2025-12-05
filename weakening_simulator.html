@@ -72,13 +72,21 @@
             </table>
         </div>
         
-        <!-- フッター: 認証ステータスとユーザー情報を表示 -->
-        <div id="authStatusContainer" class="mt-6 text-xs text-gray-400 text-center space-y-1">
-            <p class="text-gray-500">X: nek0n0tem0</p>
-            <p class="text-red-500/70 mb-1">※このアプリではデータ保存機能は使用していません</p>
-            <p id="authStatus" class="text-gray-400"></p>
+        <!-- 修正: index.htmlに戻るボタンを、ブラウザの履歴で戻る機能に変更 -->
+        <div class="text-center mt-6">
+            <button onclick="history.back();" 
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out text-sm">
+                ← ツール集トップに戻る
+            </button>
         </div>
 
+        <!-- フッター: 認証ステータスとユーザー情報を表示 (IDを復活させました) -->
+        <div id="authStatusContainer" class="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-400 text-center space-y-1">
+            <p class="text-gray-500">X: nek0n0tem0</p>
+            <p class="text-red-500/70 mb-1">※このアプリではデータ保存機能は使用していません</p>
+            <!-- JavaScriptが参照する要素 -->
+            <p id="authStatus" class="text-gray-400"></p>
+        </div>
     </div>
 
     <!-- Firebase SDKの読み込み -->
