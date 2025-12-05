@@ -185,6 +185,13 @@
                 <!-- エラーメッセージがここに入る -->
             </div>
         </div>
+        
+        <!-- リセットボタンの追加 -->
+        <button id="resetButton" onclick="resetForm()"
+                class="w-full mt-4 py-2 bg-gray-400 hover:bg-gray-500 text-white font-bold rounded-lg shadow-md transform transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-gray-300">
+            全入力とスロットをリセット
+        </button>
+
 
         <!-- フッターエリア - フォントサイズを縮小 -->
         <div class="mt-8 pt-4 border-t border-gray-200 text-center">
@@ -278,6 +285,53 @@
             }
         }
 
+        /**
+         * フォーム全体をリセットする
+         */
+        function resetForm() {
+            // 1. 全ての戦力入力フィールドを空にする
+            for (let i = 1; i <= NUM_SLOTS; i++) {
+                const myPowerInput = document.getElementById('myPower' + i);
+                const enemyPowerInput = document.getElementById('enemyPower' + i);
+                if (myPowerInput) myPowerInput.value = '';
+                if (enemyPowerInput) enemyPowerInput.value = '';
+            }
+
+            // 2. 主力2以降のスロットを非表示に戻す
+            for (let i = 2; i <= NUM_SLOTS; i++) {
+                const mySlot = document.getElementById(`mySlot${i}`);
+                const enemySlot = document.getElementById(`enemySlot${i}`);
+                if (mySlot) mySlot.classList.add('hidden');
+                if (enemySlot) enemySlot.classList.add('hidden');
+            }
+
+            // 3. 属性を初期値（'fire'）にリセットし、UIを更新 (追加)
+            for (let i = 1; i <= NUM_SLOTS; i++) {
+                // selectedAttributes の値をリセット
+                selectedAttributes['my' + i] = 'fire';
+                selectedAttributes['enemy' + i] = 'fire';
+
+                // UIの属性ボタンの状態を更新 (再計算は最後に行うため false)
+                selectAttribute('my', i, 'fire', false);
+                selectAttribute('enemy', i, 'fire', false);
+            }
+
+            // 4. スロット数を1にリセットし、ボタンの表示を更新
+            currentMySlotCount = 1;
+            currentEnemySlotCount = 1;
+            
+            const myButton = document.getElementById('myAddSlotButton');
+            const enemyButton = document.getElementById('enemyAddSlotButton');
+            
+            myButton.textContent = `味方主力追加 (現在 ${currentMySlotCount} / ${NUM_SLOTS})`;
+            enemyButton.textContent = `敵主力追加 (現在 ${currentEnemySlotCount} / ${NUM_SLOTS})`;
+            
+            myButton.classList.remove('hidden');
+            enemyButton.classList.remove('hidden');
+
+            // 5. 計算結果を初期状態に戻す
+            calculateDebuff(); 
+        }
 
         // 初期選択状態のセットアップ
         document.addEventListener('DOMContentLoaded', () => {
