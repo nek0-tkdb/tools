@@ -36,14 +36,16 @@
             <!-- 班の戦力入力 -->
             <div>
                 <label for="bandPower" class="block text-sm font-medium text-gray-700 mb-1">班の戦力 (万単位で入力してください)</label>
-                <input type="number" id="bandPower" value="1500" placeholder="例: 1500 (1500万)" 
+                <!-- 初期値を空欄 (value="1500"を削除) に修正 -->
+                <input type="number" id="bandPower" value="" placeholder="例: 1500 (1500万)" 
                        class="w-full p-3 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg transition duration-150 ease-in-out"
                        oninput="calculateWeakening()">
             </div>
             <!-- 単騎の戦力入力 -->
             <div>
                 <label for="soloPower" class="block text-sm font-medium text-gray-700 mb-1">単騎の戦力 (万単位で入力してください)</label>
-                <input type="number" id="soloPower" value="900" placeholder="例: 900 (900万)" 
+                <!-- 初期値を空欄 (value="900"を削除) に修正 -->
+                <input type="number" id="soloPower" value="" placeholder="例: 900 (900万)" 
                        class="w-full p-3 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg transition duration-150 ease-in-out"
                        oninput="calculateWeakening()">
             </div>
@@ -179,34 +181,49 @@
 
             let html = '';
 
-            for (let percent = 0; percent <= 100; percent += 10) {
-                const rate = percent / 100; // 0.0, 0.1, 0.2, ... 1.0
-
-                // 弱体化後の戦力を計算（万単位）
-                const newBandPowerMan = initialBandPower * (1 - rate);
-                const newSoloPowerMan = initialSoloPower * (1 - rate);
-                
-                // 人数と班数を計算
-                // percentはパーセント値 (0, 10, 20, ...)
-                const people = Math.round(percent * PEOPLE_PER_PERCENT);
-                const groups = Math.round(percent * GROUPS_PER_PERCENT);
-
-                // 万単位でフォーマット（既に万単位の値なのでそのまま）
-                const formattedBand = formatToMan(newBandPowerMan);
-                const formattedSolo = formatToMan(newSoloPowerMan);
-
-                // テーブル行のHTMLを構築
-                // パディングをpx-2 py-2に調整
+            // 初期値が空欄になった場合、計算結果も表示しない（0%の行以外）
+            if (inputBandPowerMan === 0 && inputSoloPowerMan === 0) {
+                // 両方0の場合、0%の行のみ表示
                 html += `
                     <tr class="hover:bg-indigo-50 transition duration-150 ease-in-out">
-                        <td class="px-2 py-2 text-sm text-center font-medium text-gray-900">${percent}%</td>
-                        <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">${people}</td>
-                        <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">${groups}</td>
-                        <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900 bg-indigo-50">${formattedBand}</td>
-                        <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900">${formattedSolo}</td>
+                        <td class="px-2 py-2 text-sm text-center font-medium text-gray-900">0%</td>
+                        <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">0</td>
+                        <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">0</td>
+                        <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900 bg-indigo-50">0</td>
+                        <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900">0</td>
                     </tr>
                 `;
+            } else {
+                for (let percent = 0; percent <= 100; percent += 10) {
+                    const rate = percent / 100; // 0.0, 0.1, 0.2, ... 1.0
+
+                    // 弱体化後の戦力を計算（万単位）
+                    const newBandPowerMan = initialBandPower * (1 - rate);
+                    const newSoloPowerMan = initialSoloPower * (1 - rate);
+                    
+                    // 人数と班数を計算
+                    // percentはパーセント値 (0, 10, 20, ...)
+                    const people = Math.round(percent * PEOPLE_PER_PERCENT);
+                    const groups = Math.round(percent * GROUPS_PER_PERCENT);
+
+                    // 万単位でフォーマット（既に万単位の値なのでそのまま）
+                    const formattedBand = formatToMan(newBandPowerMan);
+                    const formattedSolo = formatToMan(newSoloPowerMan);
+
+                    // テーブル行のHTMLを構築
+                    // パディングをpx-2 py-2に調整
+                    html += `
+                        <tr class="hover:bg-indigo-50 transition duration-150 ease-in-out">
+                            <td class="px-2 py-2 text-sm text-center font-medium text-gray-900">${percent}%</td>
+                            <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">${people}</td>
+                            <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">${groups}</td>
+                            <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900 bg-indigo-50">${formattedBand}</td>
+                            <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900">${formattedSolo}</td>
+                        </tr>
+                    `;
+                }
             }
+
 
             resultsTableBody.innerHTML = html;
         }
