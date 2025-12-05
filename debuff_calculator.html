@@ -100,6 +100,11 @@
                         document.write('</div>');
                     </script>
                 </div>
+                <!-- 味方主力追加ボタン -->
+                <button id="myAddSlotButton" onclick="addMySlot()"
+                        class="w-full mt-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-lg shadow-md transform transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    味方主力追加 (現在 1 / 6)
+                </button>
             </div>
 
             <!-- 敵側の入力コンテナ -->
@@ -139,14 +144,14 @@
                         document.write('</div>');
                     </script>
                 </div>
+                <!-- 敵主力追加ボタン -->
+                <button id="enemyAddSlotButton" onclick="addEnemySlot()"
+                        class="w-full mt-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow-md transform transition active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-red-300">
+                    敵主力追加 (現在 1 / 6)
+                </button>
             </div>
         </div>
 
-        <!-- 主力追加ボタン -->
-        <button id="addSlotButton" onclick="addSlot()"
-                class="w-full mt-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transform transition hover:scale-[1.005] active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-indigo-300">
-            主力追加 (現在 1 / 6)
-        </button>
         
         <!-- 結果表示エリア -->
         <div id="results" class="mt-8 pt-6 border-t border-gray-300 space-y-4">
@@ -195,8 +200,10 @@
     <script>
         // 最大入力スロット数
         const NUM_SLOTS = 6; 
-        // 現在表示されているスロット数
-        let currentSlotCount = 1; 
+        // 現在表示されている味方スロット数
+        let currentMySlotCount = 1; 
+        // 現在表示されている敵スロット数
+        let currentEnemySlotCount = 1; 
 
         // 属性間のダメージ（戦力）乗数テーブル
         const multipliers = {
@@ -218,34 +225,56 @@
         // 初期選択属性を保持するオブジェクト。最大6組を定義。
         let selectedAttributes = {};
         for (let i = 1; i <= NUM_SLOTS; i++) {
-            // 初期値として適当な属性を設定
-            selectedAttributes['my' + i] = (i % 3 === 1) ? 'grass' : (i % 3 === 2) ? 'fire' : 'water';
-            selectedAttributes['enemy' + i] = (i % 3 === 1) ? 'grass' : (i % 3 === 2) ? 'fire' : 'water';
+            // 初期値をすべて 'fire' (火) に設定
+            selectedAttributes['my' + i] = 'fire';
+            selectedAttributes['enemy' + i] = 'fire';
         }
 
         /**
-         * 次の主力スロットを表示する
+         * 味方スロットを一つ展開する
          */
-        function addSlot() {
-            if (currentSlotCount < NUM_SLOTS) {
-                currentSlotCount++;
+        function addMySlot() {
+            if (currentMySlotCount < NUM_SLOTS) {
+                currentMySlotCount++;
 
                 // 次の味方スロットを表示
-                const mySlot = document.getElementById(`mySlot${currentSlotCount}`);
+                const mySlot = document.getElementById(`mySlot${currentMySlotCount}`);
                 if (mySlot) mySlot.classList.remove('hidden');
 
+                // ボタンのテキストを更新
+                const button = document.getElementById('myAddSlotButton');
+                button.textContent = `味方主力追加 (現在 ${currentMySlotCount} / ${NUM_SLOTS})`;
+                
+                // 最大スロットに達したらボタンを非表示にする
+                if (currentMySlotCount === NUM_SLOTS) {
+                    button.classList.add('hidden');
+                }
+                
+                calculateDebuff(); // スロット追加時に再計算
+            }
+        }
+        
+        /**
+         * 敵スロットを一つ展開する
+         */
+        function addEnemySlot() {
+            if (currentEnemySlotCount < NUM_SLOTS) {
+                currentEnemySlotCount++;
+
                 // 次の敵スロットを表示
-                const enemySlot = document.getElementById(`enemySlot${currentSlotCount}`);
+                const enemySlot = document.getElementById(`enemySlot${currentEnemySlotCount}`);
                 if (enemySlot) enemySlot.classList.remove('hidden');
 
                 // ボタンのテキストを更新
-                const button = document.getElementById('addSlotButton');
-                button.textContent = `主力追加 (現在 ${currentSlotCount} / ${NUM_SLOTS})`;
+                const button = document.getElementById('enemyAddSlotButton');
+                button.textContent = `敵主力追加 (現在 ${currentEnemySlotCount} / ${NUM_SLOTS})`;
                 
                 // 最大スロットに達したらボタンを非表示にする
-                if (currentSlotCount === NUM_SLOTS) {
+                if (currentEnemySlotCount === NUM_SLOTS) {
                     button.classList.add('hidden');
                 }
+                
+                calculateDebuff(); // スロット追加時に再計算
             }
         }
 
@@ -254,11 +283,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             // 全ての主力に対して初期属性を設定
             for (let i = 1; i <= NUM_SLOTS; i++) {
+                // 初期属性として 'fire' を選択し、ボタンの状態を更新
                 selectAttribute('my', i, selectedAttributes['my' + i], false);
                 selectAttribute('enemy', i, selectedAttributes['enemy' + i], false);
             }
             
-            // 初回ロード時に一度計算を実行 (入力値が空欄のため、バリデーションで入力待ち表示になる)
+            // 初回ロード時に一度計算を実行
             calculateDebuff();
         });
 
@@ -276,7 +306,7 @@
             container.querySelectorAll('.attribute-button').forEach(button => {
                 button.classList.remove('selected', 'ring-4', 'ring-indigo-300', 'ring-red-300', button.dataset.bg);
                 button.style.color = '#4b5563'; // gray-600
-                button.style.borderColor = '#d1d5db'; // gray-300
+                button.borderColor = '#d1d5db'; // gray-300
             });
 
             // 選択されたボタンに選択状態を適用
@@ -316,16 +346,26 @@
             let hasValidInput = false;
             let multiplierDetailsHtml = '';
 
-            // 1. 1から現在の表示スロットまでの主力データをループで処理
-            for (let i = 1; i <= NUM_SLOTS; i++) { // NUM_SLOTSまでループを回すが、非表示スロットの戦力は0になる
+            // 1. 敵の合計戦力 (totalEnemyPower) の計算
+            // 展開されている全ての敵スロットの戦力を合計する (i <= currentEnemySlotCount)
+            for (let i = 1; i <= currentEnemySlotCount; i++) {
+                const enemyPowerInput = document.getElementById('enemyPower' + i);
+                const enemyPower = parseFloat(enemyPowerInput?.value) || 0;
+                totalEnemyPower += enemyPower;
+            }
+            
+            // 2. 味方の有効合計戦力 (totalEffectiveMyPower) の計算
+            // 計算に属性補正を含めるスロット数は、味方と敵の展開されているスロット数の「少ない方」に合わせる
+            const effectiveCalculationLimit = Math.min(currentMySlotCount, currentEnemySlotCount);
+
+            for (let i = 1; i <= effectiveCalculationLimit; i++) {
                 const myPowerInput = document.getElementById('myPower' + i);
                 const enemyPowerInput = document.getElementById('enemyPower' + i);
                 
-                // DOMが存在しない（ありえないが安全のため）または入力値を取得
                 const myPower = parseFloat(myPowerInput?.value) || 0;
                 const enemyPower = parseFloat(enemyPowerInput?.value) || 0;
 
-                // 両方の戦力に有効な入力がある場合のみ計算に含める
+                // ペア両方に有効な入力がある場合のみ属性補正計算に含める
                 if (myPower > 0 && enemyPower > 0) {
                     hasValidInput = true;
                     
@@ -336,7 +376,6 @@
                     const effectiveMyPower = myPower * multiplier;
 
                     totalEffectiveMyPower += effectiveMyPower;
-                    totalEnemyPower += enemyPower;
                     
                     // 属性補正詳細の動的生成
                     multiplierDetailsHtml += `
@@ -348,6 +387,13 @@
                     `;
                 }
             }
+            
+            // 敵の合計戦力が0、または有効な味方の戦力がない場合は計算を停止
+            if (totalEnemyPower === 0) {
+                // 敵の戦力がゼロの場合は、計算を停止し、入力待ち状態を維持
+                hasValidInput = false;
+            }
+
 
             // 必須入力項目のチェック (有効な入力が1組でもなければエラー/入力待ち)
             if (!hasValidInput) {
@@ -357,7 +403,7 @@
                 document.getElementById('neededSquads').textContent = '入力待ち';
                 document.getElementById('neededPeople').textContent = '入力待ち';
                 document.getElementById('effectiveTotalPower').textContent = '0';
-                document.getElementById('enemyTotalPower').textContent = '0';
+                document.getElementById('enemyTotalPower').textContent = totalEnemyPower.toFixed(2);
                 document.getElementById('multiplierText').innerHTML = '<p class="text-sm text-gray-500">主力ごとの属性補正率がここに入ります (入力があった組のみ)</p>';
 
                 // 結果エリアの色を入力待ち（グレー）に
