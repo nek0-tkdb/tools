@@ -169,7 +169,7 @@
         // 1. Firebase初期設定と認証
         // =================================================================================
         
-        // 環境変数からFirebase設定と認証トークを取得
+        // 環境変数からFirebase設定と認証トークンを取得
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -201,20 +201,29 @@
                         document.getElementById('auth-status').textContent = '認証済み (カスタム/匿名)';
                         document.getElementById('auth-status').classList.remove('text-red-500');
                         document.getElementById('auth-status').classList.add('text-green-600');
+                        isAuthReady = true; // 認証が成功したらここで true に設定
+                        
+                        // 認証完了後にデータ監視とUIを初期化
+                        setupListeners();
+                        updateTotalItemCount();
                     } else {
                         // 匿名ログイン処理
-                        if (initialAuthToken) {
-                            // カスタムトークンでログイン
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            // 匿名でログイン
-                            await signInAnonymously(auth);
+                        try {
+                            if (initialAuthToken) {
+                                // カスタムトークンでログイン
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                // 匿名でログイン
+                                await signInAnonymously(auth);
+                            }
+                        } catch (e) {
+                            console.error("サインイン処理エラー:", e);
+                            document.getElementById('auth-status').textContent = '認証失敗';
+                            document.getElementById('auth-status').classList.remove('text-green-600');
+                            document.getElementById('auth-status').classList.add('text-red-500');
+                            isAuthReady = true; // 失敗してもチェック完了として true にする（ただしFirestore操作はエラーになる可能性あり）
                         }
                     }
-                    isAuthReady = true;
-                    // 認証完了後にデータ監視とUIを初期化
-                    setupListeners();
-                    updateTotalItemCount();
                 });
             } catch (error) {
                 console.error("Firebase初期化エラー:", error);
@@ -318,7 +327,7 @@
          * Firestoreのデータ変更を監視し、quizItemsを更新する
          */
         function setupListeners() {
-            if (!isAuthReady) return; // 認証完了前は実行しない
+            // isAuthReadyのチェックは onAuthStateChanged の成功コールバック内で行われるため、ここでは不要
             
             const q = query(collection(db, COLLECTION_PATH));
             
@@ -336,7 +345,10 @@
                     checkQuizReadiness();
                 }
                 
-                displayMessage(`問題リストが更新されました (${quizItems.length}件)`);
+                // 初回ロード時以外はメッセージを表示
+                if (isAuthReady) {
+                    displayMessage(`問題リストが更新されました (${quizItems.length}件)`);
+                }
             }, (error) => {
                 console.error("Firestoreリアルタイムリスナーエラー:", error);
                 displayMessage(`問題の取得中にエラーが発生しました: ${error.message}`, 'error');
@@ -372,7 +384,9 @@
          * 問題を保存（新規登録または更新）
          */
         async function saveItem() {
-            if (!isAuthReady) return displayMessage('認証が完了していません。', 'error');
+            if (!isAuthReady || !userId) {
+                return displayMessage('認証が完了していません。しばらく待ってから再度お試しください。', 'error');
+            }
 
             const id = elements.itemIdToEdit.value;
             const imageUrl = elements.imageUrlInput.value.trim();
@@ -409,6 +423,10 @@
          * @param {string} id - 問題ID
          */
         function editItem(id) {
+            if (!isAuthReady || !userId) {
+                return displayMessage('認証が完了していません。編集機能は認証後に利用可能です。', 'error');
+            }
+            
             const item = quizItems.find(i => i.id === id);
             if (item) {
                 elements.itemIdToEdit.value = item.id;
@@ -426,7 +444,9 @@
          * @param {string} id - 問題ID
          */
         async function deleteItem(id) {
-            if (!isAuthReady) return displayMessage('認証が完了していません。', 'error');
+            if (!isAuthReady || !userId) {
+                 return displayMessage('認証が完了していません。削除機能は認証後に利用可能です。', 'error');
+            }
             
             // カスタムモーダルの代わりに確認メッセージを使用
             if (!window.confirm('本当にこの問題を削除しますか？')) {
@@ -488,7 +508,9 @@
          * CSVファイルを読み込み、問題を一括アップロードする
          */
         async function uploadCsv() {
-            if (!isAuthReady) return displayMessage('認証が完了していません。', 'error');
+            if (!isAuthReady || !userId) {
+                return displayMessage('認証が完了していません。CSVアップロードは認証後に利用可能です。', 'error');
+            }
             
             const file = elements.csvFileInput.files[0];
             if (!file) {
@@ -509,6 +531,7 @@
 
                 dataLines.forEach((line, index) => {
                     const parts = line.split(',');
+                    // CSVの区切り文字がカンマであることを想定
                     if (parts.length < 2) {
                         console.warn(`CSVパースエラー: 行 ${index + 2} の形式が不正です。スキップします。`);
                         errorCount++;
@@ -519,9 +542,6 @@
                     const correctType = parts[1].trim().toLowerCase(); // 大文字・小文字を区別しない
                     
                     if (imageUrl && ['fire', 'water', 'grass'].includes(correctType)) {
-                        // 新しい問題にはランダムなIDを生成して追加
-                        // NOTE: FirestoreのaddDocを使う場合IDは自動生成されますが、ここでは一括書き込みのためにドキュメント名をランダムに設定します。
-                        // 今回は既存の問題を全て削除して追加するシンプルな処理にします。
                         newItems.push({
                             image_url: imageUrl,
                             correct_type: correctType
