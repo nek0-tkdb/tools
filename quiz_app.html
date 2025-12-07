@@ -171,11 +171,33 @@
         
         // 環境変数からFirebase設定と認証トークンを取得
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // API Keyは空文字列を使用（Canvas環境で自動提供されるため）
-        const apiKey = ""; 
+        // Canvas環境外で実行された場合（__firebase_configが存在しない場合）に備え、
+        // ダミーのFirebase設定またはユーザーが設定できるプレースホルダーを用意します。
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0) {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+            // !!! 注意 !!!
+            // GitHub Pagesなどで公開する場合、以下のダミー設定を
+            // ご自身のFirebaseプロジェクトの設定値に置き換えてください。
+            // これがないと、Firestoreへの読み書きはできません。
+            console.warn("Canvas環境外で実行されています。Firebase設定プレースホルダーを使用します。");
+            displayMessage("Firebase設定が不足しています。管理画面の機能を利用するには、ソースコード内のfirebaseConfigを実際の値に置き換えてください。", 'error');
+            firebaseConfig = {
+                apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // 実際のAPIキーに置き換える
+                authDomain: "YOUR-PROJECT-ID.firebaseapp.com", // 実際のAuth Domainに置き換える
+                projectId: "YOUR-PROJECT-ID", // 実際のプロジェクトIDに置き換える (必須)
+                storageBucket: "YOUR-PROJECT-ID.appspot.com",
+                messagingSenderId: "000000000000",
+                appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxx",
+                measurementId: "G-XXXXXXXXXX"
+            };
+        }
+        
+        // API Keyは空文字列を使用（Canvas環境で自動提供されるため、ここではConfig内のものを使う）
+        // const apiKey = ""; 
 
         let app, db, auth;
         let userId = null;
@@ -189,6 +211,16 @@
          */
         async function initializeFirebase() {
             try {
+                // projectIdが設定されていない場合（GitHub Pagesなどでユーザーが設定を忘れた場合）のエラーチェック
+                if (!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR-PROJECT-ID") {
+                    console.error("致命的なエラー: Firebase 'projectId' が設定されていません。");
+                    document.getElementById('auth-status').textContent = '認証失敗 (設定不足)';
+                    document.getElementById('auth-status').classList.remove('text-green-600');
+                    document.getElementById('auth-status').classList.add('text-red-500');
+                    isAuthReady = true; 
+                    return;
+                }
+                
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -210,10 +242,10 @@
                         // 匿名ログイン処理
                         try {
                             if (initialAuthToken) {
-                                // カスタムトークンでログイン
+                                // Canvas環境: カスタムトークンでログイン
                                 await signInWithCustomToken(auth, initialAuthToken);
                             } else {
-                                // 匿名でログイン
+                                // GitHub Pagesなど: 匿名でログイン
                                 await signInAnonymously(auth);
                             }
                         } catch (e) {
@@ -221,13 +253,14 @@
                             document.getElementById('auth-status').textContent = '認証失敗';
                             document.getElementById('auth-status').classList.remove('text-green-600');
                             document.getElementById('auth-status').classList.add('text-red-500');
-                            isAuthReady = true; // 失敗してもチェック完了として true にする（ただしFirestore操作はエラーになる可能性あり）
+                            isAuthReady = true; // 失敗してもチェック完了として true にする
                         }
                     }
                 });
             } catch (error) {
                 console.error("Firebase初期化エラー:", error);
                 displayMessage(`Firebase初期化エラー: ${error.message}`, 'error');
+                isAuthReady = true;
             }
         }
 
@@ -327,7 +360,10 @@
          * Firestoreのデータ変更を監視し、quizItemsを更新する
          */
         function setupListeners() {
-            // isAuthReadyのチェックは onAuthStateChanged の成功コールバック内で行われるため、ここでは不要
+            if (!isAuthReady || !auth.currentUser) {
+                // 認証に失敗しているか、設定が不足している場合はリスナーをセットアップしない
+                return;
+            }
             
             const q = query(collection(db, COLLECTION_PATH));
             
@@ -351,7 +387,7 @@
                 }
             }, (error) => {
                 console.error("Firestoreリアルタイムリスナーエラー:", error);
-                displayMessage(`問題の取得中にエラーが発生しました: ${error.message}`, 'error');
+                displayMessage(`問題の取得中にエラーが発生しました: ${error.message}。Firebase設定とセキュリティルールを確認してください。`, 'error');
             });
         }
         
