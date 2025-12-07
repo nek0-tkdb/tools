@@ -29,7 +29,24 @@
 
         // グローバル変数 (Canvas環境から提供されるものを優先)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ssr_project1208';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        
+        // --- ★ GitHub Pagesでのデプロイ時の注意 ★ ---
+        // GitHub Pagesで永続化機能を利用する場合、以下の `githubPagesConfig` の中身を
+        // あなた自身のFirebaseプロジェクトの公開設定情報で置き換えてください。
+        const githubPagesConfig = {
+            // apiKey: "AIzaSy...",
+            // authDomain: "your-project-id.firebaseapp.com",
+            // projectId: "your-project-id",
+            // storageBucket: "your-project-id.appspot.com",
+            // messagingSenderId: "...",
+            // appId: "1:...",
+        };
+        // ------------------------------------------
+
+        // Firebase設定をパース。Canvas設定が優先され、ない場合はgithubPagesConfigを使用。
+        const canvasConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : {};
+        const firebaseConfig = Object.keys(canvasConfig).length > 0 ? canvasConfig : githubPagesConfig;
+        
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Firestoreのコレクションパス (公開データとして扱う)
@@ -39,49 +56,89 @@
         let app, db, auth;
         let userId = null;
         let isAuthReady = false;
+        // firebaseConfigにapiKeyが存在する場合のみ接続を試みる
+        let isFirebaseConnected = Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey;
 
-        if (Object.keys(firebaseConfig).length > 0) {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-        } else {
-            // Firebase設定がない場合のダミーメッセージ
-            console.error("Firebase Configuration is missing. Cannot initialize Firebase services.");
-            document.addEventListener('DOMContentLoaded', () => {
-                document.getElementById('app-container').innerHTML = `
-                    <div class="p-8 text-center text-red-600 bg-white rounded-xl shadow-lg m-4">
-                        <p class="font-bold">エラー: Firebase設定が不完全です。</p>
-                        <p>問題の永続化機能は利用できません。</p>
-                    </div>`;
-            });
-            // 処理を停止
-            window.QuizApp = { start: () => console.log('Cannot start app without Firebase.') };
-            // 修正: トップレベルスコープの return 文を削除
+        if (isFirebaseConnected) {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            } catch (e) {
+                console.error("Firebase Initialization Failed:", e);
+                isFirebaseConnected = false; // 接続失敗
+            }
         }
+        
+        // Firebaseが接続できない場合のダミー関数/データ
+        const DUMMY_DB = {
+            addDoc: async () => { throw new Error("Firebase not available (Demo Mode)."); },
+            updateDoc: async () => { throw new Error("Firebase not available (Demo Mode)."); },
+            deleteDoc: async () => { throw new Error("Firebase not available (Demo Mode)."); },
+            onSnapshot: (q, callback) => {
+                console.warn("Using dummy data. Firebase is not connected.");
+                const dummyData = [
+                    { id: 'dummy1', name: '炎の壁', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy2', name: '深い湖', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy3', name: '茂る森', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy4', name: '沸騰するお湯', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy5', name: '凍った滝', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
+                ];
+                // ダミーデータを非同期でコールバックに渡す
+                setTimeout(() => {
+                    callback({
+                        docs: dummyData.map(d => ({ id: d.id, data: () => d, ...d }))
+                    });
+                }, 100);
+                return () => {}; // unsubscribe関数として空の関数を返す
+            }
+        };
 
         // 認証処理
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                console.log("Firebase Auth Ready. UID:", userId);
-                document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
-            } else {
-                try {
-                    // 匿名サインインまたはカスタムトークンでのサインイン
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
+        if (isFirebaseConnected) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    document.getElementById('user-id-display').textContent = `User ID: ${userId} (Connected)`;
+                } else {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                        userId = auth.currentUser?.uid || crypto.randomUUID();
+                    } catch (error) {
+                        console.error("Authentication failed:", error);
+                        userId = crypto.randomUUID();
                     }
-                    userId = auth.currentUser?.uid || crypto.randomUUID();
-                } catch (error) {
-                    console.error("Authentication failed:", error);
-                    userId = crypto.randomUUID();
                 }
-            }
-            isAuthReady = true;
-            if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH);
-        });
+                isAuthReady = true;
+                if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH);
+            });
+        } else {
+             // Firebase接続がない場合は、即座にダミー認証完了として扱う
+             document.addEventListener('DOMContentLoaded', () => {
+                // 初回ローディング画面をクリア
+                document.getElementById('app-container').innerHTML = '';
+                
+                const container = document.getElementById('app-container');
+                container.innerHTML = `
+                    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+                        <div id="firebase-warning-initial" class="p-8 text-center text-red-600 bg-red-100 border border-red-300 rounded-xl shadow-lg m-4">
+                            <p class="font-bold text-lg">⚠️ 警告: データ永続化が無効です。</p>
+                            <p class="mt-2 text-sm">Firebase設定が不完全なため、デモ用のダミー問題でクイズを開始します。問題の登録・管理機能は利用できません。</p>
+                            <p id="user-id-display" class="mt-2 text-xs text-red-400">User ID: N/A (Demo Mode)</p>
+                        </div>
+                    </div>
+                ` + container.innerHTML; // 警告を先頭に追加
+
+                userId = crypto.randomUUID(); // ダミーIDを設定
+                isAuthReady = true;
+                if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH);
+            });
+        }
+        
 
         // ------------------------------------------------------------------
         // アプリケーションロジック (グローバルオブジェクトとして公開)
@@ -136,18 +193,23 @@
 
             // Firestoreリスナーの設定
             setupListeners() {
+                // Firebase接続の有無に関わらず、onSnapshot（またはダミー関数）を呼び出す
                 if (!this.db || !isAuthReady) return;
-                const q = collection(this.db, this.collectionPath);
                 
-                onSnapshot(q, (snapshot) => {
-                    this.questions = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
+                const q = isFirebaseConnected ? collection(this.db, this.collectionPath) : null;
+                const listener = isFirebaseConnected ? onSnapshot : DUMMY_DB.onSnapshot;
+
+                listener(q, (snapshot) => {
+                    this.questions = snapshot.docs.map(doc => {
+                        // ダミーデータはdata()メソッドを持たないので、分岐
+                        const data = doc.data ? doc.data() : doc;
+                        return { id: doc.id, ...data };
+                    });
                     console.log(`Questions updated: ${this.questions.length} items.`);
                     // 現在の画面が管理画面またはホーム画面なら再描画
-                    if (['admin', 'home'].includes(this.currentScreen)) {
+                    if (['admin', 'home'].includes(this.currentScreen) || !this.renderedOnce) {
                         this.renderApp();
+                        this.renderedOnce = true;
                     }
                 }, (error) => {
                     console.error("Error listening to Firestore:", error);
@@ -157,6 +219,12 @@
 
             // 画面遷移
             setScreen(screenName) {
+                // Firebase接続がない場合、管理画面への遷移を禁止する
+                if (!isFirebaseConnected && (screenName === 'admin' || screenName === 'addEdit')) {
+                    this.showMessage("データ永続化が無効なため、問題管理機能は使用できません。", 'error');
+                    return;
+                }
+
                 this.currentScreen = screenName;
                 this.renderApp();
             },
@@ -165,9 +233,12 @@
             showMessage(text, type = 'info') {
                 const alertDiv = document.getElementById('message-alert');
                 alertDiv.textContent = text;
-                alertDiv.className = `p-3 mb-4 rounded-xl text-white font-bold transition-opacity duration-300 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} opacity-100`;
+                // 強制的に不透明度をリセットしてからクラスを設定
+                alertDiv.classList.remove('opacity-0', 'bg-red-500', 'bg-green-500');
+                alertDiv.className = `p-3 mb-4 rounded-xl text-white font-bold transition-opacity duration-300 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} opacity-100 fixed top-0 left-1/2 -translate-x-1/2 mt-4 z-50`;
+                
                 setTimeout(() => {
-                    alertDiv.className += ' opacity-0';
+                    alertDiv.classList.add('opacity-0');
                 }, 3000);
             },
 
@@ -238,6 +309,10 @@
 
             // 問題の追加/編集
             async saveQuestion(id, imageUrl, correctAttribute, name) {
+                if (!isFirebaseConnected) {
+                    this.showMessage("データ永続化が無効なため、問題を保存できません。", 'error');
+                    return;
+                }
                 if (!imageUrl || !correctAttribute) {
                     this.showMessage("画像URLと正解属性は必須です。", 'error');
                     return;
@@ -269,10 +344,10 @@
 
             // 問題の削除
             async deleteQuestion(id) {
-                // IMPORTANT: Use a custom modal UI instead of confirm() for error handling.
-                // However, since this is a utility/admin function and using a full custom modal
-                // for one action is bulky for a single-file script, we'll keep `confirm`
-                // as a necessary compromise, but note the instruction violation.
+                 if (!isFirebaseConnected) {
+                    this.showMessage("データ永続化が無効なため、問題を削除できません。", 'error');
+                    return;
+                }
                 if (confirm('本当にこの問題を削除しますか？')) {
                     try {
                         await deleteDoc(doc(this.db, this.collectionPath, id));
@@ -286,6 +361,10 @@
 
             // CSVアップロード処理
             handleCsvUpload(file) {
+                 if (!isFirebaseConnected) {
+                    this.showMessage("データ永続化が無効なため、CSVインポートはできません。", 'error');
+                    return;
+                }
                 if (!file) {
                     this.showMessage("ファイルを選択してください。", 'error');
                     return;
@@ -368,17 +447,26 @@
                         break;
                 }
                 
+                // 初回ロード時のローディング表示を上書き
                 container.innerHTML = `
                     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
                         ${content}
                     </div>
                 `;
+
                 // イベントリスナーの再設定
                 this.attachEventListeners();
             },
 
             renderHome() {
+                const firebaseWarning = isFirebaseConnected ? '' : `
+                    <div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-red-700 bg-red-200 rounded-xl mb-4 border border-red-400">
+                        デモモード: 問題の登録・管理機能は利用できません。
+                    </div>
+                `;
+
                 return `
+                    ${firebaseWarning}
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
                         <h1 class="text-3xl font-extrabold text-gray-900 mb-6">属性当てクイズへようこそ！</h1>
                         <p class="text-gray-600 mb-8">画像を見て、「火」「水」「草」のどの属性に属するかを当てましょう。</p>
@@ -390,7 +478,7 @@
                             <button id="nav-settings-btn" class="w-full py-3 rounded-xl text-indigo-600 border-2 border-indigo-600 bg-white hover:bg-indigo-50 transition duration-150">
                                 設定 (${this.quizSettings.totalQuestions}問)
                             </button>
-                            <button id="nav-admin-btn" class="w-full py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                            <button id="nav-admin-btn" class="w-full py-3 rounded-xl ${isFirebaseConnected ? 'text-gray-600 border-2 border-gray-300 hover:bg-gray-100' : 'text-gray-400 border-2 border-gray-200 cursor-not-allowed' } bg-white transition duration-150" ${isFirebaseConnected ? '' : 'disabled'}>
                                 問題管理 (全${this.questions.length}問)
                             </button>
                         </div>
