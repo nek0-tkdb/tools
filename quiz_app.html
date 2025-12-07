@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>属性マスター - 画像属性3択クイズ</title>
+    <!-- Tailwind CSS CDNをロード -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        /* 属性ボタンの基本スタイルと色 */
+        .type-button {
+            transition: all 0.2s ease-in-out;
+            @apply flex-1 py-4 text-xl font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+        }
+        .type-fire { @apply bg-red-600 text-white hover:bg-red-700; }
+        .type-water { @apply bg-blue-600 text-white hover:bg-blue-700; }
+        .type-grass { @apply bg-green-600 text-white hover:bg-green-700; }
+        .disabled-button { @apply opacity-50 cursor-not-allowed; }
+        /* カスタムスクロールバー（管理画面用） */
+        .scrollable-content::-webkit-scrollbar { width: 8px; }
+        .scrollable-content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .scrollable-content::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .scrollable-content::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <!-- メインコンテナ -->
+    <div id="app" class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-6 md:p-10">
+
+        <!-- ヘッダーとビュー切り替え -->
+        <header class="mb-8 border-b pb-4 flex justify-between items-center">
+            <h1 class="text-3xl font-extrabold text-gray-800">属性マスター</h1>
+            <div class="flex space-x-2">
+                <button id="nav-quiz" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition">クイズ</button>
+                <button id="nav-admin" class="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition">管理</button>
+            </div>
+        </header>
+
+        <!-- 認証ステータスとユーザーID表示 -->
+        <div class="text-sm text-gray-500 mb-4 p-2 bg-gray-100 rounded-lg">
+            <p>認証ステータス: <span id="auth-status" class="font-medium text-red-500">認証中...</span></p>
+            <p>ユーザーID (データ保存先): <span id="user-id" class="font-mono text-xs break-all"></span></p>
+        </div>
+
+        <!-- メッセージ表示エリア (エラーや成功メッセージ) -->
+        <div id="message-area" class="mb-4 hidden p-3 rounded-lg text-sm font-medium"></div>
+
+        <!-- クイズ画面 (View: quiz) -->
+        <section id="view-quiz" class="space-y-6">
+            <div id="quiz-settings" class="mb-6 p-4 bg-gray-50 rounded-xl shadow-inner">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">クイズ設定</h2>
+                <div class="flex items-center space-x-4">
+                    <label for="num-questions" class="text-gray-600">出題数:</label>
+                    <input type="number" id="num-questions" value="10" min="1" max="50" class="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                    <button id="start-quiz-btn" class="px-6 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition">クイズ開始</button>
+                </div>
+                <p id="total-items-count" class="mt-2 text-sm text-gray-500"></p>
+            </div>
+
+            <div id="quiz-area" class="hidden">
+                <p class="text-lg font-medium text-gray-700 mb-4">
+                    問題 <span id="current-question-index">1</span> / <span id="total-questions">10</span>
+                </p>
+
+                <!-- 画像表示エリア -->
+                <div class="relative mb-6 bg-gray-100 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-4" style="height: 300px;">
+                    <img id="question-image" src="" alt="出題画像" class="max-h-full max-w-full object-contain rounded-lg shadow-md" onerror="this.onerror=null; this.src='https://placehold.co/400x300/e5e7eb/4b5563?text=画像が見つかりません';">
+                    <!-- 解答表示オーバーレイ -->
+                    <div id="answer-overlay" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 text-4xl font-black text-white rounded-xl transition-opacity duration-300 opacity-0 pointer-events-none">
+                        <span id="answer-text"></span>
+                    </div>
+                </div>
+
+                <!-- 選択肢ボタン -->
+                <div id="choice-buttons" class="flex space-x-4">
+                    <button data-type="fire" class="type-button type-fire">🔥 火属性</button>
+                    <button data-type="water" class="type-button type-water">💧 水属性</button>
+                    <button data-type="grass" class="type-button type-grass">🌿 草属性</button>
+                </div>
+
+                <!-- 次へボタン -->
+                <div class="mt-6 flex justify-end">
+                    <button id="next-question-btn" class="px-6 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition disabled-button" disabled>次へ</button>
+                </div>
+            </div>
+
+            <!-- 結果画面 -->
+            <div id="result-area" class="hidden text-center p-8 bg-white rounded-xl shadow-lg">
+                <h2 class="text-4xl font-extrabold text-indigo-600 mb-4">クイズ終了！</h2>
+                <p class="text-2xl font-semibold text-gray-700 mb-6">あなたのスコア:</p>
+                <div class="text-6xl font-black text-green-600 mb-8">
+                    <span id="final-score">0</span> / <span id="max-score">0</span>
+                </div>
+                <button id="restart-quiz-btn" class="px-8 py-3 bg-indigo-500 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-600 transition">もう一度プレイ</button>
+            </div>
+        </section>
+
+        <!-- 管理画面 (View: admin) -->
+        <section id="view-admin" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">問題管理画面</h2>
+
+            <!-- CSVアップロード -->
+            <div class="mb-8 p-5 bg-yellow-50 rounded-xl shadow-md">
+                <h3 class="text-xl font-semibold mb-3 text-yellow-800">CSVアップロード (一括登録・更新)</h3>
+                <p class="text-sm text-yellow-700 mb-3">※ 既存の問題は全て置き換えられます。</p>
+                <input type="file" id="csv-file-input" accept=".csv" class="mb-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200">
+                <button id="upload-csv-btn" class="px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition">CSVファイルをアップロード</button>
+            </div>
+
+            <!-- 新規問題登録フォーム -->
+            <div id="item-form-container" class="mb-8 p-5 bg-gray-100 rounded-xl shadow-md">
+                <h3 class="text-xl font-semibold mb-3 text-gray-800" id="form-title">新規問題登録</h3>
+                <input type="hidden" id="item-id-to-edit">
+                <div class="space-y-3">
+                    <div>
+                        <label for="image-url-input" class="block text-sm font-medium text-gray-700">画像URL (GitHub Pagesなど)</label>
+                        <input type="url" id="image-url-input" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="correct-type-input" class="block text-sm font-medium text-gray-700">正解属性</label>
+                        <select id="correct-type-input" required class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="fire">火属性 (fire)</option>
+                            <option value="water">水属性 (water)</option>
+                            <option value="grass">草属性 (grass)</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="save-item-btn" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition">登録/更新</button>
+                        <button id="cancel-edit-btn" class="px-4 py-2 bg-gray-400 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500 transition hidden">キャンセル</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 問題リスト -->
+            <div class="mb-4">
+                <h3 class="text-xl font-semibold text-gray-800 mb-3">登録済み問題一覧 (<span id="admin-item-count">0</span>件)</h3>
+                <div class="bg-gray-50 p-4 rounded-xl shadow-inner max-h-96 scrollable-content overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">画像URL</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">属性</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="item-list" class="bg-white divide-y divide-gray-200">
+                            <!-- 問題データがここに挿入されます -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Firebase SDKのインポート -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, collection, doc, addDoc, setDoc, deleteDoc, onSnapshot, 
+            query, writeBatch, runTransaction, getDoc
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // =================================================================================
+        // 1. Firebase初期設定と認証
+        // =================================================================================
+        
+        // 環境変数からFirebase設定と認証トークを取得
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // API Keyは空文字列を使用（Canvas環境で自動提供されるため）
+        const apiKey = ""; 
+
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+        
+        // Firestoreのコレクションパスを定義 (公開データとして保存)
+        const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_items`;
+
+        /**
+         * Firebaseと認証の初期化
+         */
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 認証状態の監視
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-id').textContent = userId;
+                        document.getElementById('auth-status').textContent = '認証済み (カスタム/匿名)';
+                        document.getElementById('auth-status').classList.remove('text-red-500');
+                        document.getElementById('auth-status').classList.add('text-green-600');
+                    } else {
+                        // 匿名ログイン処理
+                        if (initialAuthToken) {
+                            // カスタムトークンでログイン
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            // 匿名でログイン
+                            await signInAnonymously(auth);
+                        }
+                    }
+                    isAuthReady = true;
+                    // 認証完了後にデータ監視とUIを初期化
+                    setupListeners();
+                    updateTotalItemCount();
+                });
+            } catch (error) {
+                console.error("Firebase初期化エラー:", error);
+                displayMessage(`Firebase初期化エラー: ${error.message}`, 'error');
+            }
+        }
+
+        // =================================================================================
+        // 2. グローバル状態とユーティリティ
+        // =================================================================================
+
+        let quizItems = []; // 全問題リスト
+        let currentQuiz = []; // 現在のクイズで出題される問題のサブセット
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let isQuestionActive = false;
+        
+        const views = {
+            quiz: document.getElementById('view-quiz'),
+            admin: document.getElementById('view-admin')
+        };
+        const elements = {
+            messageArea: document.getElementById('message-area'),
+            totalItemsCount: document.getElementById('total-items-count'),
+            adminItemCount: document.getElementById('admin-item-count'),
+            startQuizBtn: document.getElementById('start-quiz-btn'),
+            numQuestionsInput: document.getElementById('num-questions'),
+            quizSettings: document.getElementById('quiz-settings'),
+            quizArea: document.getElementById('quiz-area'),
+            resultArea: document.getElementById('result-area'),
+            questionImage: document.getElementById('question-image'),
+            answerOverlay: document.getElementById('answer-overlay'),
+            answerText: document.getElementById('answer-text'),
+            choiceButtons: document.getElementById('choice-buttons'),
+            nextQuestionBtn: document.getElementById('next-question-btn'),
+            finalScore: document.getElementById('final-score'),
+            maxScore: document.getElementById('max-score'),
+            restartQuizBtn: document.getElementById('restart-quiz-btn'),
+            itemList: document.getElementById('item-list'),
+            saveItemBtn: document.getElementById('save-item-btn'),
+            cancelEditBtn: document.getElementById('cancel-edit-btn'),
+            itemIdToEdit: document.getElementById('item-id-to-edit'),
+            imageUrlInput: document.getElementById('image-url-input'),
+            correctTypeInput: document.getElementById('correct-type-input'),
+            formTitle: document.getElementById('form-title'),
+            csvFileInput: document.getElementById('csv-file-input'),
+            uploadCsvBtn: document.getElementById('upload-csv-btn'),
+            currentQuestionIndexSpan: document.getElementById('current-question-index'),
+            totalQuestionsSpan: document.getElementById('total-questions')
+        };
+        
+        /**
+         * ビューを切り替える
+         * @param {string} viewName - 'quiz' または 'admin'
+         */
+        function switchView(viewName) {
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            views[viewName].classList.remove('hidden');
+            
+            // ナビゲーションボタンのスタイル更新
+            document.getElementById('nav-quiz').classList.toggle('bg-indigo-500', viewName === 'quiz');
+            document.getElementById('nav-quiz').classList.toggle('bg-gray-200', viewName !== 'quiz');
+            document.getElementById('nav-quiz').classList.toggle('text-white', viewName === 'quiz');
+            document.getElementById('nav-quiz').classList.toggle('text-gray-800', viewName !== 'quiz');
+
+            document.getElementById('nav-admin').classList.toggle('bg-indigo-500', viewName === 'admin');
+            document.getElementById('nav-admin').classList.toggle('bg-gray-200', viewName !== 'admin');
+            document.getElementById('nav-admin').classList.toggle('text-white', viewName === 'admin');
+            document.getElementById('nav-admin').classList.toggle('text-gray-800', viewName !== 'admin');
+        }
+        
+        /**
+         * メッセージを表示する
+         * @param {string} msg - 表示するメッセージ
+         * @param {'success' | 'error' | 'info'} type - メッセージの種類
+         */
+        function displayMessage(msg, type) {
+            elements.messageArea.textContent = msg;
+            elements.messageArea.className = 'mb-4 p-3 rounded-lg text-sm font-medium'; // クラスをリセット
+            elements.messageArea.classList.remove('hidden');
+            
+            if (type === 'success') {
+                elements.messageArea.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                elements.messageArea.classList.add('bg-red-100', 'text-red-800');
+            } else {
+                elements.messageArea.classList.add('bg-blue-100', 'text-blue-800');
+            }
+            
+            // 3秒後にメッセージを非表示にする
+            setTimeout(() => {
+                elements.messageArea.classList.add('hidden');
+            }, 5000);
+        }
+
+        // =================================================================================
+        // 3. Firestoreデータ操作 (CRUD & CSV)
+        // =================================================================================
+
+        /**
+         * Firestoreのデータ変更を監視し、quizItemsを更新する
+         */
+        function setupListeners() {
+            if (!isAuthReady) return; // 認証完了前は実行しない
+            
+            const q = query(collection(db, COLLECTION_PATH));
+            
+            onSnapshot(q, (snapshot) => {
+                const items = [];
+                snapshot.forEach((doc) => {
+                    items.push({ id: doc.id, ...doc.data() });
+                });
+                quizItems = items;
+                updateAdminList(quizItems);
+                updateTotalItemCount();
+                
+                // クイズがアクティブでない場合、問題リストが更新されたらクイズ設定も更新
+                if (elements.quizArea.classList.contains('hidden') && elements.resultArea.classList.contains('hidden')) {
+                    checkQuizReadiness();
+                }
+                
+                displayMessage(`問題リストが更新されました (${quizItems.length}件)`);
+            }, (error) => {
+                console.error("Firestoreリアルタイムリスナーエラー:", error);
+                displayMessage(`問題の取得中にエラーが発生しました: ${error.message}`, 'error');
+            });
+        }
+        
+        /**
+         * 現在登録されている問題数を更新
+         */
+        function updateTotalItemCount() {
+            const count = quizItems.length;
+            elements.totalItemsCount.textContent = `現在 ${count} 件の問題が登録されています。`;
+            elements.adminItemCount.textContent = count;
+            checkQuizReadiness();
+        }
+
+        /**
+         * 問題リストの件数に基づいてクイズ開始ボタンの活性化をチェック
+         */
+        function checkQuizReadiness() {
+             if (quizItems.length === 0) {
+                elements.startQuizBtn.disabled = true;
+                elements.startQuizBtn.textContent = '問題なし (管理画面で追加してください)';
+                elements.startQuizBtn.classList.add('disabled-button');
+            } else {
+                elements.startQuizBtn.disabled = false;
+                elements.startQuizBtn.textContent = 'クイズ開始';
+                elements.startQuizBtn.classList.remove('disabled-button');
+            }
+        }
+
+        /**
+         * 問題を保存（新規登録または更新）
+         */
+        async function saveItem() {
+            if (!isAuthReady) return displayMessage('認証が完了していません。', 'error');
+
+            const id = elements.itemIdToEdit.value;
+            const imageUrl = elements.imageUrlInput.value.trim();
+            const correctType = elements.correctTypeInput.value;
+
+            if (!imageUrl) {
+                return displayMessage('画像URLを入力してください。', 'error');
+            }
+
+            const newItem = {
+                image_url: imageUrl,
+                correct_type: correctType,
+            };
+
+            try {
+                if (id) {
+                    // 更新
+                    await setDoc(doc(db, COLLECTION_PATH, id), newItem);
+                    displayMessage('問題を更新しました。', 'success');
+                } else {
+                    // 新規登録
+                    await addDoc(collection(db, COLLECTION_PATH), newItem);
+                    displayMessage('新しい問題を登録しました。', 'success');
+                }
+                resetForm();
+            } catch (error) {
+                console.error("問題の保存エラー:", error);
+                displayMessage(`問題の保存に失敗しました: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * 問題を編集フォームにロード
+         * @param {string} id - 問題ID
+         */
+        function editItem(id) {
+            const item = quizItems.find(i => i.id === id);
+            if (item) {
+                elements.itemIdToEdit.value = item.id;
+                elements.imageUrlInput.value = item.image_url;
+                elements.correctTypeInput.value = item.correct_type;
+                elements.formTitle.textContent = '問題編集';
+                elements.saveItemBtn.textContent = '更新';
+                elements.cancelEditBtn.classList.remove('hidden');
+                switchView('admin'); // 編集のために管理画面に移動
+            }
+        }
+
+        /**
+         * 問題を削除
+         * @param {string} id - 問題ID
+         */
+        async function deleteItem(id) {
+            if (!isAuthReady) return displayMessage('認証が完了していません。', 'error');
+            
+            // カスタムモーダルの代わりに確認メッセージを使用
+            if (!window.confirm('本当にこの問題を削除しますか？')) {
+                return;
+            }
+
+            try {
+                await deleteDoc(doc(db, COLLECTION_PATH, id));
+                displayMessage('問題を削除しました。', 'success');
+            } catch (error) {
+                console.error("問題の削除エラー:", error);
+                displayMessage(`問題の削除に失敗しました: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * フォームをリセット
+         */
+        function resetForm() {
+            elements.itemIdToEdit.value = '';
+            elements.imageUrlInput.value = '';
+            elements.correctTypeInput.value = 'fire';
+            elements.formTitle.textContent = '新規問題登録';
+            elements.saveItemBtn.textContent = '登録/更新';
+            elements.cancelEditBtn.classList.add('hidden');
+        }
+
+        /**
+         * 管理画面の問題リストを更新
+         * @param {Array<Object>} items - 問題リスト
+         */
+        function updateAdminList(items) {
+            elements.itemList.innerHTML = '';
+            if (items.length === 0) {
+                elements.itemList.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-gray-500">問題はまだ登録されていません。</td></tr>`;
+                return;
+            }
+
+            items.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="px-4 py-2 text-sm text-gray-500 font-mono text-xs break-all">${item.id.substring(0, 4)}...</td>
+                    <td class="px-4 py-2 text-sm text-gray-900 font-mono text-xs break-all">${item.image_url}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${item.correct_type}</td>
+                    <td class="px-4 py-2 text-sm font-medium space-x-2">
+                        <button onclick="editItem('${item.id}')" class="text-indigo-600 hover:text-indigo-900">編集</button>
+                        <button onclick="deleteItem('${item.id}')" class="text-red-600 hover:text-red-900">削除</button>
+                    </td>
+                `;
+                elements.itemList.appendChild(tr);
+            });
+            // グローバルスコープに関数を公開 (HTML onclickから呼び出すため)
+            window.editItem = editItem;
+            window.deleteItem = deleteItem;
+        }
+
+        /**
+         * CSVファイルを読み込み、問題を一括アップロードする
+         */
+        async function uploadCsv() {
+            if (!isAuthReady) return displayMessage('認証が完了していません。', 'error');
+            
+            const file = elements.csvFileInput.files[0];
+            if (!file) {
+                return displayMessage('CSVファイルを選択してください。', 'error');
+            }
+            
+            elements.uploadCsvBtn.disabled = true;
+            elements.uploadCsvBtn.textContent = 'アップロード中...';
+
+            try {
+                const text = await file.text();
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                
+                // ヘッダー行をスキップ (image_url,correct_typeを想定)
+                const dataLines = lines.slice(1);
+                const newItems = [];
+                let errorCount = 0;
+
+                dataLines.forEach((line, index) => {
+                    const parts = line.split(',');
+                    if (parts.length < 2) {
+                        console.warn(`CSVパースエラー: 行 ${index + 2} の形式が不正です。スキップします。`);
+                        errorCount++;
+                        return;
+                    }
+                    
+                    const imageUrl = parts[0].trim();
+                    const correctType = parts[1].trim().toLowerCase(); // 大文字・小文字を区別しない
+                    
+                    if (imageUrl && ['fire', 'water', 'grass'].includes(correctType)) {
+                        // 新しい問題にはランダムなIDを生成して追加
+                        // NOTE: FirestoreのaddDocを使う場合IDは自動生成されますが、ここでは一括書き込みのためにドキュメント名をランダムに設定します。
+                        // 今回は既存の問題を全て削除して追加するシンプルな処理にします。
+                        newItems.push({
+                            image_url: imageUrl,
+                            correct_type: correctType
+                        });
+                    } else {
+                        console.warn(`CSVデータ不正: 行 ${index + 2} (URL: ${imageUrl}, Type: ${correctType})`);
+                        errorCount++;
+                    }
+                });
+
+                if (newItems.length === 0) {
+                    displayMessage('CSVファイルに有効な問題データが見つかりませんでした。', 'error');
+                    return;
+                }
+                
+                // 既存のデータを全て削除し、新しいデータを追加するトランザクションを実行
+                await runTransaction(db, async (transaction) => {
+                    // 1. 既存の全てのドキュメントIDを取得 (リアルタイムリスナーで取得したquizItemsを使用)
+                    quizItems.forEach(item => {
+                        const docRef = doc(db, COLLECTION_PATH, item.id);
+                        transaction.delete(docRef);
+                    });
+                    
+                    // 2. 新しいデータを追加
+                    newItems.forEach(item => {
+                        const newDocRef = doc(collection(db, COLLECTION_PATH)); // 新しいIDを生成
+                        transaction.set(newDocRef, item);
+                    });
+                });
+
+                displayMessage(`CSVから ${newItems.length} 件の問題をアップロードしました。${errorCount > 0 ? `(${errorCount}件の不正データがスキップされました)` : ''}`, 'success');
+
+            } catch (error) {
+                console.error("CSVアップロードエラー:", error);
+                displayMessage(`CSVアップロード中にエラーが発生しました: ${error.message}`, 'error');
+            } finally {
+                elements.uploadCsvBtn.disabled = false;
+                elements.uploadCsvBtn.textContent = 'CSVファイルをアップロード';
+                elements.csvFileInput.value = ''; // ファイル選択をクリア
+            }
+        }
+
+        // =================================================================================
+        // 4. クイズロジック
+        // =================================================================================
+
+        /**
+         * 配列をシャッフルする (Fisher-Yates)
+         * @param {Array<Object>} array - シャッフルする配列
+         * @returns {Array<Object>} シャッフルされた新しい配列
+         */
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        /**
+         * クイズを開始する
+         */
+        function startQuiz() {
+            if (quizItems.length === 0) {
+                return displayMessage('問題が登録されていません。管理画面から追加してください。', 'error');
+            }
+
+            const numQuestions = parseInt(elements.numQuestionsInput.value, 10);
+            if (isNaN(numQuestions) || numQuestions <= 0) {
+                return displayMessage('有効な出題数を設定してください。', 'error');
+            }
+
+            // 出題数に基づいて問題をランダムに選択
+            const shuffledItems = shuffleArray(quizItems);
+            currentQuiz = shuffledItems.slice(0, Math.min(numQuestions, quizItems.length));
+
+            // 状態を初期化
+            currentQuestionIndex = 0;
+            score = 0;
+
+            // UIを更新
+            elements.quizSettings.classList.add('hidden');
+            elements.resultArea.classList.add('hidden');
+            elements.quizArea.classList.remove('hidden');
+            elements.totalQuestionsSpan.textContent = currentQuiz.length;
+
+            loadQuestion();
+        }
+
+        /**
+         * 次の問題をロードする
+         */
+        function loadQuestion() {
+            if (currentQuestionIndex >= currentQuiz.length) {
+                // クイズ終了
+                showResult();
+                return;
+            }
+            
+            isQuestionActive = true;
+            const currentItem = currentQuiz[currentQuestionIndex];
+
+            // UIをリセット
+            elements.currentQuestionIndexSpan.textContent = currentQuestionIndex + 1;
+            elements.questionImage.src = currentItem.image_url;
+            elements.questionImage.classList.remove('hidden');
+            elements.answerOverlay.classList.add('opacity-0');
+            elements.answerOverlay.classList.remove('bg-green-600', 'bg-red-600');
+            elements.answerText.textContent = '';
+            elements.nextQuestionBtn.disabled = true;
+            elements.nextQuestionBtn.classList.add('disabled-button');
+
+            // ボタンを有効化し、スタイルをリセット
+            elements.choiceButtons.querySelectorAll('button').forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('disabled-button', 'ring-4', 'ring-offset-2');
+                // 正解/不正解のハイライトをリセット
+                btn.style.opacity = '1';
+                btn.style.transform = 'translateY(0)';
+            });
+        }
+
+        /**
+         * 解答をチェックする
+         * @param {string} selectedType - ユーザーが選択した属性
+         * @param {HTMLButtonElement} button - 選択されたボタン要素
+         */
+        function checkAnswer(selectedType, button) {
+            if (!isQuestionActive) return; // 二重回答防止
+
+            isQuestionActive = false;
+            const currentItem = currentQuiz[currentQuestionIndex];
+            const isCorrect = (selectedType === currentItem.correct_type);
+            
+            // ボタンを全て無効化
+            elements.choiceButtons.querySelectorAll('button').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('disabled-button');
+                btn.style.opacity = '0.5';
+            });
+            
+            // 正解をハイライト
+            const correctButton = elements.choiceButtons.querySelector(`[data-type="${currentItem.correct_type}"]`);
+            correctButton.style.opacity = '1';
+            correctButton.classList.add('ring-4', 'ring-offset-2', 'ring-green-500');
+
+            if (isCorrect) {
+                score++;
+                elements.answerText.textContent = '正解！ ✅';
+                elements.answerOverlay.classList.add('bg-green-600');
+            } else {
+                elements.answerText.textContent = '不正解 ❌';
+                elements.answerOverlay.classList.add('bg-red-600');
+                // 間違った選択肢を赤くハイライト
+                button.classList.add('ring-4', 'ring-offset-2', 'ring-red-500');
+            }
+
+            elements.answerOverlay.classList.remove('opacity-0');
+            elements.nextQuestionBtn.disabled = false;
+            elements.nextQuestionBtn.classList.remove('disabled-button');
+        }
+
+        /**
+         * 次の問題に進む
+         */
+        function nextQuestion() {
+            elements.answerOverlay.classList.add('opacity-0');
+            elements.nextQuestionBtn.disabled = true;
+            elements.nextQuestionBtn.classList.add('disabled-button');
+            currentQuestionIndex++;
+            loadQuestion();
+        }
+
+        /**
+         * 結果画面を表示する
+         */
+        function showResult() {
+            elements.quizArea.classList.add('hidden');
+            elements.resultArea.classList.remove('hidden');
+            elements.finalScore.textContent = score;
+            elements.maxScore.textContent = currentQuiz.length;
+        }
+
+        /**
+         * クイズ設定画面に戻る
+         */
+        function resetQuiz() {
+            elements.quizArea.classList.add('hidden');
+            elements.resultArea.classList.add('hidden');
+            elements.quizSettings.classList.remove('hidden');
+        }
+
+        // =================================================================================
+        // 5. イベントリスナーの設定
+        // =================================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase();
+
+            // ビュー切り替え
+            document.getElementById('nav-quiz').addEventListener('click', () => switchView('quiz'));
+            document.getElementById('nav-admin').addEventListener('click', () => switchView('admin'));
+
+            // クイズ機能
+            elements.startQuizBtn.addEventListener('click', startQuiz);
+            elements.nextQuestionBtn.addEventListener('click', nextQuestion);
+            elements.restartQuizBtn.addEventListener('click', resetQuiz);
+
+            elements.choiceButtons.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' && e.target.dataset.type) {
+                    checkAnswer(e.target.dataset.type, e.target);
+                }
+            });
+
+            // 管理機能 (問題CRUD)
+            elements.saveItemBtn.addEventListener('click', saveItem);
+            elements.cancelEditBtn.addEventListener('click', resetForm);
+            
+            // 管理機能 (CSVアップロード)
+            elements.uploadCsvBtn.addEventListener('click', uploadCsv);
+        });
+
+        // グローバルスコープで利用できるようにエクスポート
+        // window.editItem, window.deleteItem は updateAdminList内で設定済み
+    </script>
+</body>
+</html>
