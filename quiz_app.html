@@ -47,6 +47,16 @@
 
         <!-- メッセージ表示エリア (エラーや成功メッセージ) -->
         <div id="message-area" class="mb-4 hidden p-3 rounded-lg text-sm font-medium"></div>
+        
+        <!-- 認証待機中のオーバーレイ -->
+        <div id="loading-overlay" class="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center hidden z-10 rounded-2xl">
+            <div class="text-center p-8 rounded-xl shadow-2xl bg-indigo-50">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mx-auto mb-4"></div>
+                <p class="text-xl font-semibold text-indigo-700">認証とデータロード中... しばらくお待ちください。</p>
+                <p class="text-sm text-gray-500 mt-2">（Firebase設定が正しいか確認してください）</p>
+            </div>
+        </div>
+
 
         <!-- クイズ画面 (View: quiz) -->
         <section id="view-quiz" class="space-y-6">
@@ -106,8 +116,8 @@
             <div class="mb-8 p-5 bg-yellow-50 rounded-xl shadow-md">
                 <h3 class="text-xl font-semibold mb-3 text-yellow-800">CSVアップロード (一括登録・更新)</h3>
                 <p class="text-sm text-yellow-700 mb-3">※ 既存の問題は全て置き換えられます。</p>
-                <input type="file" id="csv-file-input" accept=".csv" class="mb-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200">
-                <button id="upload-csv-btn" class="px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition">CSVファイルをアップロード</button>
+                <input type="file" id="csv-file-input" accept=".csv" class="mb-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200" disabled>
+                <button id="upload-csv-btn" class="px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-700 transition disabled-button" disabled>CSVファイルをアップロード</button>
             </div>
 
             <!-- 新規問題登録フォーム -->
@@ -117,18 +127,18 @@
                 <div class="space-y-3">
                     <div>
                         <label for="image-url-input" class="block text-sm font-medium text-gray-700">画像URL (GitHub Pagesなど)</label>
-                        <input type="url" id="image-url-input" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <input type="url" id="image-url-input" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" disabled>
                     </div>
                     <div>
                         <label for="correct-type-input" class="block text-sm font-medium text-gray-700">正解属性</label>
-                        <select id="correct-type-input" required class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <select id="correct-type-input" required class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" disabled>
                             <option value="fire">火属性 (fire)</option>
                             <option value="water">水属性 (water)</option>
                             <option value="grass">草属性 (grass)</option>
                         </select>
                     </div>
                     <div class="flex space-x-2">
-                        <button id="save-item-btn" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition">登録/更新</button>
+                        <button id="save-item-btn" class="px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition disabled-button" disabled>登録/更新</button>
                         <button id="cancel-edit-btn" class="px-4 py-2 bg-gray-400 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500 transition hidden">キャンセル</button>
                     </div>
                 </div>
@@ -137,8 +147,10 @@
             <!-- 問題リスト -->
             <div class="mb-4">
                 <h3 class="text-xl font-semibold text-gray-800 mb-3">登録済み問題一覧 (<span id="admin-item-count">0</span>件)</h3>
-                <div class="bg-gray-50 p-4 rounded-xl shadow-inner max-h-96 scrollable-content overflow-y-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
+                <div id="item-list-container" class="bg-gray-50 p-4 rounded-xl shadow-inner max-h-96 scrollable-content overflow-y-auto">
+                    <!-- リストは onSnapshot で更新されます -->
+                    <p id="list-loading-message" class="text-gray-500 text-center py-4">認証とデータロードを待機中...</p>
+                    <table class="min-w-full divide-y divide-gray-200 hidden">
                         <thead class="bg-gray-100 sticky top-0">
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
@@ -196,20 +208,50 @@
             };
         }
         
-        // API Keyは空文字列を使用（Canvas環境で自動提供されるため、ここではConfig内のものを使う）
-        // const apiKey = ""; 
-
         let app, db, auth;
         let userId = null;
         let isAuthReady = false;
         
         // Firestoreのコレクションパスを定義 (公開データとして保存)
         const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_items`;
+        
+        // 認証中に管理UIを無効化する関数
+        function disableAdminUI(isDisabled) {
+            document.getElementById('csv-file-input').disabled = isDisabled;
+            document.getElementById('upload-csv-btn').disabled = isDisabled;
+            document.getElementById('image-url-input').disabled = isDisabled;
+            document.getElementById('correct-type-input').disabled = isDisabled;
+            document.getElementById('save-item-btn').disabled = isDisabled;
+            
+            document.getElementById('upload-csv-btn').classList.toggle('disabled-button', isDisabled);
+            document.getElementById('save-item-btn').classList.toggle('disabled-button', isDisabled);
+
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                // UIが準備できるまでオーバーレイを表示
+                overlay.classList.toggle('hidden', !isDisabled);
+            }
+            
+            const listMessage = document.getElementById('list-loading-message');
+            const listTable = document.getElementById('item-list-container').querySelector('table');
+
+            if (isDisabled) {
+                 if (listMessage) listMessage.classList.remove('hidden');
+                 if (listTable) listTable.classList.add('hidden');
+            } else {
+                 if (listMessage) listMessage.classList.add('hidden');
+                 if (listTable) listTable.classList.remove('hidden');
+            }
+        }
+
 
         /**
          * Firebaseと認証の初期化
          */
         async function initializeFirebase() {
+            // まずUIを無効化し、ローディング状態にする
+            disableAdminUI(true);
+
             try {
                 // projectIdが設定されていない場合（GitHub Pagesなどでユーザーが設定を忘れた場合）のエラーチェック
                 if (!firebaseConfig.projectId || firebaseConfig.projectId === "YOUR-PROJECT-ID") {
@@ -217,7 +259,7 @@
                     document.getElementById('auth-status').textContent = '認証失敗 (設定不足)';
                     document.getElementById('auth-status').classList.remove('text-green-600');
                     document.getElementById('auth-status').classList.add('text-red-500');
-                    isAuthReady = true; 
+                    disableAdminUI(false); // エラー表示後、UIは有効化（ただし機能は動かない）
                     return;
                 }
                 
@@ -225,42 +267,57 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // 認証状態の監視
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('user-id').textContent = userId;
-                        document.getElementById('auth-status').textContent = '認証済み (カスタム/匿名)';
-                        document.getElementById('auth-status').classList.remove('text-red-500');
-                        document.getElementById('auth-status').classList.add('text-green-600');
-                        isAuthReady = true; // 認証が成功したらここで true に設定
-                        
-                        // 認証完了後にデータ監視とUIを初期化
-                        setupListeners();
-                        updateTotalItemCount();
-                    } else {
-                        // 匿名ログイン処理
-                        try {
-                            if (initialAuthToken) {
-                                // Canvas環境: カスタムトークンでログイン
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                // GitHub Pagesなど: 匿名でログイン
-                                await signInAnonymously(auth);
+                // 認証が完了するまで待機するためのPromise
+                const authReadyPromise = new Promise((resolve) => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            // 認証成功時
+                            userId = user.uid;
+                            document.getElementById('user-id').textContent = userId;
+                            document.getElementById('auth-status').textContent = '認証済み (カスタム/匿名)';
+                            document.getElementById('auth-status').classList.remove('text-red-500');
+                            document.getElementById('auth-status').classList.add('text-green-600');
+                            unsubscribe(); // リスナーを解除
+                            resolve(true);
+                        } else {
+                            // ユーザーがいない場合、サインインを試みる
+                            try {
+                                if (initialAuthToken) {
+                                    // Canvas環境: カスタムトークンでログイン
+                                    await signInWithCustomToken(auth, initialAuthToken);
+                                } else {
+                                    // GitHub Pagesなど: 匿名でログイン
+                                    await signInAnonymously(auth);
+                                }
+                                // サインイン成功後、onAuthStateChangedが再度呼ばれるので、ここでは何もしない
+                            } catch (e) {
+                                // サインイン失敗時
+                                console.error("サインイン処理エラー:", e);
+                                document.getElementById('auth-status').textContent = '認証失敗';
+                                document.getElementById('auth-status').classList.remove('text-green-600');
+                                document.getElementById('auth-status').classList.add('text-red-500');
+                                unsubscribe(); // リスナーを解除
+                                resolve(false);
                             }
-                        } catch (e) {
-                            console.error("サインイン処理エラー:", e);
-                            document.getElementById('auth-status').textContent = '認証失敗';
-                            document.getElementById('auth-status').classList.remove('text-green-600');
-                            document.getElementById('auth-status').classList.add('text-red-500');
-                            isAuthReady = true; // 失敗してもチェック完了として true にする
                         }
-                    }
+                    });
                 });
+
+                // 認証完了を待つ
+                await authReadyPromise;
+                
+                isAuthReady = true;
+                disableAdminUI(false); // UIを有効化
+                
+                // 認証完了後にデータ監視とUIを初期化 (setupListeners内でauth.currentUserのチェックが入る)
+                setupListeners();
+                updateTotalItemCount();
+
             } catch (error) {
                 console.error("Firebase初期化エラー:", error);
                 displayMessage(`Firebase初期化エラー: ${error.message}`, 'error');
                 isAuthReady = true;
+                disableAdminUI(false); // UIを有効化
             }
         }
 
@@ -360,6 +417,8 @@
          * Firestoreのデータ変更を監視し、quizItemsを更新する
          */
         function setupListeners() {
+            // isAuthReadyはinitializeFirebaseでtrueになっているが、認証オブジェクト(auth)と
+            // ユーザー(auth.currentUser)が準備できているかを確認
             if (!isAuthReady || !auth.currentUser) {
                 // 認証に失敗しているか、設定が不足している場合はリスナーをセットアップしない
                 return;
@@ -420,7 +479,7 @@
          * 問題を保存（新規登録または更新）
          */
         async function saveItem() {
-            if (!isAuthReady || !userId) {
+            if (!isAuthReady || !auth.currentUser) { // auth.currentUserのチェックを追加
                 return displayMessage('認証が完了していません。しばらく待ってから再度お試しください。', 'error');
             }
 
@@ -459,7 +518,7 @@
          * @param {string} id - 問題ID
          */
         function editItem(id) {
-            if (!isAuthReady || !userId) {
+            if (!isAuthReady || !auth.currentUser) {
                 return displayMessage('認証が完了していません。編集機能は認証後に利用可能です。', 'error');
             }
             
@@ -480,7 +539,7 @@
          * @param {string} id - 問題ID
          */
         async function deleteItem(id) {
-            if (!isAuthReady || !userId) {
+            if (!isAuthReady || !auth.currentUser) {
                  return displayMessage('認証が完了していません。削除機能は認証後に利用可能です。', 'error');
             }
             
@@ -515,6 +574,15 @@
          * @param {Array<Object>} items - 問題リスト
          */
         function updateAdminList(items) {
+            const listTable = document.getElementById('item-list-container').querySelector('table');
+            const listMessage = document.getElementById('list-loading-message');
+
+            if (isAuthReady) {
+                if (listMessage) listMessage.classList.add('hidden');
+                if (listTable) listTable.classList.remove('hidden');
+            }
+
+
             elements.itemList.innerHTML = '';
             if (items.length === 0) {
                 elements.itemList.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-gray-500">問題はまだ登録されていません。</td></tr>`;
@@ -544,7 +612,7 @@
          * CSVファイルを読み込み、問題を一括アップロードする
          */
         async function uploadCsv() {
-            if (!isAuthReady || !userId) {
+            if (!isAuthReady || !auth.currentUser) {
                 return displayMessage('認証が完了していません。CSVアップロードは認証後に利用可能です。', 'error');
             }
             
@@ -555,6 +623,8 @@
             
             elements.uploadCsvBtn.disabled = true;
             elements.uploadCsvBtn.textContent = 'アップロード中...';
+            elements.uploadCsvBtn.classList.add('disabled-button');
+
 
             try {
                 const text = await file.text();
@@ -616,6 +686,7 @@
             } finally {
                 elements.uploadCsvBtn.disabled = false;
                 elements.uploadCsvBtn.textContent = 'CSVファイルをアップロード';
+                elements.uploadCsvBtn.classList.remove('disabled-button');
                 elements.csvFileInput.value = ''; // ファイル選択をクリア
             }
         }
