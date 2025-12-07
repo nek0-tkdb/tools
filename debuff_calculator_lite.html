@@ -16,6 +16,10 @@
         .card {
             box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
+        /* 最後の項目から下線を取り除く */
+        #timeResults > div:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body class="p-4 sm:p-8 min-h-screen flex items-center justify-center">
@@ -79,6 +83,40 @@
                 <p id="neededPeople" class="text-3xl font-extrabold text-green-700">- 人</p>
             </div>
             
+            <!-- 修正: かかる時間表示エリアを縦並び(flex-col)に修正 -->
+            <h3 class="text-xl font-bold text-gray-700 text-center pt-4 border-t border-gray-200">
+                デバフにかかる時間の目安
+            </h3>
+            <div id="timeResults" class="flex flex-col space-y-0 p-3 bg-white rounded-lg border border-gray-300">
+                
+                <!-- Lv.1 (タウン) -->
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span class="font-semibold text-gray-700 text-sm sm:text-base">Lv.1 (タウン: 4秒/班)</span>
+                    <span class="text-lg font-bold text-indigo-700">
+                        <span id="timeLv1Sec">- 秒</span> 
+                        <span id="timeLv1Min" class="text-sm font-normal text-gray-500 ml-1">(- 分)</span>
+                    </span>
+                </div>
+                
+                <!-- Lv.2 (寮) -->
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span class="font-semibold text-gray-700 text-sm sm:text-base">Lv.2 (寮: 3秒/班)</span>
+                    <span class="text-lg font-bold text-blue-700">
+                        <span id="timeLv2Sec">- 秒</span> 
+                        <span id="timeLv2Min" class="text-sm font-normal text-gray-500 ml-1">(- 分)</span>
+                    </span>
+                </div>
+                
+                <!-- Lv.3 (城) -->
+                <div class="flex justify-between items-center py-2">
+                    <span class="font-semibold text-gray-700 text-sm sm:text-base">Lv.3 (城: 2秒/班)</span>
+                    <span class="text-lg font-bold text-red-700">
+                        <span id="timeLv3Sec">- 秒</span> 
+                        <span id="timeLv3Min" class="text-sm font-normal text-gray-500 ml-1">(- 分)</span>
+                    </span>
+                </div>
+            </div>
+            
             <!-- エラーメッセージ表示エリア -->
             <div id="errorMessage" class="hidden p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-md text-center font-medium">
                 <!-- エラーメッセージがここに入る -->
@@ -104,12 +142,18 @@
         // 班の計算に使用する固定係数 (元のアプリから流用)
         const SQUAD_SCALING_FACTOR = 80;
 
+        // かかる時間の係数 (秒/班)
+        const TIME_COEFFICIENTS = {
+            lv1: 4, // タウン
+            lv2: 3, // 寮
+            lv3: 2  // 城 (2秒/班と解釈)
+        };
+
         // 初期ロード時の設定
         document.addEventListener('DOMContentLoaded', () => {
             // 入力欄の値が変更されたら再計算するイベントを設定
             document.getElementById('myPower').addEventListener('input', calculateDebuff);
             document.getElementById('enemyPower').addEventListener('input', calculateDebuff);
-            // 初期値が空欄のため、DOMContentLoadedでの初回計算は削除しました
         });
 
 
@@ -134,6 +178,12 @@
             if (myPowerInput.value === "" || enemyPowerInput.value === "") {
                 document.getElementById('neededSquads').textContent = '- 班';
                 document.getElementById('neededPeople').textContent = '- 人';
+                document.getElementById('timeLv1Sec').textContent = '- 秒';
+                document.getElementById('timeLv2Sec').textContent = '- 秒';
+                document.getElementById('timeLv3Sec').textContent = '- 秒';
+                document.getElementById('timeLv1Min').textContent = '(- 分)';
+                document.getElementById('timeLv2Min').textContent = '(- 分)';
+                document.getElementById('timeLv3Min').textContent = '(- 分)';
                 return;
             }
 
@@ -142,6 +192,12 @@
                 errorMessageDiv.classList.remove('hidden');
                 document.getElementById('neededSquads').textContent = '- 班';
                 document.getElementById('neededPeople').textContent = '- 人';
+                document.getElementById('timeLv1Sec').textContent = '- 秒';
+                document.getElementById('timeLv2Sec').textContent = '- 秒';
+                document.getElementById('timeLv3Sec').textContent = '- 秒';
+                document.getElementById('timeLv1Min').textContent = '(- 分)';
+                document.getElementById('timeLv2Min').textContent = '(- 分)';
+                document.getElementById('timeLv3Min').textContent = '(- 分)';
                 return;
             }
 
@@ -176,10 +232,33 @@
             document.getElementById('neededSquads').textContent = `${neededSquads} 班`;
             document.getElementById('neededPeople').textContent = `${neededPeople} 人`;
             
+            // 7. かかる時間の計算と表示 (秒と分)
+            const timeLv1Sec = neededSquads * TIME_COEFFICIENTS.lv1;
+            const timeLv2Sec = neededSquads * TIME_COEFFICIENTS.lv2;
+            const timeLv3Sec = neededSquads * TIME_COEFFICIENTS.lv3;
+            
+            const timeLv1Min = (timeLv1Sec / 60).toFixed(2);
+            const timeLv2Min = (timeLv2Sec / 60).toFixed(2);
+            const timeLv3Min = (timeLv3Sec / 60).toFixed(2);
+
+            document.getElementById('timeLv1Sec').textContent = `${timeLv1Sec} 秒`;
+            document.getElementById('timeLv2Sec').textContent = `${timeLv2Sec} 秒`;
+            document.getElementById('timeLv3Sec').textContent = `${timeLv3Sec} 秒`;
+            
+            document.getElementById('timeLv1Min').textContent = `(${timeLv1Min} 分)`;
+            document.getElementById('timeLv2Min').textContent = `(${timeLv2Min} 分)`;
+            document.getElementById('timeLv3Min').textContent = `(${timeLv3Min} 分)`;
+            
             // 必要な班数が0の場合の特別表示
             if (neededSquads === 0) {
                 document.getElementById('neededSquads').textContent = '不要';
                 document.getElementById('neededPeople').textContent = '不要';
+                document.getElementById('timeLv1Sec').textContent = '不要';
+                document.getElementById('timeLv2Sec').textContent = '不要';
+                document.getElementById('timeLv3Sec').textContent = '不要';
+                document.getElementById('timeLv1Min').textContent = '';
+                document.getElementById('timeLv2Min').textContent = '';
+                document.getElementById('timeLv3Min').textContent = '';
                 outputDiv.classList.remove('bg-green-100', 'border-green-300');
                 outputDiv.classList.add('bg-blue-100', 'border-blue-300'); // 青系の色に変更
             } else {
