@@ -659,7 +659,7 @@
                     ${firebaseWarning}
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
                         <h1 class="text-3xl font-extrabold text-gray-900 mb-6">属性当てクイズへようこそ！</h1>
-                        <p class="text-gray-600 mb-8">画像を見て、「火」「水」「草」のどの属性に属するかを当てましょう。</p>
+                        <p class="text-gray-600 mb-8">画像を見て、「赤」「青」「緑」のどの属性に属するかを当てましょう。</p>
                         
                         <!-- 修正: 出題数設定をホーム画面に移動 -->
                         <div class="mb-6 border-b pb-4">
@@ -791,9 +791,9 @@
                 const score = this.currentQuiz.score;
                 const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
                 
-                // 修正: Xシェア用のテキストを生成（「全○問中」を追加）
+                // 修正されたXシェア用のテキストを生成
                 const shareText = encodeURIComponent(
-                    `全${total}問中${score}問正解、正答率 ${percentage}％でした！あなたもチャレンジ♪\n${SHARE_URL}`
+                    `属性当てクイズの結果、全${total}問中${score}問正解、正答率 ${percentage}％でした！あなたもチャレンジ♪\n${SHARE_URL}`
                 );
                 const xShareUrl = `https://twitter.com/intent/tweet?text=${shareText}`;
 
