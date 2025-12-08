@@ -16,23 +16,13 @@
         .attribute-water { background-color: #3b82f6; border-color: #1d4ed8; } /* 青 */
         .attribute-grass { background-color: #10b981; border-color: #059669; } /* 緑 */
         .attribute-default { background-color: #9ca3af; border-color: #4b5563; } /* 灰色 */
-        .user-id-box {
-            position: fixed;
-            bottom: 0;
-            right: 0;
-            margin: 10px;
-            padding: 5px 10px;
-            font-size: 12px;
-            background-color: #fff;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            z-index: 1000;
-        }
+        /* ユーザーIDボックス関連のCSSを削除 */
     </style>
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // getDoc, setDoc を追加
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -63,10 +53,10 @@
 
         // Firestoreのコレクションパス (公開データとして扱う)
         const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_questions`;
+        const SETTINGS_DOC_PATH = `artifacts/${appId}/public/data/admin_settings/code`; // 管理者コードを保存するドキュメントパス
 
-        // ★ 簡易管理者パスワードの初期値と状態 ★
-        // Local Storageから読み込む
-        let SECRET_CODE = localStorage.getItem('admin_secret_code') || "252"; 
+        // ★ 簡易管理者パスワードの状態 ★
+        let SECRET_CODE = null; // Firestoreから読み込まれる
         let isAdminAuthenticated = false; // パスワード認証状態
         
         // Firebase初期化
@@ -77,16 +67,7 @@
         // firebaseConfigにapiKeyが存在する場合のみ接続を試みる
         let isFirebaseConnected = Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey;
 
-        // User ID表示を更新するヘルパー関数
-        const updateUserIdDisplay = (uid) => {
-            const display = document.getElementById('user-id-display-text');
-            if (display) {
-                // 接続状態を表示
-                const status = isFirebaseConnected ? 'CONNECTED' : 'Demo Mode';
-                const displayText = uid ? `UID: ${uid.substring(0, 8)}...` : 'N/A';
-                display.textContent = `${displayText} (${status})`;
-            }
-        };
+        // User ID表示に関するヘルパー関数は削除
 
         if (isFirebaseConnected) {
             try {
@@ -103,7 +84,9 @@
         const DUMMY_DB = {
             addDoc: async () => { throw new Error("Firebase not available (Demo Mode)."); },
             updateDoc: async () => { throw new Error("Firebase not available (Demo Mode)."); },
+            setDoc: async () => { throw new Error("Firebase not available (Demo Mode)."); },
             deleteDoc: async () => { throw new Error("Firebase not available (Demo Mode)."); },
+            getDoc: async () => ({ exists: () => false, data: () => null }), // 常に設定なしを返す
             onSnapshot: (q, callback) => {
                 console.warn("Using dummy data. Firebase is not connected.");
                 const dummyData = [
@@ -122,17 +105,17 @@
                 return () => {}; // unsubscribe関数として空の関数を返す
             }
         };
-
-        // 認証処理
-        if (isFirebaseConnected) {
-            // 匿名認証フロー（永続化なし）
-            onAuthStateChanged(auth, async (user) => {
+        
+        // 設定をFirestoreからロードし、匿名認証を行う関数
+        async function setupApp() {
+            if (isFirebaseConnected) {
+                // 1. 匿名認証フロー
+                let user = auth.currentUser;
                 if (!user) {
                     try {
                         if (initialAuthToken) {
                             await signInWithCustomToken(auth, initialAuthToken);
                         } else {
-                            // 匿名認証で一時的にサインイン（ID取得のため）
                             await signInAnonymously(auth);
                         }
                     } catch (error) {
@@ -140,33 +123,36 @@
                     }
                 }
                 userId = auth.currentUser?.uid || crypto.randomUUID();
-                isOwner = isFirebaseConnected; // 接続があれば誰でも管理可（パスワードでアクセス制御）
-                updateUserIdDisplay(userId);
-                isAuthReady = true;
-                if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
-            });
-        } else {
-             // Firebase接続がない場合は、即座にダミー認証完了として扱う
-             document.addEventListener('DOMContentLoaded', () => {
-                // 初回ローディング画面をクリア
-                document.getElementById('app-container').innerHTML = '';
-                
-                const container = document.getElementById('app-container');
-                container.innerHTML = `
-                    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-                        <div id="firebase-warning-initial" class="p-8 text-center text-red-600 bg-red-100 border border-red-300 rounded-xl shadow-lg m-4">
-                            <p class="font-bold text-lg">⚠️ 警告: データ永続化が無効です。</p>
-                            <p class="mt-2 text-sm">Firebase設定が不完全なため、デモ用のダミー問題でクイズを開始します。問題の登録・管理機能は利用できません。</p>
-                        </div>
-                    </div>
-                ` + container.innerHTML; // 警告を先頭に追加
+                isOwner = isFirebaseConnected; 
 
-                userId = crypto.randomUUID(); // ダミーIDを設定
-                isAuthReady = true;
-                updateUserIdDisplay(userId); // Demo Mode
-                if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH, false); // Demo Modeでは管理不可
-            });
+                // 2. 管理パスワードをFirestoreからロード
+                try {
+                    const docRef = doc(db, SETTINGS_DOC_PATH);
+                    const docSnap = await getDoc(docRef);
+
+                    if (docSnap.exists()) {
+                        SECRET_CODE = docSnap.data().code;
+                    } else {
+                        // 初回起動時: 存在しない場合は初期値'252'で作成
+                        SECRET_CODE = "252";
+                        await setDoc(docRef, { code: SECRET_CODE });
+                    }
+                } catch (e) {
+                    console.error("Error loading/setting secret code:", e);
+                    SECRET_CODE = "252"; // 失敗時は初期値を使用
+                }
+            } else {
+                // デモモード
+                userId = crypto.randomUUID();
+                isOwner = false;
+            }
+
+            isAuthReady = true;
+            if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
         }
+
+        // DOMがロードされた後、または認証状態が変わった後にアプリをセットアップ
+        document.addEventListener('DOMContentLoaded', setupApp);
         
 
         // ------------------------------------------------------------------
@@ -208,15 +194,22 @@
                 'grass': '緑'
             },
             
-            // 簡易認証コードを返す（Local Storageから取得）
+            // 簡易認証コードを返す（Firestoreからロードされた値）
             getSecretCode() {
-                return localStorage.getItem('admin_secret_code') || "252";
+                return SECRET_CODE;
             },
 
-            // 簡易認証コードを保存する
-            setSecretCode(code) {
-                SECRET_CODE = code;
-                localStorage.setItem('admin_secret_code', code);
+            // 簡易認証コードをFirestoreに保存する
+            async setSecretCode(code) {
+                if (!isFirebaseConnected) return;
+                try {
+                    await setDoc(doc(this.db, SETTINGS_DOC_PATH), { code: code });
+                    SECRET_CODE = code; // グローバル変数も更新
+                    return true;
+                } catch (e) {
+                    console.error("Error saving secret code:", e);
+                    return false;
+                }
             },
 
             // 初期化
@@ -308,6 +301,7 @@
             // 簡易認証ロジック
             // ------------------------------------------------------------------
             handleAdminLogin(code) {
+                // 修正: Firestoreからロードされた SECRET_CODE を使用
                 if (code === this.getSecretCode()) {
                     isAdminAuthenticated = true;
                     this.showMessage("管理モードにアクセスしました。", 'success');
@@ -317,11 +311,20 @@
                 }
             },
             
-            handleSecretCodeUpdate(newCode) {
+            async handleSecretCodeUpdate(newCode) {
+                if (!isFirebaseConnected) {
+                    this.showMessage("デモモードではパスワードを変更できません。", 'error');
+                    return;
+                }
+                
                 if (newCode && /^\d+$/.test(newCode)) { // 数字のみを許可する簡易的なチェック
-                    this.setSecretCode(newCode);
-                    this.showMessage(`管理パスワードを ${newCode} に更新しました。`, 'success');
-                    this.setScreen('admin');
+                    const success = await this.setSecretCode(newCode);
+                    if (success) {
+                        this.showMessage(`管理パスワードを ${newCode} に更新しました。`, 'success');
+                        this.setScreen('admin');
+                    } else {
+                        this.showMessage("パスワードの保存に失敗しました。", 'error');
+                    }
                 } else {
                     this.showMessage("パスワードは数字で入力してください。", 'error');
                 }
@@ -1075,9 +1078,6 @@
         </div>
     </div>
 
-    <!-- ユーザーID表示ボックス -->
-    <div id="user-id-display-box" class="user-id-box">
-        <span id="user-id-display-text">認証中...</span>
-    </div>
+    <!-- ユーザーID表示ボックスは削除されました -->
 </body>
 </html>
