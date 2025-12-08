@@ -26,16 +26,20 @@
 <body class="p-4 md:p-8">
 
     <div id="app" class="container mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b-4 border-indigo-500 pb-2">弱体化計算アプリ</h1>
+        <!-- 修正: アプリケーションのタイトルを変更 -->
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b-4 border-indigo-500 pb-2">相手戦力弱体化率計算アプリ</h1>
         
-        <!-- ヘッダーから目立たない情報を削除しました -->
-        <p class="text-sm text-gray-500 mb-6">班の戦力と単騎の戦力を入力し、デバフによる戦力変化をシミュレーションします。</p>
+        <!-- 修正: 説明文を変更 -->
+        <p class="text-sm text-gray-500 mb-6 whitespace-pre-line">以下の使い方を想定しています。
+総戦力高いけど単騎そんなに高くない班⇒班の戦力を入れて弱体化率を調べる
+単騎めちゃくちゃ高い班⇒単騎の戦力を入れて弱体化率を調べる</p>
 
         <!-- 入力エリア -->
         <div class="space-y-4 mb-8 bg-indigo-50 p-4 rounded-lg">
             <!-- 班の戦力入力 -->
             <div>
-                <label for="bandPower" class="block text-sm font-medium text-gray-700 mb-1">班の戦力 (万単位で入力してください)</label>
+                <!-- 修正: ラベルを「対戦相手の班戦力」に変更 -->
+                <label for="bandPower" class="block text-sm font-medium text-gray-700 mb-1">対戦相手の班戦力 (万単位で入力してください)</label>
                 <!-- 初期値を空欄 (value="1500"を削除) に修正 -->
                 <input type="number" id="bandPower" value="" placeholder="例: 1500 (1500万)" 
                        class="w-full p-3 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg transition duration-150 ease-in-out"
@@ -43,7 +47,8 @@
             </div>
             <!-- 単騎の戦力入力 -->
             <div>
-                <label for="soloPower" class="block text-sm font-medium text-gray-700 mb-1">単騎の戦力 (万単位で入力してください)</label>
+                <!-- 修正: ラベルを「対戦相手の単騎戦力」に変更 -->
+                <label for="soloPower" class="block text-sm font-medium text-gray-700 mb-1">対戦相手の単騎戦力 (万単位で入力してください)</label>
                 <!-- 初期値を空欄 (value="900"を削除) に修正 -->
                 <input type="number" id="soloPower" value="" placeholder="例: 900 (900万)" 
                        class="w-full p-3 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg transition duration-150 ease-in-out"
