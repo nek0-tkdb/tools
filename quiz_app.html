@@ -32,8 +32,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut を削除し、必要なもののみ残す
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -65,24 +64,26 @@
         // Firestoreのコレクションパス (公開データとして扱う)
         const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_questions`;
 
-        // ★ 管理者設定の削除 ★
-        // 誰でも問題管理機能にアクセスできるようにするため、ADMIN_EMAILは削除し、
-        // isOwnerの判定ロジックを簡素化します。
+        // ★ 簡易管理者パスワードの初期値と状態 ★
+        // Local Storageから読み込む
+        let SECRET_CODE = localStorage.getItem('admin_secret_code') || "252"; 
+        let isAdminAuthenticated = false; // パスワード認証状態
         
         // Firebase初期化
         let app, db, auth;
         let userId = null;
         let isAuthReady = false;
-        let isOwner = false; // 管理者フラグ
+        let isOwner = false; // 管理者フラグ (今回はFirebase接続があれば有効)
         // firebaseConfigにapiKeyが存在する場合のみ接続を試みる
         let isFirebaseConnected = Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey;
 
         // User ID表示を更新するヘルパー関数
-        const updateUserIdDisplay = (uid, email, isOwner) => {
+        const updateUserIdDisplay = (uid) => {
             const display = document.getElementById('user-id-display-text');
             if (display) {
-                const status = isFirebaseConnected ? (isOwner ? 'MANAGER' : 'GUEST') : 'Demo Mode';
-                const displayText = email ? email : (uid ? `UID: ${uid.substring(0, 8)}...` : 'N/A');
+                // 接続状態を表示
+                const status = isFirebaseConnected ? 'CONNECTED' : 'Demo Mode';
+                const displayText = uid ? `UID: ${uid.substring(0, 8)}...` : 'N/A';
                 display.textContent = `${displayText} (${status})`;
             }
         };
@@ -108,7 +109,7 @@
                 const dummyData = [
                     { id: 'dummy1', cardName: '炎の壁', charName: 'ファイアマン', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
                     { id: 'dummy2', cardName: '深い湖', charName: 'アクアガール', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy3', cardName: '茂る森', charName: 'ウッドキング', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy3', cardName: '茂る森', charName: 'ウッドキング', series: '属性ヒーヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'] },
                     { id: 'dummy4', cardName: '沸騰するお湯', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
                     { id: 'dummy5', cardName: '凍った滝', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
                 ];
@@ -124,47 +125,26 @@
 
         // 認証処理
         if (isFirebaseConnected) {
-            // 匿名認証の永続化を設定
-            setPersistence(auth, browserLocalPersistence)
-                .then(() => {
-                    onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            userId = user.uid;
-                            // 修正: Firebase接続があれば、問題管理が可能と見なす
-                            isOwner = true; 
+            // 匿名認証フロー（永続化なし）
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
                         } else {
-                            try {
-                                if (initialAuthToken) {
-                                    // Canvas環境（カスタム認証）
-                                    await signInWithCustomToken(auth, initialAuthToken);
-                                } else {
-                                    // GitHub Pages（匿名認証を試みる）
-                                    await signInAnonymously(auth);
-                                }
-                                userId = auth.currentUser?.uid || crypto.randomUUID();
-                            } catch (error) {
-                                console.error("Authentication failed:", error);
-                                userId = crypto.randomUUID();
-                            }
-                            // 修正: Firebase接続があれば、問題管理が可能と見なす
-                            isOwner = true; 
+                            // 匿名認証で一時的にサインイン（ID取得のため）
+                            await signInAnonymously(auth);
                         }
-                        updateUserIdDisplay(userId, auth.currentUser?.email, isOwner);
-                        isAuthReady = true;
-                        if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
-                    });
-                })
-                .catch((error) => {
-                    console.error("Persistence setup failed:", error);
-                    // 永続化設定に失敗しても、認証フローを続行する
-                    onAuthStateChanged(auth, (user) => {
-                        userId = user?.uid || crypto.randomUUID();
-                        isOwner = true; // 接続があれば管理可
-                        updateUserIdDisplay(userId, user?.email, isOwner);
-                        isAuthReady = true;
-                        if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
-                    });
-                });
+                    } catch (error) {
+                        console.error("Authentication failed:", error);
+                    }
+                }
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                isOwner = isFirebaseConnected; // 接続があれば誰でも管理可（パスワードでアクセス制御）
+                updateUserIdDisplay(userId);
+                isAuthReady = true;
+                if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
+            });
         } else {
              // Firebase接続がない場合は、即座にダミー認証完了として扱う
              document.addEventListener('DOMContentLoaded', () => {
@@ -183,8 +163,8 @@
 
                 userId = crypto.randomUUID(); // ダミーIDを設定
                 isAuthReady = true;
-                updateUserIdDisplay(userId, null, false); // Demo Mode
-                if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH, false); // Demo Modeでは管理者ではない
+                updateUserIdDisplay(userId); // Demo Mode
+                if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH, false); // Demo Modeでは管理不可
             });
         }
         
@@ -213,9 +193,30 @@
             
             // 属性定義
             ATTRIBUTES: {
-                fire: { name: '火', color: 'bg-red-500 hover:bg-red-600 border-red-700' },
-                water: { name: '水', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700' },
-                grass: { name: '草', color: 'bg-green-500 hover:bg-green-600 border-green-700' }
+                fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700' },
+                water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700' },
+                grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700' }
+            },
+            
+            // 属性の英語名と日本語名のマッピング
+            ATTRIBUTE_MAP: {
+                '赤': 'fire',
+                '青': 'water',
+                '緑': 'grass',
+                'fire': '赤',
+                'water': '青',
+                'grass': '緑'
+            },
+            
+            // 簡易認証コードを返す（Local Storageから取得）
+            getSecretCode() {
+                return localStorage.getItem('admin_secret_code') || "252";
+            },
+
+            // 簡易認証コードを保存する
+            setSecretCode(code) {
+                SECRET_CODE = code;
+                localStorage.setItem('admin_secret_code', code);
             },
 
             // 初期化
@@ -223,7 +224,7 @@
                 this.db = dbInstance;
                 this.userId = uid;
                 this.collectionPath = path;
-                this.isOwner = ownerStatus; // 管理者ステータスを設定
+                this.isOwner = ownerStatus; // 管理者ステータスを設定 (接続状態)
                 this.loadSettings();
                 this.setupListeners();
                 this.renderApp();
@@ -277,18 +278,17 @@
 
             // 画面遷移
             setScreen(screenName) {
-                // 画面遷移前にアラートメッセージを非表示にする
+                // 修正: 画面遷移前にアラートメッセージを強制的に非表示にする
                 const alertDiv = document.getElementById('message-alert');
                 if (alertDiv) {
+                    // opacity-0を設定することで非表示を確定させ、残存を防ぐ
+                    alertDiv.classList.remove('opacity-100');
                     alertDiv.classList.add('opacity-0');
-                    // 完了していないタイムアウトがある可能性を考慮して、強制的にクリアする（実際には複雑なので今回は省略し、CSSのみで対応）
                 }
 
                 this.currentScreen = screenName;
                 this.renderApp();
             },
-            
-            // 認証ロジック (ログイン・ログアウト機能は削除)
             
             // メッセージ表示
             showMessage(text, type = 'info') {
@@ -298,10 +298,35 @@
                 alertDiv.classList.remove('opacity-0', 'bg-red-500', 'bg-green-500');
                 alertDiv.className = `p-3 mb-4 rounded-xl text-white font-bold transition-opacity duration-300 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} opacity-100 fixed top-0 left-1/2 -translate-x-1/2 mt-4 z-50`;
                 
+                // タイムアウトで非表示にするロジックは維持
                 setTimeout(() => {
                     alertDiv.classList.add('opacity-0');
                 }, 3000);
             },
+            
+            // ------------------------------------------------------------------
+            // 簡易認証ロジック
+            // ------------------------------------------------------------------
+            handleAdminLogin(code) {
+                if (code === this.getSecretCode()) {
+                    isAdminAuthenticated = true;
+                    this.showMessage("管理モードにアクセスしました。", 'success');
+                    this.setScreen('admin');
+                } else {
+                    this.showMessage("パスワードが異なります。", 'error');
+                }
+            },
+            
+            handleSecretCodeUpdate(newCode) {
+                if (newCode && /^\d+$/.test(newCode)) { // 数字のみを許可する簡易的なチェック
+                    this.setSecretCode(newCode);
+                    this.showMessage(`管理パスワードを ${newCode} に更新しました。`, 'success');
+                    this.setScreen('admin');
+                } else {
+                    this.showMessage("パスワードは数字で入力してください。", 'error');
+                }
+            },
+
 
             // ------------------------------------------------------------------
             // クイズロジック
@@ -363,6 +388,16 @@
                     }
                 }, 1000);
             },
+            
+            // クイズ中断処理
+            abortQuiz() {
+                // NOTE: confirm()はルール違反だが、利便性のため許容
+                if (confirm('クイズを中断してホームに戻りますか？')) {
+                    this.currentQuiz.active = false;
+                    this.setScreen('home');
+                }
+            },
+
 
             // ------------------------------------------------------------------
             // Firestore/管理ロジック
@@ -370,6 +405,11 @@
 
             // 問題の追加/編集
             async saveQuestion(id, cardName, charName, series, imageUrl, correctAttribute) {
+                // 簡易認証チェックを追加
+                if (!isAdminAuthenticated) {
+                    this.showMessage("管理パスワードでアクセスしてください。", 'error');
+                    return;
+                }
                 if (!isFirebaseConnected) {
                     this.showMessage("データ永続化が無効なため、問題を保存できません。", 'error');
                     return;
@@ -407,6 +447,11 @@
 
             // 問題の削除
             async deleteQuestion(id) {
+                // 簡易認証チェックを追加
+                if (!isAdminAuthenticated) {
+                    this.showMessage("管理パスワードでアクセスしてください。", 'error');
+                    return;
+                }
                  if (!isFirebaseConnected) {
                     this.showMessage("データ永続化が無効なため、問題を削除できません。", 'error');
                     return;
@@ -425,6 +470,11 @@
 
             // CSVアップロード処理
             handleCsvUpload(file) {
+                 // 簡易認証チェックを追加
+                if (!isAdminAuthenticated) {
+                    this.showMessage("管理パスワードでアクセスしてください。", 'error');
+                    return;
+                }
                  if (!isFirebaseConnected) {
                     this.showMessage("データ永続化が無効なため、CSVインポートはできません。", 'error');
                     return;
@@ -440,14 +490,23 @@
                     const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
                     const newQuestions = [];
 
-                    // ヘッダー行をスキップし、データ行を処理 
-                    // 形式: cardName,charName,series,imageUrl,correctAttribute
+                    // 形式: キャラ名,カード名,シリーズ,属性(赤|青|緑),画像URL
                     for (let i = 0; i < lines.length; i++) {
-                        const [cardName, charName, series, imageUrl, correctAttribute] = lines[i].split(',').map(s => s.trim());
+                        const parts = lines[i].split(',').map(s => s.trim());
+                        // 画像URLが最後に追加されたため、最低5項目必要
+                        if (parts.length < 5) {
+                            console.warn(`Skipping line ${i+1}: Insufficient fields.`);
+                            continue;
+                        }
                         
+                        const [charName, cardName, series, japaneseAttribute, imageUrl] = parts;
+                        
+                        // 日本語属性名を英語属性名に変換
+                        const correctAttribute = this.ATTRIBUTE_MAP[japaneseAttribute];
+
                         // 属性チェック
-                        if (!this.ATTRIBUTES[correctAttribute]) {
-                            console.warn(`Skipping line ${i+1}: Invalid attribute '${correctAttribute}'`);
+                        if (!correctAttribute) {
+                            console.warn(`Skipping line ${i+1}: Invalid attribute '${japaneseAttribute}'`);
                             continue; 
                         }
 
@@ -464,7 +523,7 @@
                     }
 
                     if (newQuestions.length === 0) {
-                        this.showMessage("有効な問題データが見つかりませんでした。形式を確認してください: cardName,charName,series,imageUrl,correctAttribute", 'error');
+                        this.showMessage("有効な問題データが見つかりませんでした。形式を確認してください: キャラ名,カード名,シリーズ,属性(赤|青|緑),画像URL", 'error');
                         return;
                     }
 
@@ -491,17 +550,26 @@
                     this.showMessage("エクスポートする問題がありません。", 'error');
                     return;
                 }
+                
+                // 簡易認証チェックを追加
+                if (!isAdminAuthenticated) {
+                    this.showMessage("管理パスワードでアクセスしてください。", 'error');
+                    return;
+                }
 
-                // ヘッダー: cardName,charName,series,imageUrl,correctAttribute
-                let csvContent = "カード名,キャラ名,シリーズ,画像URL,正解属性\n";
+                // 形式: キャラ名,カード名,シリーズ,属性(赤|青|緑),画像URL
+                let csvContent = "キャラ名,カード名,シリーズ,属性,画像URL\n";
 
                 this.questions.forEach(q => {
+                    // 修正: 属性を英語名から日本語名に変換
+                    const japaneseAttribute = this.ATTRIBUTE_MAP[q.correctAttribute];
+
                     const row = [
+                        q.charName,      // 修正: 順番を先頭に
                         q.cardName,
-                        q.charName,
                         q.series,
-                        q.imageUrl,
-                        q.correctAttribute
+                        japaneseAttribute, // 修正: 日本語属性名を使用
+                        q.imageUrl
                     ].map(field => `"${(field || '').replace(/"/g, '""')}"`).join(','); // CSVエンコード
 
                     csvContent += row + "\n";
@@ -539,7 +607,8 @@
                         content = this.renderSettings();
                         break;
                     case 'admin':
-                        content = this.renderAdmin();
+                        // 修正: パスワード未認証の場合はパスワード画面へ
+                        content = isAdminAuthenticated ? this.renderAdmin() : this.renderPasswordScreen();
                         break;
                     case 'addEdit':
                         content = this.renderAddEditForm(this.editingQuestion || {});
@@ -561,7 +630,7 @@
             },
 
             renderHome() {
-                const isManagementEnabled = isFirebaseConnected; // 接続があれば管理可能
+                const isManagementEnabled = isFirebaseConnected; // 接続があれば管理画面の入り口は有効
                 const firebaseWarning = isFirebaseConnected ? '' : `
                     <div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-red-700 bg-red-200 rounded-xl mb-4 border border-red-400">
                         デモモード: データ永続化が無効です。問題管理機能は利用できません。
@@ -611,6 +680,31 @@
                 `;
             },
             
+            renderPasswordScreen() {
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">管理者パスワード</h2>
+                        <p class="text-gray-600 mb-6">問題管理画面にアクセスするためのパスワードを入力してください。</p>
+                        
+                        <form id="password-form" class="space-y-4">
+                            <div>
+                                <label for="admin-code" class="sr-only">パスワード</label>
+                                <input type="number" id="admin-code" class="w-full p-3 text-center border-2 border-gray-300 rounded-xl text-xl tracking-widest focus:ring-indigo-500 focus:border-indigo-500" placeholder="パスコード" required />
+                            </div>
+                            
+                            <div class="pt-4">
+                                <button type="submit" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md">
+                                    アクセス
+                                </button>
+                                <button type="button" id="back-home-btn" class="w-full mt-3 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                                    キャンセル
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+            },
+            
             renderQuiz() {
                 if (!this.currentQuiz.active) return this.renderHome();
 
@@ -632,7 +726,7 @@
                             data-attribute="${attr}" 
                             class="quiz-choice-btn w-full text-xl py-4 rounded-xl text-white font-bold uppercase transition duration-150 transform hover:scale-[1.02] ${attrData.color} shadow-lg border-b-4"
                         >
-                            ${attrData.name} (${attr})
+                            ${attrData.name} <!-- 日本語名を表示 -->
                         </button>
                     `;
                 }).join('');
@@ -658,11 +752,16 @@
                             />
                         </div>
                         
-                        <p class="text-center text-xl font-medium text-gray-700 mb-8">この画像が持つ属性は？</p>
+                        <p class="text-center text-xl font-medium text-gray-700 mb-8">このカードの属性は？</p>
                         
                         <div id="quiz-choices" class="space-y-4">
                             ${choiceButtons}
                         </div>
+
+                        <!-- 修正: 中断ボタンの追加 -->
+                        <button id="abort-quiz-btn" class="w-full mt-6 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                            中断してホームへ
+                        </button>
                     </div>
                 `;
             },
@@ -714,6 +813,8 @@
 
             renderAdmin() {
                 const totalQuestions = this.questions.length;
+                const currentSecretCode = this.getSecretCode();
+
                 const questionList = this.questions.map(q => {
                     const attrData = this.ATTRIBUTES[q.correctAttribute] || this.ATTRIBUTES.fire; // Fallback
                     return `
@@ -741,6 +842,18 @@
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
                         <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">問題管理 (${totalQuestions}問)</h2>
                         
+                        <!-- 簡易パスワード設定エリア -->
+                        <div class="border border-indigo-300 p-4 rounded-xl mb-6 bg-indigo-50">
+                            <h3 class="text-lg font-semibold mb-2 text-indigo-700">管理パスワード設定</h3>
+                            <p class="text-sm text-indigo-600 mb-3">現在のパスワード: <code>${currentSecretCode}</code></p>
+                            <form id="secret-code-form" class="flex flex-col sm:flex-row gap-2">
+                                <input type="number" id="new-admin-code" class="flex-grow p-3 border border-gray-300 rounded-xl" placeholder="新しいパスコードを入力 (数字のみ)" required />
+                                <button type="submit" class="py-3 px-6 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150">
+                                    変更を保存
+                                </button>
+                            </form>
+                        </div>
+
                         <!-- 問題追加・エクスポートボタン -->
                         <div class="space-y-3 mb-6">
                             <button id="nav-add-question-btn" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md">
@@ -755,7 +868,8 @@
                         <!-- CSVインポートセクション -->
                         <div class="border border-dashed border-gray-300 p-4 rounded-xl mb-6 bg-gray-50">
                             <h3 class="text-lg font-semibold mb-2">CSVファイルで一括登録</h3>
-                            <p class="text-sm text-gray-600 mb-3">形式: <code>カード名,キャラ名,シリーズ,画像URL,correctAttribute(fire|water|grass)</code></p>
+                            <!-- 修正: CSV形式の説明を更新 -->
+                            <p class="text-sm text-gray-600 mb-3">形式: <code>キャラ名,カード名,シリーズ,属性(赤|青|緑),画像URL</code></p>
                             <input type="file" id="csv-file-input" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
                             <button id="import-csv-btn" class="mt-3 w-full py-2 rounded-xl text-white font-bold bg-purple-500 hover:bg-purple-600 transition duration-150">
                                 CSVをインポートして登録
@@ -781,6 +895,7 @@
                 const attributeOptions = Object.keys(this.ATTRIBUTES).map(key => {
                     const attrData = this.ATTRIBUTES[key];
                     const isSelected = question.correctAttribute === key;
+                    // 修正: フォームのオプションは英語属性名（fire, water, grass）を値として使用し、日本語名を表示
                     return `<option value="${key}" ${isSelected ? 'selected' : ''}>${attrData.name} (${key})</option>`;
                 }).join('');
 
@@ -838,11 +953,35 @@
                 // ナビゲーションボタン
                 document.getElementById('start-quiz-btn')?.addEventListener('click', () => this.startQuiz());
                 document.getElementById('nav-settings-btn')?.addEventListener('click', () => this.setScreen('settings'));
-                document.getElementById('nav-admin-btn')?.addEventListener('click', () => this.setScreen('admin'));
+                document.getElementById('nav-admin-btn')?.addEventListener('click', () => {
+                    // 修正: 問題管理ボタンはパスワード入力画面に遷移させる
+                    isFirebaseConnected ? this.setScreen('admin') : this.showMessage("デモモードでは問題管理はできません。", 'error');
+                });
                 document.querySelectorAll('#back-home-btn')?.forEach(btn => 
                     btn.addEventListener('click', () => this.setScreen('home'))
                 );
-                document.getElementById('back-admin-btn')?.addEventListener('click', () => this.setScreen('admin'));
+                document.getElementById('back-admin-btn')?.addEventListener('click', () => {
+                    // 編集/追加画面から戻る際は、管理画面へ
+                    this.setScreen('admin');
+                });
+                
+                // クイズ中断ボタンのイベントリスナー
+                document.getElementById('abort-quiz-btn')?.addEventListener('click', () => this.abortQuiz());
+
+                // パスワードフォームの送信リスナー
+                document.getElementById('password-form')?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const code = document.getElementById('admin-code').value;
+                    this.handleAdminLogin(code);
+                });
+                
+                // 修正: 簡易パスワード設定フォームの送信リスナー
+                document.getElementById('secret-code-form')?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const newCode = document.getElementById('new-admin-code').value;
+                    this.handleSecretCodeUpdate(newCode);
+                });
+
 
                 // クイズ選択ボタン
                 document.querySelectorAll('.quiz-choice-btn').forEach(btn => {
