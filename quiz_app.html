@@ -16,6 +16,18 @@
         .attribute-water { background-color: #3b82f6; border-color: #1d4ed8; } /* 青 */
         .attribute-grass { background-color: #10b981; border-color: #059669; } /* 緑 */
         .attribute-default { background-color: #9ca3af; border-color: #4b5563; } /* 灰色 */
+        .user-id-box {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            margin: 10px;
+            padding: 5px 10px;
+            font-size: 12px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            z-index: 1000;
+        }
     </style>
     <!-- Firebase SDKs -->
     <script type="module">
@@ -64,6 +76,15 @@
         // firebaseConfigにapiKeyが存在する場合のみ接続を試みる
         let isFirebaseConnected = Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey;
 
+        // User ID表示を更新するヘルパー関数
+        const updateUserIdDisplay = (uid, isOwner, mode = 'Connected') => {
+            const display = document.getElementById('user-id-display-text');
+            if (display) {
+                const status = isFirebaseConnected ? (isOwner ? 'ADMIN' : 'GUEST') : 'Demo Mode';
+                display.textContent = `User ID: ${uid} (${status})`;
+            }
+        };
+
         if (isFirebaseConnected) {
             try {
                 app = initializeApp(firebaseConfig);
@@ -105,7 +126,7 @@
                 if (user) {
                     userId = user.uid;
                     isOwner = userId === OWNER_USER_ID; // 管理者チェック
-                    document.getElementById('user-id-display').textContent = `User ID: ${userId} (${isOwner ? 'ADMIN' : 'GUEST'})`;
+                    updateUserIdDisplay(userId, isOwner);
                 } else {
                     try {
                         if (initialAuthToken) {
@@ -119,6 +140,7 @@
                         userId = crypto.randomUUID();
                     }
                     isOwner = userId === OWNER_USER_ID;
+                    updateUserIdDisplay(userId, isOwner);
                 }
                 isAuthReady = true;
                 if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
@@ -135,13 +157,13 @@
                         <div id="firebase-warning-initial" class="p-8 text-center text-red-600 bg-red-100 border border-red-300 rounded-xl shadow-lg m-4">
                             <p class="font-bold text-lg">⚠️ 警告: データ永続化が無効です。</p>
                             <p class="mt-2 text-sm">Firebase設定が不完全なため、デモ用のダミー問題でクイズを開始します。問題の登録・管理機能は利用できません。</p>
-                            <p id="user-id-display" class="mt-2 text-xs text-red-400">User ID: N/A (Demo Mode)</p>
                         </div>
                     </div>
                 ` + container.innerHTML; // 警告を先頭に追加
 
                 userId = crypto.randomUUID(); // ダミーIDを設定
                 isAuthReady = true;
+                updateUserIdDisplay(userId, false); // Demo Mode
                 if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH, false); // Demo Modeでは管理者ではない
             });
         }
@@ -910,8 +932,12 @@
                 </svg>
             </div>
             <p class="mt-4 text-gray-700">データを読み込み中...</p>
-            <p id="user-id-display" class="mt-2 text-sm text-gray-400"></p>
         </div>
+    </div>
+
+    <!-- 修正: ユーザーID表示をアプリコンテナの外に移動 -->
+    <div id="user-id-display-box" class="user-id-box">
+        <span id="user-id-display-text">認証中...</span>
     </div>
 </body>
 </html>
