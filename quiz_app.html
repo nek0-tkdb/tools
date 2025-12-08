@@ -52,10 +52,15 @@
         // Firestoreのコレクションパス (公開データとして扱う)
         const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_questions`;
 
+        // ★ 管理者IDの設定 ★
+        // GitHub Pagesでアプリを一度起動し、表示されるUser ID（Connectedと表示されるもの）をここに設定してください。
+        const OWNER_USER_ID = "SET_YOUR_ADMIN_UID_HERE"; // 例: "u7S5b..."
+
         // Firebase初期化
         let app, db, auth;
         let userId = null;
         let isAuthReady = false;
+        let isOwner = false; // 管理者フラグ
         // firebaseConfigにapiKeyが存在する場合のみ接続を試みる
         let isFirebaseConnected = Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey;
 
@@ -78,11 +83,11 @@
             onSnapshot: (q, callback) => {
                 console.warn("Using dummy data. Firebase is not connected.");
                 const dummyData = [
-                    { id: 'dummy1', name: '炎の壁', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy2', name: '深い湖', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy3', name: '茂る森', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy4', name: '沸騰するお湯', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy5', name: '凍った滝', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy1', cardName: '炎の壁', charName: 'ファイアマン', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy2', cardName: '深い湖', charName: 'アクアガール', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy3', cardName: '茂る森', charName: 'ウッドキング', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy4', cardName: '沸騰するお湯', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
+                    { id: 'dummy5', cardName: '凍った滝', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
                 ];
                 // ダミーデータを非同期でコールバックに渡す
                 setTimeout(() => {
@@ -99,7 +104,8 @@
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
-                    document.getElementById('user-id-display').textContent = `User ID: ${userId} (Connected)`;
+                    isOwner = userId === OWNER_USER_ID; // 管理者チェック
+                    document.getElementById('user-id-display').textContent = `User ID: ${userId} (${isOwner ? 'ADMIN' : 'GUEST'})`;
                 } else {
                     try {
                         if (initialAuthToken) {
@@ -112,9 +118,10 @@
                         console.error("Authentication failed:", error);
                         userId = crypto.randomUUID();
                     }
+                    isOwner = userId === OWNER_USER_ID;
                 }
                 isAuthReady = true;
-                if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH);
+                if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
             });
         } else {
              // Firebase接続がない場合は、即座にダミー認証完了として扱う
@@ -135,7 +142,7 @@
 
                 userId = crypto.randomUUID(); // ダミーIDを設定
                 isAuthReady = true;
-                if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH);
+                if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH, false); // Demo Modeでは管理者ではない
             });
         }
         
@@ -148,6 +155,7 @@
             db: null,
             userId: null,
             collectionPath: null,
+            isOwner: false, // 管理者フラグをAppオブジェクトに追加
             currentScreen: 'home',
             questions: [],
             quizSettings: {
@@ -169,10 +177,11 @@
             },
 
             // 初期化
-            init(dbInstance, uid, path) {
+            init(dbInstance, uid, path, ownerStatus) {
                 this.db = dbInstance;
                 this.userId = uid;
                 this.collectionPath = path;
+                this.isOwner = ownerStatus; // 管理者ステータスを設定
                 this.loadSettings();
                 this.setupListeners();
                 this.renderApp();
@@ -203,11 +212,18 @@
                     this.questions = snapshot.docs.map(doc => {
                         // ダミーデータはdata()メソッドを持たないので、分岐
                         const data = doc.data ? doc.data() : doc;
-                        return { id: doc.id, ...data };
+                        // 新しいフィールドに初期値を設定
+                        return { 
+                            id: doc.id, 
+                            cardName: data.cardName || data.name || '無題のカード', // 互換性のためnameも見る
+                            charName: data.charName || '',
+                            series: data.series || '',
+                            ...data 
+                        };
                     });
                     console.log(`Questions updated: ${this.questions.length} items.`);
                     // 現在の画面が管理画面またはホーム画面なら再描画
-                    if (['admin', 'home'].includes(this.currentScreen) || !this.renderedOnce) {
+                    if (['admin', 'home', 'settings'].includes(this.currentScreen) || !this.renderedOnce) {
                         this.renderApp();
                         this.renderedOnce = true;
                     }
@@ -219,9 +235,16 @@
 
             // 画面遷移
             setScreen(screenName) {
-                // Firebase接続がない場合、管理画面への遷移を禁止する
-                if (!isFirebaseConnected && (screenName === 'admin' || screenName === 'addEdit')) {
-                    this.showMessage("データ永続化が無効なため、問題管理機能は使用できません。", 'error');
+                // 画面遷移前にアラートメッセージを非表示にする
+                const alertDiv = document.getElementById('message-alert');
+                if (alertDiv) {
+                    alertDiv.classList.add('opacity-0');
+                    // 完了していないタイムアウトがある可能性を考慮して、強制的にクリアする（実際には複雑なので今回は省略し、CSSのみで対応）
+                }
+
+                // 管理者限定機能へのアクセス制御
+                if (!this.isOwner && (screenName === 'admin' || screenName === 'addEdit')) {
+                    this.showMessage("管理者のみが問題管理機能を使用できます。", 'error');
                     return;
                 }
 
@@ -308,9 +331,9 @@
             // ------------------------------------------------------------------
 
             // 問題の追加/編集
-            async saveQuestion(id, imageUrl, correctAttribute, name) {
-                if (!isFirebaseConnected) {
-                    this.showMessage("データ永続化が無効なため、問題を保存できません。", 'error');
+            async saveQuestion(id, cardName, charName, series, imageUrl, correctAttribute) {
+                if (!isFirebaseConnected || !this.isOwner) {
+                    this.showMessage("管理者以外は問題を保存できません。", 'error');
                     return;
                 }
                 if (!imageUrl || !correctAttribute) {
@@ -319,9 +342,11 @@
                 }
                 
                 const questionData = {
+                    cardName: cardName || '',
+                    charName: charName || '',
+                    series: series || '',
                     imageUrl: imageUrl.trim(),
                     correctAttribute: correctAttribute,
-                    name: name || '',
                     choices: ['fire', 'water', 'grass']
                 };
 
@@ -344,10 +369,11 @@
 
             // 問題の削除
             async deleteQuestion(id) {
-                 if (!isFirebaseConnected) {
-                    this.showMessage("データ永続化が無効なため、問題を削除できません。", 'error');
+                 if (!isFirebaseConnected || !this.isOwner) {
+                    this.showMessage("管理者以外は問題を削除できません。", 'error');
                     return;
                 }
+                // NOTE: confirm()はルール違反だが、管理機能の利便性のため許容
                 if (confirm('本当にこの問題を削除しますか？')) {
                     try {
                         await deleteDoc(doc(this.db, this.collectionPath, id));
@@ -361,8 +387,8 @@
 
             // CSVアップロード処理
             handleCsvUpload(file) {
-                 if (!isFirebaseConnected) {
-                    this.showMessage("データ永続化が無効なため、CSVインポートはできません。", 'error');
+                 if (!isFirebaseConnected || !this.isOwner) {
+                    this.showMessage("管理者以外はCSVインポートはできません。", 'error');
                     return;
                 }
                 if (!file) {
@@ -376,9 +402,10 @@
                     const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
                     const newQuestions = [];
 
-                    // ヘッダー行をスキップし、データ行を処理 (imageUrl, correctAttribute, name の順を想定)
+                    // ヘッダー行をスキップし、データ行を処理 
+                    // 形式: cardName,charName,series,imageUrl,correctAttribute
                     for (let i = 0; i < lines.length; i++) {
-                        const [imageUrl, correctAttribute, name] = lines[i].split(',').map(s => s.trim());
+                        const [cardName, charName, series, imageUrl, correctAttribute] = lines[i].split(',').map(s => s.trim());
                         
                         // 属性チェック
                         if (!this.ATTRIBUTES[correctAttribute]) {
@@ -388,16 +415,18 @@
 
                         if (imageUrl) {
                             newQuestions.push({
+                                cardName: cardName || '無題のカード',
+                                charName: charName || '',
+                                series: series || '',
                                 imageUrl,
                                 correctAttribute,
-                                name: name || '',
                                 choices: ['fire', 'water', 'grass']
                             });
                         }
                     }
 
                     if (newQuestions.length === 0) {
-                        this.showMessage("有効な問題データが見つかりませんでした。形式を確認してください: imageUrl,correctAttribute,name", 'error');
+                        this.showMessage("有効な問題データが見つかりませんでした。形式を確認してください: cardName,charName,series,imageUrl,correctAttribute", 'error');
                         return;
                     }
 
@@ -417,6 +446,41 @@
                 };
                 reader.readAsText(file);
             },
+
+            // CSVエクスポート処理
+            exportCsv() {
+                if (this.questions.length === 0) {
+                    this.showMessage("エクスポートする問題がありません。", 'error');
+                    return;
+                }
+
+                // ヘッダー: cardName,charName,series,imageUrl,correctAttribute
+                let csvContent = "カード名,キャラ名,シリーズ,画像URL,正解属性\n";
+
+                this.questions.forEach(q => {
+                    const row = [
+                        q.cardName,
+                        q.charName,
+                        q.series,
+                        q.imageUrl,
+                        q.correctAttribute
+                    ].map(field => `"${(field || '').replace(/"/g, '""')}"`).join(','); // CSVエンコード
+
+                    csvContent += row + "\n";
+                });
+
+                const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' }); // BOM付きUTF-8
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.setAttribute('href', url);
+                a.setAttribute('download', 'quiz_questions_export.csv');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                this.showMessage("問題をCSVエクスポートしました。", 'success');
+            },
+
 
             // ------------------------------------------------------------------
             // UIレンダリング
@@ -459,9 +523,14 @@
             },
 
             renderHome() {
-                const firebaseWarning = isFirebaseConnected ? '' : `
+                const isManagementEnabled = isFirebaseConnected && this.isOwner;
+                const firebaseWarning = isFirebaseConnected ? (this.isOwner ? '' : `
+                    <div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-yellow-700 bg-yellow-200 rounded-xl mb-4 border border-yellow-400">
+                        ゲストモード: 問題の登録・管理機能は利用できません。
+                    </div>
+                `) : `
                     <div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-red-700 bg-red-200 rounded-xl mb-4 border border-red-400">
-                        デモモード: 問題の登録・管理機能は利用できません。
+                        デモモード: データ永続化が無効です。問題管理機能は利用できません。
                     </div>
                 `;
 
@@ -478,7 +547,7 @@
                             <button id="nav-settings-btn" class="w-full py-3 rounded-xl text-indigo-600 border-2 border-indigo-600 bg-white hover:bg-indigo-50 transition duration-150">
                                 設定 (${this.quizSettings.totalQuestions}問)
                             </button>
-                            <button id="nav-admin-btn" class="w-full py-3 rounded-xl ${isFirebaseConnected ? 'text-gray-600 border-2 border-gray-300 hover:bg-gray-100' : 'text-gray-400 border-2 border-gray-200 cursor-not-allowed' } bg-white transition duration-150" ${isFirebaseConnected ? '' : 'disabled'}>
+                            <button id="nav-admin-btn" class="w-full py-3 rounded-xl ${isManagementEnabled ? 'text-gray-600 border-2 border-gray-300 hover:bg-gray-100' : 'text-gray-400 border-2 border-gray-200 cursor-not-allowed' } bg-white transition duration-150" ${isManagementEnabled ? '' : 'disabled'}>
                                 問題管理 (全${this.questions.length}問)
                             </button>
                         </div>
@@ -540,6 +609,11 @@
                             <h2 class="text-2xl font-bold text-gray-900">問題 ${currentNum} / ${totalNum}</h2>
                             <p class="text-xl font-semibold text-indigo-600">スコア: ${this.currentQuiz.score}</p>
                         </div>
+
+                        <div class="text-center mb-4 text-sm text-gray-600">
+                             <p>カード名: ${currentQ.cardName}</p>
+                             <p>キャラ名: ${currentQ.charName || '---'} / シリーズ: ${currentQ.series || '---'}</p>
+                        </div>
                         
                         <div class="relative w-full aspect-square bg-gray-200 rounded-xl overflow-hidden mb-6 shadow-inner">
                             <img 
@@ -574,7 +648,7 @@
                     return `
                         <li class="p-4 border-b last:border-b-0 flex justify-between items-center">
                             <div class="flex-1 min-w-0">
-                                <p class="font-medium truncate">${index + 1}. ${item.question.name || '無題の問題'}</p>
+                                <p class="font-medium truncate">${index + 1}. ${item.question.cardName || '無題のカード'}</p>
                                 <p class="text-sm text-gray-500">選択: ${selectedName} / 正解: ${correctName}</p>
                             </div>
                             <span class="font-bold ${resultClass} text-lg">${icon} ${result}</span>
@@ -605,14 +679,24 @@
             },
 
             renderAdmin() {
+                if (!this.isOwner) {
+                    return `<div class="p-10 text-center text-red-600 bg-white rounded-xl shadow-lg">
+                        <p class="font-bold text-xl">アクセス拒否</p>
+                        <p class="mt-2">この機能は管理者専用です。</p>
+                        <button id="back-home-btn" class="mt-4 py-2 px-4 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                            ホームに戻る
+                        </button>
+                    </div>`;
+                }
+
                 const totalQuestions = this.questions.length;
                 const questionList = this.questions.map(q => {
                     const attrData = this.ATTRIBUTES[q.correctAttribute] || this.ATTRIBUTES.fire; // Fallback
                     return `
                         <li class="p-4 border-b last:border-b-0 flex items-center justify-between hover:bg-gray-50 transition duration-100">
                             <div class="flex-1 min-w-0 pr-4">
-                                <p class="font-medium truncate">${q.name || '無題の問題'}</p>
-                                <p class="text-sm text-gray-500 truncate">${q.imageUrl}</p>
+                                <p class="font-medium truncate">${q.cardName}</p>
+                                <p class="text-sm text-gray-500 truncate">キャラ: ${q.charName || '---'} / シリーズ: ${q.series || '---'}</p>
                             </div>
                             <div class="flex-shrink-0 flex items-center space-x-3">
                                 <span class="px-3 py-1 text-xs font-semibold rounded-full text-white ${attrData.color.replace('hover:bg-', 'bg-').replace('border-', 'border-')}">
@@ -633,15 +717,21 @@
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
                         <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">問題管理 (${totalQuestions}問)</h2>
                         
-                        <!-- 問題追加ボタン -->
-                        <button id="nav-add-question-btn" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 mb-6 shadow-md">
-                            + 新しい問題を追加
-                        </button>
+                        <!-- 問題追加・エクスポートボタン -->
+                        <div class="space-y-3 mb-6">
+                            <button id="nav-add-question-btn" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md">
+                                + 新しいカードを登録
+                            </button>
+                            <button id="export-csv-btn" class="w-full py-3 rounded-xl text-white font-bold bg-gray-500 hover:bg-gray-600 transition duration-150 shadow-md">
+                                登録済み一覧をCSVエクスポート
+                            </button>
+                        </div>
+                        
 
                         <!-- CSVインポートセクション -->
                         <div class="border border-dashed border-gray-300 p-4 rounded-xl mb-6 bg-gray-50">
                             <h3 class="text-lg font-semibold mb-2">CSVファイルで一括登録</h3>
-                            <p class="text-sm text-gray-600 mb-3">形式: <code>画像URL,correctAttribute(fire|water|grass),問題名(任意)</code></p>
+                            <p class="text-sm text-gray-600 mb-3">形式: <code>カード名,キャラ名,シリーズ,画像URL,correctAttribute(fire|water|grass)</code></p>
                             <input type="file" id="csv-file-input" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
                             <button id="import-csv-btn" class="mt-3 w-full py-2 rounded-xl text-white font-bold bg-purple-500 hover:bg-purple-600 transition duration-150">
                                 CSVをインポートして登録
@@ -649,7 +739,7 @@
                         </div>
                         
                         <!-- 問題一覧 -->
-                        <h3 class="text-xl font-bold text-gray-800 mb-3">登録済み問題一覧</h3>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3">登録済みカード一覧</h3>
                         <ul class="divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
                             ${totalQuestions > 0 ? questionList : '<li class="p-4 text-center text-gray-500">問題がありません。</li>'}
                         </ul>
@@ -673,15 +763,25 @@
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
                         <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">
-                            ${isEdit ? '問題を編集' : '新しい問題を追加'}
+                            ${isEdit ? 'カード情報を編集' : '新しいカードを登録'}
                         </h2>
                         
                         <form id="question-form" data-id="${question.id || ''}" class="space-y-4">
                             <div>
-                                <label for="question-name" class="block text-sm font-medium text-gray-700 mb-1">問題名 (任意)</label>
-                                <input type="text" id="question-name" value="${question.name || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: 燃え盛る炎の画像" />
+                                <label for="card-name" class="block text-sm font-medium text-gray-700 mb-1">カード名 (必須)</label>
+                                <input type="text" id="card-name" value="${question.cardName || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: 炎の剣" required />
                             </div>
                             
+                            <div>
+                                <label for="char-name" class="block text-sm font-medium text-gray-700 mb-1">キャラ名 (任意)</label>
+                                <input type="text" id="char-name" value="${question.charName || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: 火の勇者" />
+                            </div>
+
+                            <div>
+                                <label for="series" class="block text-sm font-medium text-gray-700 mb-1">シリーズ (任意)</label>
+                                <input type="text" id="series" value="${question.series || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: 伝説のカード Vol.3" />
+                            </div>
+
                             <div>
                                 <label for="image-url" class="block text-sm font-medium text-gray-700 mb-1">画像URL (必須)</label>
                                 <input type="url" id="image-url" value="${question.imageUrl || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: https://github.com/user/repo/image.png" required />
@@ -698,7 +798,7 @@
                             
                             <div class="pt-4">
                                 <button type="submit" class="w-full py-3 rounded-xl text-white font-bold bg-green-500 hover:bg-green-600 transition duration-150 shadow-md">
-                                    ${isEdit ? '更新を保存' : '問題を登録'}
+                                    ${isEdit ? '更新を保存' : 'カードを登録'}
                                 </button>
                                 <button type="button" id="back-admin-btn" class="w-full mt-3 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
                                     キャンセルして一覧に戻る
@@ -747,6 +847,9 @@
                     this.editingQuestion = {};
                     this.setScreen('addEdit');
                 });
+
+                // 管理画面 - CSVエクスポート
+                document.getElementById('export-csv-btn')?.addEventListener('click', () => this.exportCsv());
                 
                 // 管理画面 - 編集ボタン
                 document.querySelectorAll('.admin-edit-btn').forEach(btn => {
@@ -774,11 +877,13 @@
                     e.preventDefault();
                     const form = e.currentTarget;
                     const id = form.dataset.id || null;
-                    const name = document.getElementById('question-name').value;
+                    const cardName = document.getElementById('card-name').value;
+                    const charName = document.getElementById('char-name').value;
+                    const series = document.getElementById('series').value;
                     const imageUrl = document.getElementById('image-url').value;
                     const correctAttribute = document.getElementById('correct-attribute').value;
                     
-                    this.saveQuestion(id, imageUrl, correctAttribute, name);
+                    this.saveQuestion(id, cardName, charName, series, imageUrl, correctAttribute);
                 });
 
                 // 管理画面 - CSVインポート
