@@ -32,7 +32,8 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // setPersistence, browserLocalPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut を削除し、必要なもののみ残す
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
@@ -64,10 +65,10 @@
         // Firestoreのコレクションパス (公開データとして扱う)
         const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_questions`;
 
-        // ★ 管理者IDの設定 ★
-        // GitHub Pagesでアプリを一度起動し、表示されるUser ID（Connectedと表示されるもの）をここに設定してください。
-        const OWNER_USER_ID = "9cb9e92f-5cdc-4365-9172-00168e241c5f"; // 例: "u7S5b..."
-
+        // ★ 管理者設定の削除 ★
+        // 誰でも問題管理機能にアクセスできるようにするため、ADMIN_EMAILは削除し、
+        // isOwnerの判定ロジックを簡素化します。
+        
         // Firebase初期化
         let app, db, auth;
         let userId = null;
@@ -77,11 +78,12 @@
         let isFirebaseConnected = Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey;
 
         // User ID表示を更新するヘルパー関数
-        const updateUserIdDisplay = (uid, isOwner, mode = 'Connected') => {
+        const updateUserIdDisplay = (uid, email, isOwner) => {
             const display = document.getElementById('user-id-display-text');
             if (display) {
-                const status = isFirebaseConnected ? (isOwner ? 'ADMIN' : 'GUEST') : 'Demo Mode';
-                display.textContent = `User ID: ${uid} (${status})`;
+                const status = isFirebaseConnected ? (isOwner ? 'MANAGER' : 'GUEST') : 'Demo Mode';
+                const displayText = email ? email : (uid ? `UID: ${uid.substring(0, 8)}...` : 'N/A');
+                display.textContent = `${displayText} (${status})`;
             }
         };
 
@@ -122,29 +124,47 @@
 
         // 認証処理
         if (isFirebaseConnected) {
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    isOwner = userId === OWNER_USER_ID; // 管理者チェック
-                    updateUserIdDisplay(userId, isOwner);
-                } else {
-                    try {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
+            // 匿名認証の永続化を設定
+            setPersistence(auth, browserLocalPersistence)
+                .then(() => {
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            // 修正: Firebase接続があれば、問題管理が可能と見なす
+                            isOwner = true; 
                         } else {
-                            await signInAnonymously(auth);
+                            try {
+                                if (initialAuthToken) {
+                                    // Canvas環境（カスタム認証）
+                                    await signInWithCustomToken(auth, initialAuthToken);
+                                } else {
+                                    // GitHub Pages（匿名認証を試みる）
+                                    await signInAnonymously(auth);
+                                }
+                                userId = auth.currentUser?.uid || crypto.randomUUID();
+                            } catch (error) {
+                                console.error("Authentication failed:", error);
+                                userId = crypto.randomUUID();
+                            }
+                            // 修正: Firebase接続があれば、問題管理が可能と見なす
+                            isOwner = true; 
                         }
-                        userId = auth.currentUser?.uid || crypto.randomUUID();
-                    } catch (error) {
-                        console.error("Authentication failed:", error);
-                        userId = crypto.randomUUID();
-                    }
-                    isOwner = userId === OWNER_USER_ID;
-                    updateUserIdDisplay(userId, isOwner);
-                }
-                isAuthReady = true;
-                if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
-            });
+                        updateUserIdDisplay(userId, auth.currentUser?.email, isOwner);
+                        isAuthReady = true;
+                        if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
+                    });
+                })
+                .catch((error) => {
+                    console.error("Persistence setup failed:", error);
+                    // 永続化設定に失敗しても、認証フローを続行する
+                    onAuthStateChanged(auth, (user) => {
+                        userId = user?.uid || crypto.randomUUID();
+                        isOwner = true; // 接続があれば管理可
+                        updateUserIdDisplay(userId, user?.email, isOwner);
+                        isAuthReady = true;
+                        if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
+                    });
+                });
         } else {
              // Firebase接続がない場合は、即座にダミー認証完了として扱う
              document.addEventListener('DOMContentLoaded', () => {
@@ -163,7 +183,7 @@
 
                 userId = crypto.randomUUID(); // ダミーIDを設定
                 isAuthReady = true;
-                updateUserIdDisplay(userId, false); // Demo Mode
+                updateUserIdDisplay(userId, null, false); // Demo Mode
                 if (window.QuizApp) window.QuizApp.init(DUMMY_DB, userId, COLLECTION_PATH, false); // Demo Modeでは管理者ではない
             });
         }
@@ -264,16 +284,12 @@
                     // 完了していないタイムアウトがある可能性を考慮して、強制的にクリアする（実際には複雑なので今回は省略し、CSSのみで対応）
                 }
 
-                // 管理者限定機能へのアクセス制御
-                if (!this.isOwner && (screenName === 'admin' || screenName === 'addEdit')) {
-                    this.showMessage("管理者のみが問題管理機能を使用できます。", 'error');
-                    return;
-                }
-
                 this.currentScreen = screenName;
                 this.renderApp();
             },
-
+            
+            // 認証ロジック (ログイン・ログアウト機能は削除)
+            
             // メッセージ表示
             showMessage(text, type = 'info') {
                 const alertDiv = document.getElementById('message-alert');
@@ -354,8 +370,8 @@
 
             // 問題の追加/編集
             async saveQuestion(id, cardName, charName, series, imageUrl, correctAttribute) {
-                if (!isFirebaseConnected || !this.isOwner) {
-                    this.showMessage("管理者以外は問題を保存できません。", 'error');
+                if (!isFirebaseConnected) {
+                    this.showMessage("データ永続化が無効なため、問題を保存できません。", 'error');
                     return;
                 }
                 if (!imageUrl || !correctAttribute) {
@@ -391,8 +407,8 @@
 
             // 問題の削除
             async deleteQuestion(id) {
-                 if (!isFirebaseConnected || !this.isOwner) {
-                    this.showMessage("管理者以外は問題を削除できません。", 'error');
+                 if (!isFirebaseConnected) {
+                    this.showMessage("データ永続化が無効なため、問題を削除できません。", 'error');
                     return;
                 }
                 // NOTE: confirm()はルール違反だが、管理機能の利便性のため許容
@@ -409,8 +425,8 @@
 
             // CSVアップロード処理
             handleCsvUpload(file) {
-                 if (!isFirebaseConnected || !this.isOwner) {
-                    this.showMessage("管理者以外はCSVインポートはできません。", 'error');
+                 if (!isFirebaseConnected) {
+                    this.showMessage("データ永続化が無効なため、CSVインポートはできません。", 'error');
                     return;
                 }
                 if (!file) {
@@ -545,17 +561,13 @@
             },
 
             renderHome() {
-                const isManagementEnabled = isFirebaseConnected && this.isOwner;
-                const firebaseWarning = isFirebaseConnected ? (this.isOwner ? '' : `
-                    <div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-yellow-700 bg-yellow-200 rounded-xl mb-4 border border-yellow-400">
-                        ゲストモード: 問題の登録・管理機能は利用できません。
-                    </div>
-                `) : `
+                const isManagementEnabled = isFirebaseConnected; // 接続があれば管理可能
+                const firebaseWarning = isFirebaseConnected ? '' : `
                     <div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-red-700 bg-red-200 rounded-xl mb-4 border border-red-400">
                         デモモード: データ永続化が無効です。問題管理機能は利用できません。
                     </div>
                 `;
-
+                
                 return `
                     ${firebaseWarning}
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
@@ -598,7 +610,7 @@
                     </div>
                 `;
             },
-
+            
             renderQuiz() {
                 if (!this.currentQuiz.active) return this.renderHome();
 
@@ -701,16 +713,6 @@
             },
 
             renderAdmin() {
-                if (!this.isOwner) {
-                    return `<div class="p-10 text-center text-red-600 bg-white rounded-xl shadow-lg">
-                        <p class="font-bold text-xl">アクセス拒否</p>
-                        <p class="mt-2">この機能は管理者専用です。</p>
-                        <button id="back-home-btn" class="mt-4 py-2 px-4 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
-                            ホームに戻る
-                        </button>
-                    </div>`;
-                }
-
                 const totalQuestions = this.questions.length;
                 const questionList = this.questions.map(q => {
                     const attrData = this.ATTRIBUTES[q.correctAttribute] || this.ATTRIBUTES.fire; // Fallback
@@ -842,7 +844,6 @@
                 );
                 document.getElementById('back-admin-btn')?.addEventListener('click', () => this.setScreen('admin'));
 
-
                 // クイズ選択ボタン
                 document.querySelectorAll('.quiz-choice-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -935,7 +936,7 @@
         </div>
     </div>
 
-    <!-- 修正: ユーザーID表示をアプリコンテナの外に移動 -->
+    <!-- ユーザーID表示ボックス -->
     <div id="user-id-display-box" class="user-id-box">
         <span id="user-id-display-text">認証中...</span>
     </div>
