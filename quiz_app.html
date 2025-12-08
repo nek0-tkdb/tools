@@ -17,6 +17,18 @@
         .attribute-grass { background-color: #10b981; border-color: #059669; } /* 緑 */
         .attribute-default { background-color: #9ca3af; border-color: #4b5563; } /* 灰色 */
         /* ユーザーIDボックス関連のCSSを削除 */
+        .app-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            padding: 5px;
+            font-size: 10px;
+            color: #6b7280;
+            background-color: #e5e7eb;
+            z-index: 999;
+        }
     </style>
     <!-- Firebase SDKs -->
     <script type="module">
@@ -644,7 +656,7 @@
                     ${firebaseWarning}
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
                         <h1 class="text-3xl font-extrabold text-gray-900 mb-6">属性当てクイズへようこそ！</h1>
-                        <p class="text-gray-600 mb-8">画像を見て、「火」「水」「草」のどの属性に属するかを当てましょう。</p>
+                        <p class="text-gray-600 mb-8">画像を見て、「赤」「青」「緑」のどの属性に属するかを当てましょう。</p>
                         
                         <!-- 修正: 出題数設定をホーム画面に移動 -->
                         <div class="mb-6 border-b pb-4">
@@ -784,12 +796,15 @@
                     const icon = item.correct ? '✅' : '❌';
 
                     return `
-                        <li class="p-4 border-b last:border-b-0 flex justify-between items-center">
-                            <div class="flex-1 min-w-0">
+                        <li class="p-4 border-b last:border-b-0 flex justify-between items-center flex-wrap">
+                            <div class="w-full">
                                 <p class="font-medium truncate">${index + 1}. ${item.question.cardName || '無題のカード'}</p>
-                                <p class="text-sm text-gray-500">選択: ${selectedName} / 正解: ${correctName}</p>
                             </div>
-                            <span class="font-bold ${resultClass} text-lg">${icon} ${result}</span>
+                            <div class="flex-1 min-w-0 pr-4 text-sm text-gray-500 mt-1">
+                                <p>キャラ: ${item.question.charName || '---'} / シリーズ: ${item.question.series || '---'}</p>
+                                <p>選択: ${selectedName} / 正解: ${correctName}</p>
+                            </div>
+                            <span class="font-bold ${resultClass} text-lg flex-shrink-0 mt-1">${icon} ${result}</span>
                         </li>
                     `;
                 }).join('');
@@ -1084,6 +1099,9 @@
         </div>
     </div>
 
-    <!-- ユーザーID表示ボックスは削除されました -->
+    <!-- 修正: フッター情報の追加 -->
+    <div class="app-footer">
+        X: nek0n0tem0
+    </div>
 </body>
 </html>
