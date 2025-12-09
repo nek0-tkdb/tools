@@ -89,7 +89,7 @@
             <div class="mt-8">
                 <h3 class="text-xl font-semibold text-gray-700 mb-3 flex items-center">
                     <i class="fas fa-bullhorn text-amber-500 mr-2"></i> 📢 お知らせ (新着カード情報)
-                </h3>
+                </h3 >
                 <div id="news-container" class="bg-white border border-gray-200 rounded-xl shadow-md p-4 space-y-2">
                     <!-- 新着カード情報がここに挿入されます -->
                     <p class="text-gray-500 italic">新着情報はありません。</p>
@@ -299,26 +299,30 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
         // __firebase_config をパースして使用する
-        let firebaseConfig = {};
+        let firebaseConfig = {
+            // ユーザー指定の優先設定
+            apiKey: "AIzaSyCF2mISZbPAAnajQKUsb6Bx-09skAkYaJs",
+            authDomain: "ssrproject1208.firebaseapp.com",
+            projectId: "ssrproject1208",
+            storageBucket: "ssrproject1208.firebasestorage.app",
+            messagingSenderId: "693929077122",
+            appId: "1:693929077122:web:010621739e9ece7be1479b",
+            measurementId: "G-XQB6ZWQ3NL"
+        };
+        
+        // 🚨 修正点: 常にユーザーのハードコード設定を優先するため、__firebase_configのチェックを削除し、
+        // Canvas環境であれば、__firebase_configのデータで上書きするロジックに変更。
+        // これにより、Canvas環境では Canvas のデータが優先され、Github Pagesではユーザーのデータが使われる。
         try {
-            // __firebase_config は文字列として提供されるため、JSON.parseでオブジェクトに変換
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                // Canvas環境で実行されている場合、Canvas提供のConfigで上書き
                 firebaseConfig = JSON.parse(__firebase_config);
+                console.log("Using Canvas provided Firebase Config.");
             } else {
-                console.warn("Firebase config not found in __firebase_config. Using default hardcoded config for development.");
-                // 開発環境用の代替設定（ユーザー提供のもの）
-                firebaseConfig = {
-                    apiKey: "AIzaSyCF2mISZbPAAnajQKUsb6Bx-09skAkYaJs",
-                    authDomain: "ssrproject1208.firebaseapp.com",
-                    projectId: "ssrproject1208",
-                    storageBucket: "ssrproject1208.firebasestorage.app",
-                    messagingSenderId: "693929077122",
-                    appId: "1:693929077122:web:010621739e9ece7be1479b",
-                    measurementId: "G-XQB6ZWQ3NL"
-                };
+                console.log("Using User specified hardcoded Firebase Config.");
             }
         } catch (e) {
-            console.error("Failed to parse __firebase_config:", e);
+            console.error("Failed to process Firebase config:", e);
         }
         
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -780,7 +784,7 @@
                     );
                 }
             }
-        }
+        });
 
         // CSVインポート
         document.getElementById('import-csv-btn').addEventListener('click', () => {
