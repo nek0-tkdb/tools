@@ -45,7 +45,6 @@
         const SHARE_URL = 'https://nek0-tkdb.github.io/tools/quiz_app.html';
         
         // --- Firebase Config (GitHub Pages用) ---
-        // ここに自身のFirebaseプロジェクトの公開設定情報を貼り付けてください。
         const githubPagesConfig = {
             apiKey: "AIzaSyCF2mISZbPAAnajQKUsb6Bx-09skAkYaJs",
             authDomain: "ssrproject1208.firebaseapp.com",
@@ -62,6 +61,10 @@
         const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_questions`;
         const SETTINGS_DOC_PATH = `artifacts/${appId}/public/data/admin_settings/code`; 
 
+        // 修正: パスワードを固定値に戻す (変更機能はUIから削除済み)
+        const SECRET_CODE = "252";
+        let isAdminAuthenticated = false; // パスワード認証状態
+        
         let app, db, auth;
         let userId = null;
         let isAuthReady = false;
@@ -113,25 +116,10 @@
                 userId = auth.currentUser?.uid || crypto.randomUUID();
                 isOwner = isFirebaseConnected; 
 
-                // 管理パスワードをFirestoreからロード
-                try {
-                    const docRef = doc(db, SETTINGS_DOC_PATH);
-                    const docSnap = await getDoc(docRef);
-
-                    if (docSnap.exists()) {
-                        window.QuizApp.SECRET_CODE = docSnap.data().code;
-                    } else {
-                        window.QuizApp.SECRET_CODE = "252";
-                        await setDoc(docRef, { code: window.QuizApp.SECRET_CODE });
-                    }
-                } catch (e) {
-                    // 権限エラーが発生しても、SECRET_CODEは初期値で続行
-                    window.QuizApp.SECRET_CODE = "252"; 
-                }
+                // パスワード設定の読み込み/初期化ロジックは削除（固定値SECRET_CODEを使用）
             } else {
                 userId = crypto.randomUUID();
                 isOwner = false;
-                window.QuizApp.SECRET_CODE = "252";
             }
 
             isAuthReady = true;
@@ -149,23 +137,13 @@
             questions: [],
             quizSettings: { totalQuestions: 3 },
             currentQuiz: { active: false, currentQuestionIndex: 0, score: 0, quizQuestions: [], answerHistory: [] },
-            SECRET_CODE: "252",
+            SECRET_CODE: SECRET_CODE, // グローバル変数から取得
             
             ATTRIBUTES: { fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700' }, water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700' }, grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700' } },
             ATTRIBUTE_MAP: { '赤': 'fire', '青': 'water', '緑': 'grass', 'fire': '赤', 'water': '青', 'grass': '緑' },
 
-            getSecretCode: () => window.QuizApp.SECRET_CODE,
-            setSecretCode: async (code) => {
-                if (!isFirebaseConnected) return false;
-                try {
-                    await setDoc(doc(db, SETTINGS_DOC_PATH), { code: code });
-                    window.QuizApp.SECRET_CODE = code;
-                    return true;
-                } catch (e) {
-                    console.error("Error saving secret code:", e);
-                    return false;
-                }
-            },
+            getSecretCode: () => SECRET_CODE,
+            // setSecretCode: async (code) => { ... } // パスワード変更機能は削除
 
             init(dbInstance, uid, path, ownerStatus) {
                 this.db = dbInstance;
@@ -233,15 +211,7 @@
                 }
             },
             
-            async handleSecretCodeUpdate(newCode) {
-                if (!isFirebaseConnected) { this.showMessage("デモモードではパスワードを変更できません。", 'error'); return; }
-                if (newCode && /^\d+$/.test(newCode)) {
-                    const success = await this.setSecretCode(newCode);
-                    if (success) { this.showMessage(`管理パスワードを ${newCode} に更新しました。`, 'success'); this.setScreen('admin'); } else { this.showMessage("パスワードの保存に失敗しました。", 'error'); }
-                } else {
-                    this.showMessage("パスワードは数字で入力してください。", 'error');
-                }
-            },
+            // handleSecretCodeUpdate ロジックを削除
 
             startQuiz() {
                 if (this.questions.length < 1) { this.showMessage("問題が登録されていません。", 'error'); return; }
@@ -382,7 +352,7 @@
                 switch (this.currentScreen) {
                     case 'home': content = this.renderHome(); break;
                     case 'quiz': content = this.renderQuiz(); break;
-                    case 'admin': content = this.renderAdmin(); break;
+                    case 'admin': content = window.QuizApp.isAdminAuthenticated ? this.renderAdmin() : this.renderPasswordScreen(); break;
                     case 'addEdit': content = this.renderAddEditForm(this.editingQuestion || {}); break;
                     case 'results': content = this.renderResults(); break;
                     case 'settings': content = `<div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center"><h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">設定</h2><p class="text-gray-600 mb-6">出題数の設定はホーム画面に移動しました。</p><button id="back-home-btn" class="w-full mt-4 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">ホームに戻る</button></div>`; break;
@@ -401,7 +371,7 @@
                 
                 // 新着カード情報（最新3件）を準備
                 const latestCards = [...this.questions].sort((a, b) => b.id.localeCompare(a.id)).slice(0, 3);
-                const cardList = latestCards.map(q => `<li class="truncate text-sm text-gray-700">【${q.series || '不明'}】${q.cardName} (${this.ATTRIBUTES[q.correctAttribute].name})</li>`).join('');
+                const cardList = latestCards.map(q => `<li class="truncate text-sm text-gray-700">【${q.series || '不明'}】${q.cardName}</li>`).join('');
 
                 return `
                     ${firebaseWarning}
@@ -446,6 +416,32 @@
                 `;
             },
 
+            renderPasswordScreen() {
+                // パスワードは固定値SECRET_CODEを使用
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">管理者パスワード</h2>
+                        <p class="text-gray-600 mb-6">問題管理画面にアクセスするためのパスワードを入力してください。</p>
+                        
+                        <form id="password-form" class="space-y-4">
+                            <div>
+                                <label for="admin-code" class="sr-only">パスワード</label>
+                                <input type="number" id="admin-code" class="w-full p-3 text-center border-2 border-gray-300 rounded-xl text-xl tracking-widest focus:ring-indigo-500 focus:border-indigo-500" placeholder="パスコード" required />
+                            </div>
+                            
+                            <div class="pt-4">
+                                <button type="submit" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md">
+                                    アクセス
+                                </button>
+                                <button type="button" id="back-home-btn" class="w-full mt-3 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                                    キャンセル
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+            },
+            
             renderAdmin() {
                 const totalQuestions = this.questions.length;
                 
@@ -610,6 +606,15 @@
                 
                 document.getElementById('abort-quiz-btn')?.addEventListener('click', () => this.abortQuiz());
 
+                // パスワードフォームの送信リスナー
+                document.getElementById('password-form')?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const code = document.getElementById('admin-code').value;
+                    this.handleAdminLogin(code);
+                });
+                
+                // 簡易パスワード設定フォームの送信リスナーは削除
+
                 document.querySelectorAll('.quiz-choice-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         this.submitAnswer(e.currentTarget.dataset.attribute);
@@ -668,7 +673,6 @@
 <body>
     <div id="message-alert" class="fixed top-0 left-1/2 -translate-x-1/2 mt-4 p-3 rounded-xl text-white font-bold opacity-0 transition-opacity duration-300 z-50"></div>
     
-    <!-- 修正: app-containerにflex-colとjustify-centerを適用し、コンテンツを中央に配置してスクロールを防ぐ -->
     <div id="app-container" class="min-h-screen flex flex-col items-center justify-center">
         <!-- アプリのコンテンツがここにレンダリングされます -->
         <div class="flex flex-col items-center justify-center h-full w-full text-center p-4">
