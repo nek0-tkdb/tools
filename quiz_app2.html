@@ -13,7 +13,6 @@
             background-color: #f3f4f6;
             /* フッターが固定された分、ボディのpadding-bottomを調整 */
             padding-bottom: 30px; 
-            /* 縦スクロール対策: overflow-y: hidden; は極力使わない */
             min-height: 100vh;
         }
         .attribute-fire { background-color: #ef4444; border-color: #b91c1c; } /* 赤 */
@@ -94,9 +93,9 @@
                 console.warn("Using dummy data.");
                 const now = Date.now();
                 const dummyData = [
-                    { id: 'dummy1', cardName: '最新の炎のカード', charName: 'ファイアマン', series: 'ヒーロー', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', createdAt: now },
-                    { id: 'dummy2', cardName: '新しい水の宝石', charName: 'アクアガール', series: 'ヒーロー', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', createdAt: now - 3600000 },
-                    { id: 'dummy3', cardName: '緑の古木', charName: 'ウッドキング', series: 'ヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', createdAt: now - 7200000 },
+                    { id: 'dummy1', cardName: '炎の壁', charName: 'ファイアマン', series: 'ヒーロー', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', createdAt: now },
+                    { id: 'dummy2', cardName: '深い湖', charName: 'アクアガール', series: 'ヒーロー', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', createdAt: now - 3600000 },
+                    { id: 'dummy3', cardName: '茂る森', charName: 'ウッドキング', series: 'ヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', createdAt: now - 7200000 },
                     { id: 'dummy4', cardName: '古い雲', charName: 'なし', series: '自然', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', createdAt: now - 10800000 },
                     { id: 'dummy5', cardName: '凍った滝', charName: 'なし', series: '自然', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'], createdAt: now - 14400000 },
                 ].map(d => ({ ...d, id: d.id + d.createdAt.toString() }));
@@ -105,6 +104,20 @@
                 return () => {};
             }
         };
+
+        // FirestoreのドキュメントIDから日時を抽出する関数 (暫定的な対応)
+        function getDateFromId(id) {
+            const timestampMatch = id.match(/\d+$/);
+            if (timestampMatch) {
+                const timestamp = parseInt(timestampMatch[0]);
+                const date = new Date(timestamp);
+                return `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+            }
+            if (isFirebaseConnected) {
+                return "日付不明"; 
+            }
+            return "----/--/--"; 
+        }
         
         async function setupApp() {
             if (isFirebaseConnected) {
@@ -188,7 +201,6 @@
                 listener(q, (snapshot) => {
                     this.questions = snapshot.docs.map(doc => {
                         const data = doc.data ? doc.data() : doc;
-                        // 永続化フィールドの初期化
                         return { id: doc.id, cardName: data.cardName || '無題のカード', charName: data.charName || '', series: data.series || '', ...data, createdAt: data.createdAt || Date.now() };
                     });
                     if (['admin', 'home'].includes(this.currentScreen) || !this.renderedOnce) {
@@ -229,8 +241,6 @@
                 }
             },
             
-            // パスワード変更ロジックは削除
-
             startQuiz() {
                 if (this.questions.length < 1) { this.showMessage("問題が登録されていません。", 'error'); return; }
                 const availableQuestions = [...this.questions];
@@ -382,7 +392,8 @@
                 }
                 
                 container.innerHTML = `<div class="max-w-4xl mx-auto w-full p-4 sm:p-6 lg:p-8">${content}</div>`;
-                this.attachEventListeners();
+                // 修正: DOM更新後にイベントリスナーを確実に登録
+                setTimeout(() => this.attachEventListeners(), 0);
             },
 
             renderHome() {
