@@ -3,727 +3,1038 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画像属性3択クイズ</title>
+    <title>カード属性当てクイズ</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- CSS (レイアウトとフッター調整) -->
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        /* カスタムスタイル */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            /* フッターが固定された分、ボディのpadding-bottomを調整 */
-            padding-bottom: 30px; 
+            background-color: #f7f7f7;
             min-height: 100vh;
         }
-        .attribute-fire { background-color: #ef4444; border-color: #b91c1c; } /* 赤 */
-        .attribute-water { background-color: #3b82f6; border-color: #1d4ed8; } /* 青 */
-        .attribute-grass { background-color: #10b981; border-color: #059669; } /* 緑 */
-        .app-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
+        .screen {
+            display: none;
+            min-height: calc(100vh - 50px); /* フッターを除く高さ */
+            padding-bottom: 80px; /* フッターとの被りを避ける */
+        }
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+        .card-image {
             width: 100%;
-            text-align: center;
-            padding: 5px;
-            font-size: 10px;
-            color: #6b7280;
-            background-color: #e5e7eb;
-            z-index: 999;
+            max-width: 300px;
+            height: auto;
+            aspect-ratio: 2 / 3;
+            object-fit: cover;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            margin: 0 auto;
+        }
+        .attribute-button {
+            transition: all 0.2s;
+            font-weight: bold;
+            padding: 1.5rem 1rem;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .attribute-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .result-item:nth-child(even) {
+            background-color: #f3f4f6;
         }
     </style>
+</head>
+<body>
+
+    <!-- メインコンテナ -->
+    <div id="app-container" class="max-w-md mx-auto bg-white shadow-xl min-h-screen">
+
+        <!-- ヘッダー -->
+        <header class="p-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
+            <h1 class="text-2xl font-extrabold text-indigo-700">属性クイズ</h1>
+            <div id="header-buttons" class="space-x-2">
+                <button id="back-to-index-btn" class="text-gray-500 hover:text-indigo-600 p-2 rounded-full transition duration-150">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- 1. トップページ -->
+        <div id="home-screen" class="screen active p-6 pt-10 gap-6">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">カード属性当てチャレンジ！</h2>
+
+            <!-- クイズ設定 -->
+            <div class="bg-indigo-50 p-6 rounded-xl shadow-inner">
+                <label for="quiz-count" class="block text-lg font-medium text-indigo-700 mb-3">
+                    出題数を設定
+                </label>
+                <input type="number" id="quiz-count" value="3" min="1" class="w-full text-center text-3xl p-3 border-2 border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-md">
+                <p class="text-sm text-gray-500 mt-2 text-center">登録されている問題数: <span id="total-questions">0</span>問</p>
+            </div>
+
+            <!-- クイズスタートボタン -->
+            <button id="start-quiz-btn" class="w-full bg-indigo-600 text-white py-4 mt-6 text-xl font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                クイズスタート (全3問)
+            </button>
+            <p id="loading-message" class="text-center text-sm text-gray-500 mt-2" style="display: none;">データを読み込み中...</p>
+
+
+            <!-- お知らせエリア -->
+            <div class="mt-8">
+                <h3 class="text-xl font-semibold text-gray-700 mb-3 flex items-center">
+                    <i class="fas fa-bullhorn text-amber-500 mr-2"></i> 📢 お知らせ (新着カード情報)
+                </h3>
+                <div id="news-container" class="bg-white border border-gray-200 rounded-xl shadow-md p-4 space-y-2">
+                    <!-- 新着カード情報がここに挿入されます -->
+                    <p class="text-gray-500 italic">新着情報はありません。</p>
+                </div>
+            </div>
+
+            <!-- 管理者画面ボタン -->
+            <button id="go-to-admin-btn" class="w-full mt-6 text-indigo-600 border border-indigo-200 py-3 rounded-xl hover:bg-indigo-50 transition duration-150">
+                管理者画面へ
+            </button>
+        </div>
+
+        <!-- 2. 問題画面 -->
+        <div id="quiz-screen" class="screen p-6 pt-10 gap-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-indigo-700">第 <span id="current-q-num">1</span> 問 / 全 <span id="total-q-num">3</span> 問</h2>
+                <button id="abort-quiz-btn" class="text-sm text-gray-500 hover:text-red-500 transition duration-150">
+                    <i class="fas fa-times mr-1"></i>中断
+                </button>
+            </div>
+
+            <!-- カード表示エリア -->
+            <div id="card-display" class="bg-gray-100 p-4 rounded-xl shadow-lg flex-grow flex flex-col justify-center items-center">
+                <img id="quiz-card-image" src="https://placehold.co/300x450/cccccc/333333?text=Loading..." alt="出題カード画像" class="card-image transition-opacity duration-300">
+                <p id="card-name-text" class="text-xl font-semibold text-gray-700 mt-4 text-center">[カード名]</p>
+                <p id="card-series-text" class="text-sm text-gray-500 mt-1 text-center">[シリーズ]</p>
+            </div>
+
+            <!-- 回答ボタンエリア -->
+            <div id="answer-buttons" class="mt-6 space-y-3">
+                <button data-attr="赤" class="attribute-button w-full bg-red-500 text-white hover:bg-red-600">
+                    <i class="fas fa-fire mr-2"></i> 赤
+                </button>
+                <button data-attr="青" class="attribute-button w-full bg-blue-500 text-white hover:bg-blue-600">
+                    <i class="fas fa-water mr-2"></i> 青
+                </button>
+                <button data-attr="緑" class="attribute-button w-full bg-green-500 text-white hover:bg-green-600">
+                    <i class="fas fa-leaf mr-2"></i> 緑
+                </button>
+            </div>
+
+            <!-- 結果表示エリア -->
+            <div id="quiz-feedback" class="mt-4 text-center p-3 rounded-lg font-extrabold text-xl" style="display: none;">
+                <!-- 正誤結果が表示されます -->
+            </div>
+            
+        </div>
+
+        <!-- 3. 結果画面 -->
+        <div id="result-screen" class="screen p-6 pt-10 gap-6">
+            <h2 class="text-3xl font-bold text-center text-indigo-700 mb-6">クイズ結果</h2>
+
+            <!-- 結果サマリー -->
+            <div class="bg-white border-4 border-indigo-400 p-6 rounded-xl shadow-2xl text-center">
+                <p class="text-xl font-semibold text-gray-600">スコア:</p>
+                <p id="result-summary" class="text-4xl font-extrabold text-indigo-600 mt-2">
+                    全部で0問中0問正解でした。
+                </p>
+            </div>
+
+            <!-- シェアボタン -->
+            <button id="share-x-btn" class="w-full bg-black text-white py-3 mt-6 text-lg font-bold rounded-xl shadow-lg hover:bg-gray-800 transition duration-150 flex items-center justify-center">
+                <i class="fab fa-twitter mr-2"></i> 結果をXにシェア！
+            </button>
+
+            <!-- 回答履歴 -->
+            <h3 class="text-xl font-bold text-gray-700 mt-8 mb-4 border-b pb-2">回答履歴</h3>
+            <div id="history-container" class="space-y-2 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <!-- 回答履歴アイテムがここに挿入されます -->
+            </div>
+
+            <!-- トップへ戻るボタン -->
+            <button id="back-to-home-from-result-btn" class="w-full mt-6 text-indigo-600 border border-indigo-200 py-3 rounded-xl hover:bg-indigo-50 transition duration-150">
+                トップページへ戻る
+            </button>
+        </div>
+
+        <!-- 4. 管理者画面 (認証) -->
+        <div id="admin-auth-screen" class="screen p-6 pt-10 gap-6 justify-center items-center">
+            <div class="w-full bg-white p-8 rounded-xl shadow-lg max-w-sm">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">管理者パスワード</h2>
+                <input type="password" id="admin-password" placeholder="パスワードを入力" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                <p id="auth-error-message" class="text-red-500 text-sm mt-2" style="display: none;">パスワードが異なります。</p>
+                <button id="admin-login-btn" class="w-full bg-indigo-600 text-white py-3 mt-6 text-lg font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-150">
+                    入室
+                </button>
+                <button id="back-to-home-from-auth-btn" class="w-full mt-4 text-gray-500 border border-gray-200 py-3 rounded-xl hover:bg-gray-50 transition duration-150">
+                    トップページへ戻る
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. 管理者画面 (メイン) -->
+        <div id="admin-screen" class="screen p-6 pt-10 gap-6">
+            <h2 class="text-3xl font-bold text-center text-indigo-700 mb-6">管理者パネル</h2>
+
+            <div class="space-y-6">
+                <!-- CSVインポート -->
+                <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3">CSV一括インポート (追加)</h3>
+                    <p class="text-sm text-gray-500 mb-3">形式: キャラ名,カード名,シリーズ,属性(赤|青|緑),画像URL</p>
+                    <input type="file" id="csv-file-input" accept=".csv" class="w-full mb-3 text-gray-700">
+                    <button id="import-csv-btn" class="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-150">
+                        <i class="fas fa-file-import mr-2"></i> インポート開始
+                    </button>
+                    <p id="import-status" class="text-sm mt-2"></p>
+                </div>
+
+                <!-- CSVエクスポート -->
+                <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3">データのエクスポート</h3>
+                    <button id="export-csv-btn" class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-150">
+                        <i class="fas fa-download mr-2"></i> 登録済み一覧をCSVでエクスポート
+                    </button>
+                </div>
+
+                <!-- 新規カード登録フォーム -->
+                <div class="bg-indigo-50 p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-semibold text-indigo-700 mb-4">新規カード登録 (単体)</h3>
+                    <form id="add-card-form" class="space-y-3">
+                        <input type="text" id="add-char-name" placeholder="キャラ名" required class="w-full p-2 border rounded-lg">
+                        <input type="text" id="add-card-name" placeholder="カード名" required class="w-full p-2 border rounded-lg">
+                        <input type="text" id="add-series" placeholder="シリーズ名" required class="w-full p-2 border rounded-lg">
+                        <select id="add-attribute" required class="w-full p-2 border rounded-lg">
+                            <option value="">属性を選択</option>
+                            <option value="赤">赤</option>
+                            <option value="青">青</option>
+                            <option value="緑">緑</option>
+                        </select>
+                        <input type="url" id="add-image-url" placeholder="画像URL" required class="w-full p-2 border rounded-lg">
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition duration-150">
+                            <i class="fas fa-plus-circle mr-2"></i> 登録
+                        </button>
+                        <p id="add-status" class="text-sm mt-2 text-center"></p>
+                    </form>
+                </div>
+
+                <!-- 登録済みカード一覧 -->
+                <h3 class="text-xl font-semibold text-gray-700 mt-8 mb-4 border-b pb-2">登録済みカード一覧 (<span id="admin-card-count">0</span>件)</h3>
+                <div id="card-list-container" class="space-y-3">
+                    <!-- カード一覧がここに挿入されます -->
+                </div>
+
+                <button id="back-to-home-from-admin-btn" class="w-full mt-6 text-gray-500 border border-gray-200 py-3 rounded-xl hover:bg-gray-50 transition duration-150">
+                    トップページへ戻る
+                </button>
+            </div>
+        </div>
+
+        <!-- 編集モーダル -->
+        <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style="display: none;">
+            <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
+                <h3 class="text-2xl font-bold mb-4">カード情報を編集</h3>
+                <form id="edit-card-form" class="space-y-3">
+                    <input type="hidden" id="edit-card-id">
+                    <input type="text" id="edit-char-name" placeholder="キャラ名" required class="w-full p-2 border rounded-lg">
+                    <input type="text" id="edit-card-name" placeholder="カード名" required class="w-full p-2 border rounded-lg">
+                    <input type="text" id="edit-series" placeholder="シリーズ名" required class="w-full p-2 border rounded-lg">
+                    <select id="edit-attribute" required class="w-full p-2 border rounded-lg">
+                        <option value="赤">赤</option>
+                        <option value="青">青</option>
+                        <option value="緑">緑</option>
+                    </select>
+                    <input type="url" id="edit-image-url" placeholder="画像URL" required class="w-full p-2 border rounded-lg">
+
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition duration-150">
+                        <i class="fas fa-save mr-2"></i> 保存
+                    </button>
+                    <button type="button" id="close-edit-modal-btn" class="w-full mt-2 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 transition duration-150">
+                        キャンセル
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- フッター -->
+    <footer class="bg-gray-800 text-white text-center p-3 fixed bottom-0 w-full max-w-md mx-auto shadow-t-xl z-20">
+        <p class="text-sm">開発: <a href="https://twitter.com/nek0n0tem0" target="_blank" class="hover:text-indigo-400 transition duration-150">x: @nek0n0tem0</a></p>
+    </footer>
+
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            getDocs, 
+            setDoc, 
+            addDoc, 
+            deleteDoc, 
+            query, 
+            orderBy, 
+            limit, 
+            onSnapshot, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        setLogLevel('error');
+        // Firestoreのログレベルを設定 (デバッグ用)
+        setLogLevel('debug');
 
-        // グローバル設定
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ssr_project1208';
-        const SHARE_URL = 'https://nek0-tkdb.github.io/tools/quiz_app.html';
+        // グローバル変数の定義と初期化
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
-        // --- Firebase Config (GitHub Pages用) ---
-        const githubPagesConfig = {
-            apiKey: "AIzaSyCF2mISZbPAAnajQKUsb6Bx-09skAkYaJs",
-            authDomain: "ssrproject1208.firebaseapp.com",
-            projectId: "ssrproject1208",
-            storageBucket: "ssrproject1208.firebasestorage.app",
-            messagingSenderId: "693929077122",
-            appId: "1:693929077122:web:010621739e9ece7be1479b",
-        };
-        // ------------------------------------------
+        // __firebase_config をパースして使用する
+        let firebaseConfig = {};
+        try {
+            // __firebase_config は文字列として提供されるため、JSON.parseでオブジェクトに変換
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } else {
+                console.warn("Firebase config not found in __firebase_config. Using default hardcoded config for development.");
+                // 開発環境用の代替設定（ユーザー提供のもの）
+                firebaseConfig = {
+                    apiKey: "AIzaSyCF2mISZbPAAnajQKUsb6Bx-09skAkYaJs",
+                    authDomain: "ssrproject1208.firebaseapp.com",
+                    projectId: "ssrproject1208",
+                    storageBucket: "ssrproject1208.firebasestorage.app",
+                    messagingSenderId: "693929077122",
+                    appId: "1:693929077122:web:010621739e9ece7be1479b",
+                    measurementId: "G-XQB6ZWQ3NL"
+                };
+            }
+        } catch (e) {
+            console.error("Failed to parse __firebase_config:", e);
+        }
+        
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        const canvasConfig = (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : {};
-        const firebaseConfig = Object.keys(canvasConfig).length > 0 ? canvasConfig : githubPagesConfig;
-        
-        const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_questions`;
-        const SETTINGS_DOC_PATH = `artifacts/${appId}/public/data/admin_settings/code`; 
-
-        const SECRET_CODE = "252"; // 固定パスワード
-        let isAdminAuthenticated = false; 
-        
-        let app, db, auth;
+        let app;
+        let db;
+        let auth;
         let userId = null;
         let isAuthReady = false;
-        let isOwner = false;
-        let isFirebaseConnected = Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey;
 
-        if (isFirebaseConnected) {
+        // Firestoreのデータパス
+        const CARDS_COLLECTION_PATH = `/artifacts/${appId}/public/data/cards`;
+        
+        // アプリケーションの状態管理
+        let allCards = [];
+        let currentQuiz = [];
+        let currentQuestionIndex = 0;
+        let quizHistory = [];
+        let totalQuestionCount = 3;
+        const ADMIN_PASSWORD = "252";
+
+        // DOM要素の取得
+        const screens = {
+            home: document.getElementById('home-screen'),
+            quiz: document.getElementById('quiz-screen'),
+            result: document.getElementById('result-screen'),
+            adminAuth: document.getElementById('admin-auth-screen'),
+            admin: document.getElementById('admin-screen')
+        };
+        const quizCountInput = document.getElementById('quiz-count');
+        const startQuizBtn = document.getElementById('start-quiz-btn');
+        const totalQuestionsSpan = document.getElementById('total-questions');
+        const loadingMessage = document.getElementById('loading-message');
+        const newsContainer = document.getElementById('news-container');
+        const adminLoginBtn = document.getElementById('admin-login-btn');
+        const adminPasswordInput = document.getElementById('admin-password');
+        const authErrorMessage = document.getElementById('auth-error-message');
+        const adminCardCountSpan = document.getElementById('admin-card-count');
+        const cardListContainer = document.getElementById('card-list-container');
+        const answerButtons = document.getElementById('answer-buttons');
+        const quizFeedback = document.getElementById('quiz-feedback');
+        const editModal = document.getElementById('edit-modal');
+        const editCardForm = document.getElementById('edit-card-form');
+        const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+
+        // 画面遷移関数
+        function showScreen(screenName) {
+            Object.values(screens).forEach(screen => screen.classList.remove('active'));
+            if (screens[screenName]) {
+                screens[screenName].classList.add('active');
+            }
+        }
+
+        // --- Firebase初期化と認証 ---
+        async function initializeFirebase() {
+            // firebaseConfig が空でないことを確認してから初期化
+            if (Object.keys(firebaseConfig).length === 0) {
+                 console.error("Firebase config is empty. Cannot initialize.");
+                 return;
+            }
+
             try {
                 app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
                 auth = getAuth(app);
-            } catch (e) {
-                console.error("Firebase Initialization Failed:", e);
-                isFirebaseConnected = false;
-            }
-        }
-        
-        // ダミーデータベース関数
-        const DUMMY_DB = {
-            addDoc: async () => { throw new Error("Firebase not available."); },
-            updateDoc: async () => { throw new Error("Firebase not available."); },
-            setDoc: async () => { throw new Error("Firebase not available."); },
-            deleteDoc: async () => { throw new Error("Firebase not available."); },
-            getDoc: async () => ({ exists: () => false, data: () => null }),
-            onSnapshot: (q, callback) => {
-                console.warn("Using dummy data.");
-                const dummyData = [
-                    { id: 'dummy1', cardName: '炎の壁', charName: 'ファイアマン', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 3600000 },
-                    { id: 'dummy2', cardName: '深い湖', charName: 'アクアガール', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 7200000 },
-                    { id: 'dummy3', cardName: '茂る森', charName: 'ウッドキング', series: '属性ヒーヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 10800000 },
-                    { id: 'dummy4', cardName: '沸騰するお湯', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 14400000 },
-                    { id: 'dummy5', cardName: '凍った滝', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 18000000 },
-                ].map(d => ({ ...d, id: d.id + d.createdAt.toString() })); // IDをユニークにするためcreatedAtを付加
+                db = getFirestore(app);
 
-                setTimeout(() => { callback({ docs: dummyData.map(d => ({ id: d.id, data: () => d, ...d })) }); }, 100);
-                return () => {};
-            }
-        };
-
-        // FirestoreのドキュメントIDから日時を抽出する関数 (暫定的な対応)
-        // 実際にはFirestoreのTimestampフィールドを使う方が推奨されますが、ここではIDベースで処理
-        function getDateFromId(id) {
-            // ダミーデータの場合、IDの末尾がタイムスタンプ
-            const timestampMatch = id.match(/\d+$/);
-            if (timestampMatch) {
-                const timestamp = parseInt(timestampMatch[0]);
-                const date = new Date(timestamp);
-                return `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
-            }
-            
-            // 実際のFirestore ID (20桁のランダム文字列) からは日付を正確には抽出できないため、
-            // 接続モードに応じて代替の日付を返す
-            if (isFirebaseConnected) {
-                // 実際のFirestore接続では、ここでドキュメントのTimestampフィールドを参照するべき
-                return "日付不明"; 
-            }
-            return "----/--/--"; 
-        }
-        
-        async function setupApp() {
-            if (isFirebaseConnected) {
-                let user = auth.currentUser;
-                if (!user) {
-                    try {
-                        await signInAnonymously(auth);
-                    } catch (error) {
-                        console.error("Authentication failed:", error);
-                    }
-                }
-                userId = auth.currentUser?.uid || crypto.randomUUID();
-                isOwner = isFirebaseConnected; 
-
-                // パスワード設定の読み込みロジックは削除（固定値SECRET_CODEを使用）
-            } else {
-                userId = crypto.randomUUID();
-                isOwner = false;
-            }
-
-            isAuthReady = true;
-            if (window.QuizApp) window.QuizApp.init(db, userId, COLLECTION_PATH, isOwner);
-        }
-
-        document.addEventListener('DOMContentLoaded', setupApp);
-        
-
-        window.QuizApp = {
-            db: null,
-            collectionPath: null,
-            isOwner: false,
-            currentScreen: 'home',
-            questions: [],
-            quizSettings: { totalQuestions: 3 },
-            currentQuiz: { active: false, currentQuestionIndex: 0, score: 0, quizQuestions: [], answerHistory: [] },
-            SECRET_CODE: SECRET_CODE,
-            
-            ATTRIBUTES: { fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700' }, water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700' }, grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700' } },
-            ATTRIBUTE_MAP: { '赤': 'fire', '青': 'water', '緑': 'grass', 'fire': '赤', 'water': '青', 'grass': '緑' },
-
-            getSecretCode: () => SECRET_CODE,
-
-            init(dbInstance, uid, path, ownerStatus) {
-                this.db = dbInstance;
-                this.collectionPath = path;
-                this.isOwner = isFirebaseConnected;
-                this.loadSettings();
-                this.setupListeners();
-                this.renderApp();
-            },
-
-            loadSettings() {
-                const storedSettings = localStorage.getItem('quizSettings');
-                if (storedSettings) this.quizSettings = JSON.parse(storedSettings);
-            },
-            saveSettings() {
-                localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
-            },
-
-            setupListeners() {
-                if (!this.db || !isAuthReady) return;
-                
-                const q = isFirebaseConnected ? collection(this.db, this.collectionPath) : null;
-                const listener = isFirebaseConnected ? onSnapshot : DUMMY_DB.onSnapshot;
-
-                listener(q, (snapshot) => {
-                    this.questions = snapshot.docs.map(doc => {
-                        const data = doc.data ? doc.data() : doc;
-                        // 永続化フィールドの初期化
-                        return { id: doc.id, cardName: data.cardName || '無題のカード', charName: data.charName || '', series: data.series || '', ...data, createdAt: data.createdAt || Date.now() };
-                    });
-                    if (['admin', 'home'].includes(this.currentScreen) || !this.renderedOnce) {
-                        this.renderApp();
-                        this.renderedOnce = true;
-                    }
-                }, (error) => {
-                    console.error("Error listening to Firestore:", error);
-                    this.showMessage("問題の取得中にエラーが発生しました。（権限を確認してください）", 'error');
-                });
-            },
-
-            setScreen(screenName) {
-                const alertDiv = document.getElementById('message-alert');
-                if (alertDiv) { alertDiv.classList.remove('opacity-100'); alertDiv.classList.add('opacity-0'); }
-                this.currentScreen = screenName;
-                this.renderApp();
-            },
-            
-            showMessage(text, type = 'info') {
-                const alertDiv = document.getElementById('message-alert');
-                alertDiv.textContent = text;
-                alertDiv.classList.remove('opacity-0', 'bg-red-500', 'bg-green-500');
-                alertDiv.className = `p-3 mb-4 rounded-xl text-white font-bold transition-opacity duration-300 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} opacity-100 fixed top-0 left-1/2 -translate-x-1/2 mt-4 z-50`;
-                
-                setTimeout(() => {
-                    alertDiv.classList.add('opacity-0');
-                }, 3000);
-            },
-            
-            handleAdminLogin(code) {
-                if (code === this.getSecretCode()) {
-                    window.QuizApp.isAdminAuthenticated = true;
-                    this.showMessage("管理モードにアクセスしました。", 'success');
-                    this.setScreen('admin');
-                } else {
-                    this.showMessage("パスワードが異なります。", 'error');
-                }
-            },
-            
-            // handleSecretCodeUpdate ロジックは削除
-
-            startQuiz() {
-                if (this.questions.length < 1) { this.showMessage("問題が登録されていません。", 'error'); return; }
-                const availableQuestions = [...this.questions];
-                
-                for (let i = availableQuestions.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [availableQuestions[i], availableQuestions[j]] = [availableQuestions[j], availableQuestions[i]];
-                }
-
-                const totalQuestions = Math.min(this.quizSettings.totalQuestions, availableQuestions.length);
-
-                this.currentQuiz = {
-                    active: true,
-                    currentQuestionIndex: 0,
-                    score: 0,
-                    quizQuestions: availableQuestions.slice(0, totalQuestions),
-                    answerHistory: []
-                };
-                this.setScreen('quiz');
-            },
-
-            submitAnswer(selectedAttribute) {
-                if (!this.currentQuiz.active) return;
-                const currentQ = this.currentQuiz.quizQuestions[this.currentQuiz.currentQuestionIndex];
-                const isCorrect = currentQ.correctAttribute === selectedAttribute;
-                
-                this.currentQuiz.answerHistory.push({ question: currentQ, selected: selectedAttribute, correct: isCorrect });
-
-                if (isCorrect) {
-                    this.currentQuiz.score++;
-                    this.showMessage("正解！", 'success');
-                } else {
-                    this.showMessage(`不正解... 正解は ${this.ATTRIBUTES[currentQ.correctAttribute].name} でした。`, 'error');
-                }
-
-                setTimeout(() => {
-                    this.currentQuiz.currentQuestionIndex++;
-                    if (this.currentQuiz.currentQuestionIndex >= this.currentQuiz.quizQuestions.length) {
-                        this.currentQuiz.active = false;
-                        this.setScreen('results');
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase Auth successful. User ID:", userId);
                     } else {
-                        this.renderApp();
-                    }
-                }, 1000);
-            },
-            
-            abortQuiz() {
-                if (confirm('クイズを中断してホームに戻りますか？')) {
-                    this.currentQuiz.active = false;
-                    this.setScreen('home');
-                }
-            },
-
-            // CRUD & CSV Logic (簡略化)
-            async saveQuestion(id, cardName, charName, series, imageUrl, correctAttribute) {
-                if (!window.QuizApp.isAdminAuthenticated) { this.showMessage("管理パスワードでアクセスしてください。", 'error'); return; }
-                if (!isFirebaseConnected) { this.showMessage("データ永続化が無効なため、問題を保存できません。", 'error'); return; }
-                if (!imageUrl || !correctAttribute) { this.showMessage("画像URLと正解属性は必須です。", 'error'); return; }
-                
-                const questionData = { cardName, charName, series, imageUrl: imageUrl.trim(), correctAttribute, choices: ['fire', 'water', 'grass'] };
-                // 修正: 作成日時を追加
-                if (!id) questionData.createdAt = Date.now();
-
-                try {
-                    if (id) { await updateDoc(doc(this.db, this.collectionPath, id), questionData); this.showMessage("問題を更新しました。", 'success'); } 
-                    else { await addDoc(collection(this.db, this.collectionPath), questionData); this.showMessage("問題を新規登録しました。", 'success'); }
-                    this.setScreen('admin');
-                } catch (e) { console.error("Error saving document: ", e); this.showMessage("問題の保存中にエラーが発生しました。", 'error'); }
-            },
-
-            async deleteQuestion(id) {
-                if (!window.QuizApp.isAdminAuthenticated) { this.showMessage("管理パスワードでアクセスしてください。", 'error'); return; }
-                if (!isFirebaseConnected) { this.showMessage("データ永続化が無効なため、問題を削除できません。", 'error'); return; }
-                if (confirm('本当にこの問題を削除しますか？')) {
-                    try { await deleteDoc(doc(this.db, this.collectionPath, id)); this.showMessage("問題を削除しました。", 'success'); } 
-                    catch (e) { console.error("Error deleting document: ", e); this.showMessage("問題の削除中にエラーが発生しました。", 'error'); }
-                }
-            },
-
-            handleCsvUpload(file) {
-                if (!window.QuizApp.isAdminAuthenticated) { this.showMessage("管理パスワードでアクセスしてください。", 'error'); return; }
-                if (!isFirebaseConnected) { this.showMessage("データ永続化が無効なため、CSVインポートはできません。", 'error'); return; }
-                if (!file) { this.showMessage("ファイルを選択してください。", 'error'); return; }
-
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const lines = e.target.result.trim().split('\n').filter(line => line.trim() !== '');
-                    const newQuestions = [];
-
-                    for (let i = 0; i < lines.length; i++) {
-                        const parts = lines[i].split(',').map(s => s.trim());
-                        if (parts.length < 5) continue;
-                        
-                        const [charName, cardName, series, japaneseAttribute, imageUrl] = parts;
-                        const correctAttribute = this.ATTRIBUTE_MAP[japaneseAttribute];
-
-                        if (correctAttribute && imageUrl) {
-                            newQuestions.push({ cardName, charName, series, imageUrl, correctAttribute, choices: ['fire', 'water', 'grass'], createdAt: Date.now() }); // 作成日時を追加
+                        // 認証トークンがない場合は匿名認証を試みる
+                        if (!initialAuthToken) {
+                            await signInAnonymously(auth);
                         }
                     }
-
-                    if (newQuestions.length === 0) { this.showMessage("有効な問題データが見つかりませんでした。", 'error'); return; }
-                    
-                    const promises = newQuestions.map(q => addDoc(collection(this.db, this.collectionPath), q));
-                    try { await Promise.all(promises); this.showMessage(`${newQuestions.length}件の問題を登録しました。`, 'success'); } 
-                    catch (e) { console.error("CSV import failed: ", e); this.showMessage("CSVインポート中にエラーが発生しました。", 'error'); }
-                };
-                reader.readAsText(file);
-            },
-
-            exportCsv() {
-                if (!isFirebaseConnected) { this.showMessage("データ永続化が無効なため、エクスポートできません。", 'error'); return; }
-                if (this.questions.length === 0) { this.showMessage("エクスポートする問題がありません。", 'error'); return; }
-
-                let csvContent = "キャラ名,カード名,シリーズ,属性,画像URL\n";
-
-                this.questions.forEach(q => {
-                    const japaneseAttribute = this.ATTRIBUTE_MAP[q.correctAttribute];
-                    const row = [q.charName, q.cardName, q.series, japaneseAttribute, q.imageUrl].map(field => `"${(field || '').replace(/"/g, '""')}"`).join(',');
-                    csvContent += row + "\n";
+                    isAuthReady = true;
+                    // 認証完了後、Firestoreのリスナーを設定
+                    if (db) {
+                        setupFirestoreListeners();
+                    }
                 });
 
-                const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.setAttribute('href', url);
-                a.setAttribute('download', 'quiz_questions_export.csv');
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                this.showMessage("問題をCSVエクスポートしました。", 'success');
-            },
-
-
-            // --- UI Rendering ---
-
-            renderApp() {
-                const container = document.getElementById('app-container');
-                let content = '';
-                
-                switch (this.currentScreen) {
-                    case 'home': content = this.renderHome(); break;
-                    case 'quiz': content = this.renderQuiz(); break;
-                    case 'admin': content = window.QuizApp.isAdminAuthenticated ? this.renderAdmin() : this.renderPasswordScreen(); break;
-                    case 'addEdit': content = this.renderAddEditForm(this.editingQuestion || {}); break;
-                    case 'results': content = this.renderResults(); break;
-                    case 'settings': content = `<div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center"><h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">設定</h2><p class="text-gray-600 mb-6">出題数の設定はホーム画面に移動しました。</p><button id="back-home-btn" class="w-full mt-4 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">ホームに戻る</button></div>`; break;
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
                 }
-                
-                container.innerHTML = `<div class="max-w-4xl mx-auto w-full p-4 sm:p-6 lg:p-8">${content}</div>`;
-                this.attachEventListeners();
-            },
 
-            renderHome() {
-                const isManagementEnabled = isFirebaseConnected;
-                const totalQ = this.questions.length;
-                const currentQCount = Math.min(this.quizSettings.totalQuestions, totalQ);
-                
-                const firebaseWarning = isFirebaseConnected ? '' : `<div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-red-700 bg-red-200 rounded-xl mb-4 border border-red-400">デモモード: データ永続化が無効です。問題管理機能は利用できません。</div>`;
-                
-                // 新着カード情報（最新3件）を準備
-                const latestCards = [...this.questions].sort((a, b) => b.createdAt ? b.createdAt - a.createdAt : b.id.localeCompare(a.id)).slice(0, 3);
-                
-                const cardList = latestCards.map(q => {
-                    // IDまたはcreatedAtフィールドから日付を生成
-                    const date = q.createdAt ? new Date(q.createdAt) : new Date(); // createdAtがない場合は現在時刻
-                    const formattedDate = `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
-                    
-                    // 修正: 属性情報（答え）を削除し、日付とカード名のみ表示
-                    return `<li class="truncate text-sm text-gray-700"><span class="font-mono text-gray-500 mr-2">[${formattedDate}]</span>【${q.series || '不明'}】${q.cardName}</li>`;
-                }).join('');
+            } catch (error) {
+                console.error("Firebase initialization or authentication failed:", error);
+            }
+        }
 
+        // --- Firestoreリスナー設定 ---
+        function setupFirestoreListeners() {
+            if (!isAuthReady || !db) return;
 
-                return `
-                    ${firebaseWarning}
-                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
-                        
-                        <h1 class="text-3xl font-extrabold text-gray-900 mb-6">属性当てクイズへようこそ！</h1>
-                        
-                        <div class="mb-6 border-b pb-4">
-                            <label for="total-questions-home" class="block text-sm font-medium text-gray-700 mb-2">出題数 (現在: ${this.quizSettings.totalQuestions}問)</label>
-                            <div class="flex gap-2">
-                                <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" max="${totalQ || 100}" class="flex-grow p-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500" />
-                                <button id="save-home-settings-btn" class="py-3 px-6 rounded-xl text-white font-bold bg-indigo-500 hover:bg-indigo-600 transition duration-150">
-                                    設定
-                                </button>
-                            </div>
-                            <p class="mt-2 text-xs text-gray-500">（最大${totalQ}問まで設定可能です）</p>
-                        </div>
-                        
-                        <div class="space-y-4">
-                            <button id="start-quiz-btn" class="w-full text-xl py-4 rounded-xl text-white font-bold transition duration-150 transform hover:scale-[1.02] bg-indigo-600 hover:bg-indigo-700 shadow-lg">
-                                クイズスタート (${currentQCount}問)
-                            </button>
-                            
-                            <!-- 修正: お知らせエリアをクイズスタートボタンの直下に配置 -->
-                            <div id="new-card-info" class="p-4 bg-yellow-50 border border-yellow-300 rounded-xl text-left">
-                                <h3 class="font-bold text-yellow-800 mb-2">📢 お知らせ (新着カード情報)</h3>
-                                <ul class="list-none space-y-0">
-                                    ${totalQ > 0 ? cardList : '<li class="text-gray-500">問題が登録されていません。</li>'}
-                                </ul>
-                            </div>
+            const cardsRef = collection(db, CARDS_COLLECTION_PATH);
 
-                            <button id="nav-admin-btn" class="w-full py-3 rounded-xl ${isManagementEnabled ? 'text-gray-600 border-2 border-gray-300 hover:bg-gray-100' : 'text-gray-400 border-2 border-gray-200 cursor-not-allowed' } bg-white transition duration-150" ${isManagementEnabled ? '' : 'disabled'}>
-                                問題管理 (全${totalQ}問)
-                            </button>
-                            
-                            <button onclick="history.back();" 
-                                    class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-xl shadow transition duration-150 ease-in-out text-base">
-                                ← ツール集トップに戻る
-                            </button>
-                        </div>
-                    </div>
+            // 1. 全カードデータのリアルタイムリスナー (管理者画面用)
+            onSnapshot(cardsRef, (snapshot) => {
+                allCards = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                // 登録日順にソート（新しいものが上）
+                // orderByを使わずJavaScriptでソート
+                allCards.sort((a, b) => {
+                    const timeA = b.createdAt?.toDate()?.getTime() || 0;
+                    const timeB = a.createdAt?.toDate()?.getTime() || 0;
+                    return timeA - timeB;
+                });
+
+                updateHomeUI();
+                renderAdminCardList();
+                
+            }, (error) => {
+                // 🚨 修正点: 権限エラーを検知し、カスタムメッセージで通知する
+                console.error("Error listening to cards collection:", error);
+                if (error.code === "permission-denied") {
+                     console.error("Firestore Permissions Error: 'cards'コレクションへの読み取り権限がありません。Firebase Security Rulesの設定を確認してください。");
+                     showCustomMessage(
+                         '権限エラー', 
+                         'カードデータを読み込むための権限が不足しています。\nセキュリティルールの設定が正しいか確認してください。', 
+                         true
+                     );
+                }
+            });
+        }
+
+        // --- UI更新関数 ---
+
+        // ホーム画面のUI更新 (全問題数、お知らせ)
+        function updateHomeUI() {
+            totalQuestionsSpan.textContent = allCards.length;
+            const currentCount = parseInt(quizCountInput.value, 10);
+            const displayCount = Math.min(currentCount, allCards.length);
+            startQuizBtn.textContent = `クイズスタート (全${displayCount}問)`;
+            startQuizBtn.disabled = allCards.length === 0;
+
+            // 新着情報 (最新3件)
+            renderNews(allCards.slice(0, 3));
+        }
+
+        function renderNews(newCards) {
+            newsContainer.innerHTML = '';
+            if (newCards.length === 0) {
+                newsContainer.innerHTML = '<p class="text-gray-500 italic">新着情報はありません。</p>';
+                return;
+            }
+
+            newCards.forEach(card => {
+                const date = card.createdAt?.toDate() ? card.createdAt.toDate().toLocaleDateString('ja-JP') : '日付不明';
+                const div = document.createElement('div');
+                div.className = 'p-2 bg-white rounded-lg border border-gray-100 shadow-sm';
+                div.innerHTML = `
+                    <p class="text-xs text-indigo-500">${date}</p>
+                    <p class="text-sm text-gray-800 font-medium">${card.cardName} (${card.series})</p>
                 `;
-            },
+                newsContainer.appendChild(div);
+            });
+        }
 
-            renderPasswordScreen() {
-                // パスワードは固定値SECRET_CODEを使用
-                return `
-                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
-                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">管理者パスワード</h2>
-                        <p class="text-gray-600 mb-6">問題管理画面にアクセスするためのパスワードを入力してください。</p>
-                        
-                        <form id="password-form" class="space-y-4">
-                            <div>
-                                <label for="admin-code" class="sr-only">パスワード</label>
-                                <input type="number" id="admin-code" class="w-full p-3 text-center border-2 border-gray-300 rounded-xl text-xl tracking-widest focus:ring-indigo-500 focus:border-indigo-500" placeholder="パスコード" required />
-                            </div>
-                            
-                            <div class="pt-4">
-                                <button type="submit" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md">
-                                    アクセス
-                                </button>
-                                <button type="button" id="back-home-btn" class="w-full mt-3 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
-                                    キャンセル
-                                </button>
-                            </div>
-                        </form>
+        // 管理者画面のカード一覧描画
+        function renderAdminCardList() {
+            adminCardCountSpan.textContent = allCards.length;
+            cardListContainer.innerHTML = '';
+
+            if (allCards.length === 0) {
+                cardListContainer.innerHTML = '<p class="text-gray-500 text-center italic mt-4">登録されているカードはありません。</p>';
+                return;
+            }
+
+            allCards.forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'bg-white p-3 rounded-xl shadow-md border border-gray-100 flex items-center space-x-4';
+                
+                div.innerHTML = `
+                    <img src="${card.imageUrl}" onerror="this.onerror=null;this.src='https://placehold.co/60x90/cccccc/333333?text=No+Image';" alt="${card.cardName}" class="w-12 h-18 object-cover rounded-md shadow">
+                    <div class="flex-grow">
+                        <p class="text-sm font-bold text-gray-800">${card.cardName} (${card.attribute})</p>
+                        <p class="text-xs text-gray-600">${card.series} / ${card.name}</p>
                     </div>
-                `;
-            },
-            
-            renderAdmin() {
-                const totalQuestions = this.questions.length;
-                
-                // パスワード設定エリアを削除（不要な機能）
-                
-                return `
-                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
-                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">問題管理 (${totalQuestions}問)</h2>
-                        
-                        <!-- 修正: 更新履歴スペースの追加 -->
-                        <div id="update-history" class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-xl text-left">
-                            <h3 class="text-xl font-bold text-gray-800 mb-3">更新履歴</h3>
-                            <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-                                <li>2025/12/09: 簡易認証機能およびパスワード設定を削除しました。</li>
-                                <li>2025/12/08: 問題のCRUD、CSV入出力機能、簡易認証機能を追加しました。</li>
-                                <li>2025/12/07: クイズの属性、出題数設定、Xシェア機能を追加しました。</li>
-                            </ul>
-                        </div>
-                        
-
-                        <!-- 問題追加・エクスポートボタン -->
-                        <div class="space-y-3 mb-6">
-                            <button id="nav-add-question-btn" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md">
-                                + 新しいカードを登録
-                            </button>
-                            <button id="export-csv-btn" class="w-full py-3 rounded-xl text-white font-bold bg-gray-500 hover:bg-gray-600 transition duration-150 shadow-md">
-                                登録済み一覧をCSVエクスポート
-                            </button>
-                        </div>
-                        
-
-                        <!-- CSVインポートセクション -->
-                        <div class="border border-dashed border-gray-300 p-4 rounded-xl mb-6 bg-gray-50">
-                            <h3 class="text-lg font-semibold mb-2">CSVファイルで一括登録</h3>
-                            <p class="text-sm text-gray-600 mb-3">形式: <code>キャラ名,カード名,シリーズ,属性(赤|青|緑),画像URL</code></p>
-                            <input type="file" id="csv-file-input" accept=".csv" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
-                            <button id="import-csv-btn" class="mt-3 w-full py-2 rounded-xl text-white font-bold bg-purple-500 hover:bg-purple-600 transition duration-150">
-                                CSVをインポートして登録
-                            </button>
-                        </div>
-                        
-                        <!-- 問題一覧 -->
-                        <h3 class="text-xl font-bold text-gray-800 mb-3">登録済みカード一覧</h3>
-                        <ul class="divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
-                            ${totalQuestions > 0 ? this.questions.map(q => {
-                                const attrData = this.ATTRIBUTES[q.correctAttribute] || this.ATTRIBUTES.fire;
-                                return `
-                                    <li class="p-4 border-b last:border-b-0 flex items-center justify-between hover:bg-gray-50 transition duration-100">
-                                        <div class="flex-1 min-w-0 pr-4">
-                                            <p class="font-medium truncate">${q.cardName}</p>
-                                            <p class="text-sm text-gray-500 truncate">キャラ: ${q.charName || '---'} / シリーズ: ${q.series || '---'}</p>
-                                        </div>
-                                        <div class="flex-shrink-0 flex items-center space-x-3">
-                                            <span class="px-3 py-1 text-xs font-semibold rounded-full text-white ${attrData.color.replace('hover:bg-', 'bg-').replace('border-', 'border-')}">${attrData.name}</span>
-                                            <button data-id="${q.id}" class="admin-edit-btn text-indigo-600 hover:text-indigo-800 p-2 rounded-full hover:bg-indigo-100">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-5.657 5.657l-4.95 4.95c-.39.39-.39 1.024 0 1.414l.707.707a1 1 0 001.414 0l4.95-4.95-2.121-2.121z"/></svg>
-                                            </button>
-                                            <button data-id="${q.id}" class="admin-delete-btn text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"/></svg>
-                                            </button>
-                                        </div>
-                                    </li>
-                                `;
-                            }).join('') : '<li class="p-4 text-center text-gray-500">問題がありません。</li>'}
-                        </ul>
-
-                        <button id="back-home-btn" class="w-full mt-6 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
-                            ホームに戻る
+                    <div class="flex space-x-2">
+                        <button data-id="${card.id}" class="edit-btn text-blue-500 hover:text-blue-700 p-2 transition duration-150 rounded-full">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button data-id="${card.id}" class="delete-btn text-red-500 hover:text-red-700 p-2 transition duration-150 rounded-full">
+                            <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 `;
-            },
+                cardListContainer.appendChild(div);
+            });
+        }
 
-            renderAddEditForm(question = {}) {
-                const isEdit = !!question.id;
+        // --- クイズ機能 ---
+
+        // 配列をシャッフルするユーティリティ関数
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // クイズ開始
+        async function startQuiz() {
+            if (!isAuthReady) {
+                showCustomMessage('準備中', '認証準備中です。しばらくお待ちください。');
+                return;
+            }
+
+            loadingMessage.style.display = 'block';
+            startQuizBtn.disabled = true;
+
+            const count = parseInt(quizCountInput.value, 10);
+            totalQuestionCount = Math.min(count, allCards.length);
+
+            if (totalQuestionCount === 0) {
+                // カスタムモーダル表示: 問題がありません
+                showCustomMessage('エラー', 'クイズの問題が登録されていません。管理者画面からカードを登録してください。');
+                loadingMessage.style.display = 'none';
+                startQuizBtn.disabled = false;
+                return;
+            }
+
+            // 全カードをシャッフルし、指定された問題数分だけ選択
+            currentQuiz = shuffle([...allCards]).slice(0, totalQuestionCount);
+            currentQuestionIndex = 0;
+            quizHistory = [];
+            
+            showScreen('quiz');
+            loadQuestion(currentQuestionIndex);
+
+            loadingMessage.style.display = 'none';
+            startQuizBtn.disabled = false;
+        }
+
+        // 問題の読み込みと表示
+        function loadQuestion(index) {
+            const card = currentQuiz[index];
+            if (!card) return;
+
+            document.getElementById('current-q-num').textContent = index + 1;
+            document.getElementById('total-q-num').textContent = totalQuestionCount;
+            
+            const imageEl = document.getElementById('quiz-card-image');
+            imageEl.style.opacity = '0'; // フェードアウト
+            
+            setTimeout(() => {
+                imageEl.src = card.imageUrl;
+                imageEl.onerror = () => {
+                    imageEl.src = 'https://placehold.co/300x450/cccccc/333333?text=No+Image'; // 画像エラー時のフォールバック
+                };
+                document.getElementById('card-name-text').textContent = card.cardName;
+                document.getElementById('card-series-text').textContent = card.series;
                 
-                const attributeOptions = Object.keys(this.ATTRIBUTES).map(key => {
-                    const attrData = this.ATTRIBUTES[key];
-                    const isSelected = question.correctAttribute === key;
-                    return `<option value="${key}" ${isSelected ? 'selected' : ''}>${attrData.name} (${key})</option>`;
-                }).join('');
+                // ボタンを有効化
+                document.querySelectorAll('#answer-buttons button').forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('ring-4', 'ring-green-400', 'ring-red-400', 'opacity-70');
+                });
+                quizFeedback.style.display = 'none';
+                imageEl.style.opacity = '1'; // フェードイン
+            }, 300); // 300ms後に画像とテキストを更新
+        }
 
-                return `
-                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
-                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">
-                            ${isEdit ? 'カード情報を編集' : '新しいカードを登録'}
-                        </h2>
-                        
-                        <form id="question-form" data-id="${question.id || ''}" class="space-y-4">
-                            <div>
-                                <label for="card-name" class="block text-sm font-medium text-gray-700 mb-1">カード名 (必須)</label>
-                                <input type="text" id="card-name" value="${question.cardName || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: 炎の剣" required />
-                            </div>
-                            
-                            <div>
-                                <label for="char-name" class="block text-sm font-medium text-gray-700 mb-1">キャラ名 (任意)</label>
-                                <input type="text" id="char-name" value="${question.charName || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: 火の勇者" />
-                            </div>
+        // 回答処理
+        function handleAnswer(selectedAttr) {
+            const card = currentQuiz[currentQuestionIndex];
+            if (!card) return;
 
-                            <div>
-                                <label for="series" class="block text-sm font-medium text-gray-700 mb-1">シリーズ (任意)</label>
-                                <input type="text" id="series" value="${question.series || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: 伝説のカード Vol.3" />
-                            </div>
+            const isCorrect = selectedAttr === card.attribute;
+            const feedbackText = isCorrect ? '正解！' : `不正解！ 正解は「${card.attribute}」でした。`;
+            const feedbackColor = isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
 
-                            <div>
-                                <label for="image-url" class="block text-sm font-medium text-gray-700 mb-1">画像URL (必須)</label>
-                                <input type="url" id="image-url" value="${question.imageUrl || ''}" class="w-full p-3 border border-gray-300 rounded-xl" placeholder="例: https://github.com/user/repo/image.png" required />
-                                <p class="mt-1 text-xs text-gray-500">GitHub Pagesなどの公開URLを指定してください。</p>
-                            </div>
+            // フィードバック表示
+            quizFeedback.textContent = feedbackText;
+            quizFeedback.className = `mt-4 text-center p-3 rounded-lg font-extrabold text-xl ${feedbackColor}`;
+            quizFeedback.style.display = 'block';
 
-                            <div>
-                                <label for="correct-attribute" class="block text-sm font-medium text-gray-700 mb-1">正解属性 (必須)</label>
-                                <select id="correct-attribute" class="w-full p-3 border border-gray-300 rounded-xl" required>
-                                    <option value="">選択してください</option>
-                                    ${attributeOptions}
-                                </select>
-                            </div>
-                            
-                            <div class="pt-4">
-                                <button type="submit" class="w-full py-3 rounded-xl text-white font-bold bg-green-500 hover:bg-green-600 transition duration-150 shadow-md">
-                                    ${isEdit ? '更新を保存' : 'カードを登録'}
-                                </button>
-                                <button type="button" id="back-admin-btn" class="w-full mt-3 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
-                                    キャンセルして一覧に戻る
-                                </button>
-                            </div>
-                        </form>
+            // ボタンを無効化し、正解をハイライト
+            document.querySelectorAll('#answer-buttons button').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.add('opacity-70');
+                if (btn.dataset.attr === card.attribute) {
+                    btn.classList.add('ring-4', 'ring-green-400');
+                } else if (!isCorrect && btn.dataset.attr === selectedAttr) {
+                    btn.classList.add('ring-4', 'ring-red-400');
+                }
+            });
+
+            // 履歴に追加
+            quizHistory.push({
+                question: card,
+                userAnswer: selectedAttr,
+                isCorrect: isCorrect
+            });
+
+            // 次の問題へ
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < totalQuestionCount) {
+                    loadQuestion(currentQuestionIndex);
+                } else {
+                    showResults();
+                }
+            }, 1500); // 1.5秒後に次へ
+        }
+
+        // 結果画面表示
+        function showResults() {
+            const correctCount = quizHistory.filter(h => h.isCorrect).length;
+            
+            document.getElementById('result-summary').textContent = 
+                `全部で${totalQuestionCount}問中${correctCount}問正解でした。`;
+
+            // 回答履歴の描画
+            const historyContainer = document.getElementById('history-container');
+            historyContainer.innerHTML = '';
+            
+            quizHistory.forEach((h, index) => {
+                const resultClass = h.isCorrect ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
+                const icon = h.isCorrect ? '<i class="fas fa-check-circle mr-2"></i>' : '<i class="fas fa-times-circle mr-2"></i>';
+
+                const div = document.createElement('div');
+                div.className = `result-item p-3 border-b border-gray-100 flex justify-between items-center ${resultClass}`;
+                div.innerHTML = `
+                    <div class="flex items-center">
+                        ${icon}
+                        <span class="font-medium">${index + 1}. ${h.question.cardName}</span>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold">${h.isCorrect ? '正解' : '不正解'}</p>
+                        <p class="text-xs text-gray-500">あなたの答え: ${h.userAnswer}</p>
+                        ${!h.isCorrect ? `<p class="text-xs text-red-400">正解: ${h.question.attribute}</p>` : ''}
                     </div>
                 `;
-            },
+                historyContainer.appendChild(div);
+            });
 
-            // イベントリスナーのアタッチ
-            attachEventListeners() {
-                const totalQ = this.questions.length;
+            // Xシェアボタンの設定
+            const correctText = correctCount === totalQuestionCount ? '全問正解！🎉' : `${correctCount}問正解！`;
+            const shareText = `属性クイズにチャレンジ！\n全部で${totalQuestionCount}問中${correctText}\nあなたも挑戦してみよう！`;
+            const shareUrl = `https://nek0-tkdb.github.io/tools/quiz_attr.html`;
+            document.getElementById('share-x-btn').onclick = () => {
+                const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}&hashtags=カード属性クイズ`;
+                window.open(url, '_blank');
+            };
 
-                document.getElementById('start-quiz-btn')?.addEventListener('click', () => this.startQuiz());
-                
-                document.getElementById('save-home-settings-btn')?.addEventListener('click', () => {
-                    const input = document.getElementById('total-questions-home');
-                    const value = parseInt(input.value);
+            showScreen('result');
+        }
 
-                    if (value > 0 && value <= totalQ) {
-                        this.quizSettings.totalQuestions = value;
-                        this.saveSettings();
-                        this.showMessage(`出題数を${value}問に設定しました。`, 'success');
-                        this.renderApp();
-                    } else if (value > totalQ) {
-                        this.showMessage(`出題数は最大${totalQ}問までです。`, 'error');
-                    } else {
-                        this.showMessage("出題数は1問以上に設定してください。", 'error');
-                    }
-                });
+        // --- 管理者機能 (CRUD & Import/Export) ---
 
-                document.getElementById('nav-admin-btn')?.addEventListener('click', () => {
-                    // パスワード認証削除により、直接管理画面へ
-                    isFirebaseConnected ? this.setScreen('admin') : this.showMessage("デモモードでは問題管理はできません。", 'error');
-                });
-                document.querySelectorAll('#back-home-btn')?.forEach(btn => 
-                    btn.addEventListener('click', () => this.setScreen('home'))
-                );
-                document.getElementById('back-admin-btn')?.addEventListener('click', () => {
-                    this.setScreen('admin');
-                });
-                
-                document.getElementById('abort-quiz-btn')?.addEventListener('click', () => this.abortQuiz());
+        // 単体登録
+        document.getElementById('add-card-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusEl = document.getElementById('add-status');
+            statusEl.textContent = '登録中...';
+            statusEl.className = 'text-sm mt-2 text-center text-blue-500';
 
-                // パスワードフォームの送信リスナー
-                document.getElementById('password-form')?.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const code = document.getElementById('admin-code').value;
-                    this.handleAdminLogin(code);
-                });
-                
-                // 簡易パスワード設定フォームの送信リスナーは削除
+            const newCard = {
+                name: document.getElementById('add-char-name').value.trim(),
+                cardName: document.getElementById('add-card-name').value.trim(),
+                series: document.getElementById('add-series').value.trim(),
+                attribute: document.getElementById('add-attribute').value,
+                imageUrl: document.getElementById('add-image-url').value.trim(),
+                createdAt: serverTimestamp()
+            };
 
-                document.querySelectorAll('.quiz-choice-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        this.submitAnswer(e.currentTarget.dataset.attribute);
-                    });
-                });
-
-                document.getElementById('nav-add-question-btn')?.addEventListener('click', () => {
-                    this.editingQuestion = {};
-                    this.setScreen('addEdit');
-                });
-
-                document.getElementById('export-csv-btn')?.addEventListener('click', () => this.exportCsv());
-                
-                document.querySelectorAll('.admin-edit-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const id = e.currentTarget.dataset.id;
-                        this.editingQuestion = this.questions.find(q => q.id === id);
-                        if (this.editingQuestion) {
-                            this.setScreen('addEdit');
-                        } else {
-                            this.showMessage("問題が見つかりません。", 'error');
-                        }
-                    });
-                });
-
-                document.querySelectorAll('.admin-delete-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const id = e.currentTarget.dataset.id;
-                        this.deleteQuestion(id);
-                    });
-                });
-
-                document.getElementById('question-form')?.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    const form = e.currentTarget;
-                    const id = form.dataset.id || null;
-                    const cardName = document.getElementById('card-name').value;
-                    const charName = document.getElementById('char-name').value;
-                    const series = document.getElementById('series').value;
-                    const imageUrl = document.getElementById('image-url').value;
-                    const correctAttribute = document.getElementById('correct-attribute').value;
-                    
-                    this.saveQuestion(id, cardName, charName, series, imageUrl, correctAttribute);
-                });
-
-                document.getElementById('import-csv-btn')?.addEventListener('click', () => {
-                    const fileInput = document.getElementById('csv-file-input');
-                    this.handleCsvUpload(fileInput.files[0]);
-                });
-
+            try {
+                await addDoc(collection(db, CARDS_COLLECTION_PATH), newCard);
+                statusEl.textContent = '登録が完了しました！';
+                statusEl.className = 'text-sm mt-2 text-center text-green-500';
+                e.target.reset();
+            } catch (error) {
+                console.error("Error adding document:", error);
+                statusEl.textContent = '登録エラーが発生しました。';
+                statusEl.className = 'text-sm mt-2 text-center text-red-500';
             }
-        };
+        });
+
+        // 編集保存
+        editCardForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const cardId = document.getElementById('edit-card-id').value;
+            const updatedCard = {
+                name: document.getElementById('edit-char-name').value.trim(),
+                cardName: document.getElementById('edit-card-name').value.trim(),
+                series: document.getElementById('edit-series').value.trim(),
+                attribute: document.getElementById('edit-attribute').value,
+                imageUrl: document.getElementById('edit-image-url').value.trim(),
+                // createdAtは維持される
+            };
+
+            try {
+                await setDoc(doc(db, CARDS_COLLECTION_PATH, cardId), updatedCard, { merge: true });
+                showCustomMessage('成功', 'カード情報が更新されました。');
+                editModal.style.display = 'none';
+            } catch (error) {
+                console.error("Error updating document:", error);
+                showCustomMessage('エラー', 'カード情報の更新に失敗しました。', true);
+            }
+        });
+
+        // 編集・削除ボタンのイベント委譲
+        cardListContainer.addEventListener('click', (e) => {
+            const id = e.target.closest('button')?.dataset.id;
+            if (!id) return;
+
+            if (e.target.closest('.edit-btn')) {
+                const card = allCards.find(c => c.id === id);
+                if (card) {
+                    document.getElementById('edit-card-id').value = card.id;
+                    document.getElementById('edit-char-name').value = card.name;
+                    document.getElementById('edit-card-name').value = card.cardName;
+                    document.getElementById('edit-series').value = card.series;
+                    document.getElementById('edit-attribute').value = card.attribute;
+                    document.getElementById('edit-image-url').value = card.imageUrl;
+                    editModal.style.display = 'flex';
+                }
+            } else if (e.target.closest('.delete-btn')) {
+                showConfirmModal('確認', 'このカードを削除しますか？', () => deleteCard(id));
+            }
+        });
+
+        // カード削除
+        async function deleteCard(id) {
+            try {
+                await deleteDoc(doc(db, CARDS_COLLECTION_PATH, id));
+                showCustomMessage('成功', 'カードが削除されました。');
+            } catch (error) {
+                console.error("Error deleting document:", error);
+                showCustomMessage('エラー', 'カードの削除に失敗しました。', true);
+            }
+        }
+
+        // CSVインポート
+        document.getElementById('import-csv-btn').addEventListener('click', () => {
+            const fileInput = document.getElementById('csv-file-input');
+            const file = fileInput.files[0];
+            const statusEl = document.getElementById('import-status');
+            
+            if (!file) {
+                statusEl.textContent = 'CSVファイルを選択してください。';
+                statusEl.className = 'text-sm mt-2 text-red-500';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const lines = text.trim().split('\n').filter(line => line.trim() !== '');
+                
+                if (lines.length === 0) {
+                    statusEl.textContent = 'CSVファイルにデータがありません。';
+                    statusEl.className = 'text-sm mt-2 text-red-500';
+                    return;
+                }
+
+                statusEl.textContent = `0 / ${lines.length} 件をインポート中...`;
+                statusEl.className = 'text-sm mt-2 text-blue-500';
+
+                const batchSize = 500; // バッチ処理のサイズ
+                const errors = [];
+                let importedCount = 0;
+
+                try {
+                    for (let i = 0; i < lines.length; i++) {
+                        const values = lines[i].split(',').map(v => v.trim());
+                        
+                        // 形式: キャラ名,カード名,シリーズ,属性(赤|青|緑),画像URL
+                        if (values.length !== 5) {
+                            errors.push(`行 ${i + 1}: 列数が不正です (${values.length}列)`);
+                            continue;
+                        }
+
+                        const [name, cardName, series, attribute, imageUrl] = values;
+
+                        if (!['赤', '青', '緑'].includes(attribute)) {
+                            errors.push(`行 ${i + 1}: 属性値が不正です ("${attribute}")`);
+                            continue;
+                        }
+
+                        const newCard = {
+                            name,
+                            cardName,
+                            series,
+                            attribute,
+                            imageUrl,
+                            createdAt: serverTimestamp()
+                        };
+
+                        // Firestoreの書き込みはawaitせず、並列で実行する（ただし、エラーハンドリングのためにPromiseを保持）
+                        await addDoc(collection(db, CARDS_COLLECTION_PATH), newCard);
+                        importedCount++;
+                        statusEl.textContent = `${importedCount} / ${lines.length} 件をインポート中...`;
+                    }
+                    
+                    if (errors.length > 0) {
+                        statusEl.textContent = `インポート完了。${importedCount}件成功、${errors.length}件エラー。`;
+                        statusEl.className = 'text-sm mt-2 text-orange-500';
+                        console.error("CSV Import Errors:", errors);
+                        showCustomMessage('インポート完了（一部エラーあり）', `成功: ${importedCount}件\nエラー: ${errors.length}件。詳細はコンソールを確認してください。`);
+                    } else {
+                        statusEl.textContent = `${importedCount}件のカードを正常に追加しました！`;
+                        statusEl.className = 'text-sm mt-2 text-green-500';
+                        showCustomMessage('成功', `${importedCount}件のカードを正常に追加しました！`);
+                    }
+
+                } catch (error) {
+                    console.error("Batch import error:", error);
+                    statusEl.textContent = `致命的なエラーが発生しました。コンソールを確認してください。`;
+                    statusEl.className = 'text-sm mt-2 text-red-500';
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // CSVエクスポート
+        document.getElementById('export-csv-btn').addEventListener('click', () => {
+            if (allCards.length === 0) {
+                showCustomMessage('情報', 'エクスポートするカードデータがありません。');
+                return;
+            }
+
+            const header = "キャラ名,カード名,シリーズ,属性,画像URL,登録日時\n";
+            const csvContent = allCards.map(card => {
+                const date = card.createdAt?.toDate() ? card.createdAt.toDate().toISOString() : '';
+                return `"${card.name}", "${card.cardName}", "${card.series}", "${card.attribute}", "${card.imageUrl}", "${date}"`;
+            }).join('\n');
+
+            const csvData = header + csvContent;
+            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `card_data_export_${new Date().toISOString().slice(0, 10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showCustomMessage('成功', 'カード一覧をCSVファイルとしてエクスポートしました。');
+        });
+
+        // --- イベントリスナー設定 ---
+        
+        // クイズ出題数変更
+        quizCountInput.addEventListener('input', () => {
+            const count = parseInt(quizCountInput.value, 10);
+            const validCount = Math.max(1, isNaN(count) ? 3 : count);
+            quizCountInput.value = validCount;
+            const displayCount = Math.min(validCount, allCards.length);
+            startQuizBtn.textContent = `クイズスタート (全${displayCount}問)`;
+        });
+
+        // クイズスタート
+        startQuizBtn.addEventListener('click', startQuiz);
+
+        // クイズ中断
+        document.getElementById('abort-quiz-btn').addEventListener('click', () => {
+            showConfirmModal('中断確認', 'クイズを中断してトップページに戻りますか？', () => {
+                showScreen('home');
+            });
+        });
+
+        // 結果画面からトップへ戻る
+        document.getElementById('back-to-home-from-result-btn').addEventListener('click', () => {
+            showScreen('home');
+        });
+
+        // 属性ボタンのクリック処理を委譲
+        answerButtons.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (btn && btn.dataset.attr) {
+                handleAnswer(btn.dataset.attr);
+            }
+        });
+
+        // 管理者画面への遷移（パスワード認証）
+        document.getElementById('go-to-admin-btn').addEventListener('click', () => {
+            showScreen('adminAuth');
+            adminPasswordInput.value = '';
+            authErrorMessage.style.display = 'none';
+        });
+
+        // 管理者ログイン
+        adminLoginBtn.addEventListener('click', () => {
+            if (adminPasswordInput.value === ADMIN_PASSWORD) {
+                authErrorMessage.style.display = 'none';
+                showScreen('admin');
+            } else {
+                authErrorMessage.style.display = 'block';
+                adminPasswordInput.value = '';
+            }
+        });
+
+        // 管理者画面・認証画面からトップページへ戻る
+        document.getElementById('back-to-home-from-admin-btn').addEventListener('click', () => showScreen('home'));
+        document.getElementById('back-to-home-from-auth-btn').addEventListener('click', () => showScreen('home'));
+        
+        // 編集モーダルを閉じる
+        closeEditModalBtn.addEventListener('click', () => {
+            editModal.style.display = 'none';
+        });
+
+        // 前の画面（index.html）に遷移
+        document.getElementById('back-to-index-btn').addEventListener('click', () => {
+             // ユーザーの指示に基づき、指定されたパスに遷移
+            window.location.href = 'index.html';
+        });
+
+        // --- カスタムアラート/確認モーダル関数 (alert/confirmの代替) ---
+
+        /**
+         * カスタムメッセージ（アラート代替）を表示する
+         * @param {string} title - モーダルのタイトル
+         * @param {string} message - モーダルに表示するメッセージ
+         */
+        function showCustomMessage(title, message, isError = false) {
+            const modalId = 'custom-message-modal';
+            let modal = document.getElementById(modalId);
+            
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = modalId;
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300';
+                modal.innerHTML = `
+                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xs transform scale-95 transition-transform duration-300">
+                        <h3 id="custom-message-title" class="text-xl font-bold mb-4 text-gray-800"></h3>
+                        <p id="custom-message-text" class="mb-6 text-gray-600 whitespace-pre-wrap"></p>
+                        <button id="custom-message-close-btn" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-150">閉じる</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                document.getElementById('custom-message-close-btn').addEventListener('click', () => {
+                    modal.classList.add('opacity-0');
+                    setTimeout(() => modal.style.display = 'none', 300);
+                });
+            }
+
+            document.getElementById('custom-message-title').textContent = title;
+            document.getElementById('custom-message-text').textContent = message;
+            
+            const titleEl = document.getElementById('custom-message-title');
+            titleEl.className = `text-xl font-bold mb-4 ${isError ? 'text-red-600' : 'text-gray-800'}`;
+
+            modal.style.display = 'flex';
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+            modal.querySelector('div').classList.add('scale-100');
+        }
+
+        /**
+         * カスタム確認（confirm代替）を表示する
+         * @param {string} title - モーダルのタイトル
+         * @param {string} message - モーダルに表示するメッセージ
+         * @param {Function} onConfirm - 「はい」がクリックされたときに実行される関数
+         */
+        function showConfirmModal(title, message, onConfirm) {
+            const modalId = 'custom-confirm-modal';
+            let modal = document.getElementById(modalId);
+            
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = modalId;
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-300';
+                modal.innerHTML = `
+                    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xs transform scale-95 transition-transform duration-300">
+                        <h3 class="text-xl font-bold mb-4 text-gray-800">${title}</h3>
+                        <p id="confirm-message-text" class="mb-6 text-gray-600"></p>
+                        <div class="flex space-x-3">
+                            <button id="confirm-cancel-btn" class="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition duration-150">キャンセル</button>
+                            <button id="confirm-ok-btn" class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition duration-150">はい</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            document.getElementById('confirm-message-text').textContent = message;
+
+            const closeModal = () => {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.style.display = 'none', 300);
+            };
+
+            const okBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            // 既存のイベントリスナーを削除（クリーンアップ）
+            const newOkBtn = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+            // 新しいイベントリスナーを設定
+            newOkBtn.addEventListener('click', () => {
+                onConfirm();
+                closeModal();
+            });
+            newCancelBtn.addEventListener('click', closeModal);
+
+
+            modal.style.display = 'flex';
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+            modal.querySelector('div').classList.add('scale-100');
+        }
+
+        // --- アプリケーションの開始 ---
+        initializeFirebase();
 
     </script>
-</head>
-<body>
-    <div id="message-alert" class="fixed top-0 left-1/2 -translate-x-1/2 mt-4 p-3 rounded-xl text-white font-bold opacity-0 transition-opacity duration-300 z-50"></div>
-    
-    <div id="app-container" class="min-h-screen flex flex-col items-center justify-center">
-        <!-- アプリのコンテンツがここにレンダリングされます -->
-        <div class="flex flex-col items-center justify-center h-full w-full text-center p-4">
-            <div class="text-indigo-600 animate-pulse text-xl">
-                <svg class="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-            <p class="mt-4 text-gray-700">データを読み込み中...</p>
-        </div>
-    </div>
-
-    <div class="app-footer">
-        X: nek0n0tem0
-    </div>
 </body>
 </html>
