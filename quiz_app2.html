@@ -61,9 +61,8 @@
         const COLLECTION_PATH = `artifacts/${appId}/public/data/quiz_questions`;
         const SETTINGS_DOC_PATH = `artifacts/${appId}/public/data/admin_settings/code`; 
 
-        // 修正: パスワードを固定値に戻す (変更機能はUIから削除済み)
-        const SECRET_CODE = "252";
-        let isAdminAuthenticated = false; // パスワード認証状態
+        const SECRET_CODE = "252"; // 固定パスワード
+        let isAdminAuthenticated = false; 
         
         let app, db, auth;
         let userId = null;
@@ -92,16 +91,37 @@
             onSnapshot: (q, callback) => {
                 console.warn("Using dummy data.");
                 const dummyData = [
-                    { id: 'dummy1', cardName: '炎の壁', charName: 'ファイアマン', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy2', cardName: '深い湖', charName: 'アクアガール', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy3', cardName: '茂る森', charName: 'ウッドキング', series: '属性ヒーヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy4', cardName: '沸騰するお湯', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'] },
-                    { id: 'dummy5', cardName: '凍った滝', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'] },
-                ];
+                    { id: 'dummy1', cardName: '炎の壁', charName: 'ファイアマン', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/ef4444/ffffff?text=FIRE', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 3600000 },
+                    { id: 'dummy2', cardName: '深い湖', charName: 'アクアガール', series: '属性ヒーロー', imageUrl: 'https://placehold.co/600x600/3b82f6/ffffff?text=WATER', correctAttribute: 'water', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 7200000 },
+                    { id: 'dummy3', cardName: '茂る森', charName: 'ウッドキング', series: '属性ヒーヒーロー', imageUrl: 'https://placehold.co/600x600/10b981/ffffff?text=GRASS', correctAttribute: 'grass', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 10800000 },
+                    { id: 'dummy4', cardName: '沸騰するお湯', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/f59e0b/ffffff?text=FIRE(Steam)', correctAttribute: 'fire', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 14400000 },
+                    { id: 'dummy5', cardName: '凍った滝', charName: 'なし', series: '自然現象', imageUrl: 'https://placehold.co/600x600/60a5fa/ffffff?text=WATER(Ice)', correctAttribute: 'water', choices: ['fire', 'water', 'grass'], createdAt: Date.now() - 18000000 },
+                ].map(d => ({ ...d, id: d.id + d.createdAt.toString() })); // IDをユニークにするためcreatedAtを付加
+
                 setTimeout(() => { callback({ docs: dummyData.map(d => ({ id: d.id, data: () => d, ...d })) }); }, 100);
                 return () => {};
             }
         };
+
+        // FirestoreのドキュメントIDから日時を抽出する関数 (暫定的な対応)
+        // 実際にはFirestoreのTimestampフィールドを使う方が推奨されますが、ここではIDベースで処理
+        function getDateFromId(id) {
+            // ダミーデータの場合、IDの末尾がタイムスタンプ
+            const timestampMatch = id.match(/\d+$/);
+            if (timestampMatch) {
+                const timestamp = parseInt(timestampMatch[0]);
+                const date = new Date(timestamp);
+                return `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+            }
+            
+            // 実際のFirestore ID (20桁のランダム文字列) からは日付を正確には抽出できないため、
+            // 接続モードに応じて代替の日付を返す
+            if (isFirebaseConnected) {
+                // 実際のFirestore接続では、ここでドキュメントのTimestampフィールドを参照するべき
+                return "日付不明"; 
+            }
+            return "----/--/--"; 
+        }
         
         async function setupApp() {
             if (isFirebaseConnected) {
@@ -116,7 +136,7 @@
                 userId = auth.currentUser?.uid || crypto.randomUUID();
                 isOwner = isFirebaseConnected; 
 
-                // パスワード設定の読み込み/初期化ロジックは削除（固定値SECRET_CODEを使用）
+                // パスワード設定の読み込みロジックは削除（固定値SECRET_CODEを使用）
             } else {
                 userId = crypto.randomUUID();
                 isOwner = false;
@@ -137,13 +157,12 @@
             questions: [],
             quizSettings: { totalQuestions: 3 },
             currentQuiz: { active: false, currentQuestionIndex: 0, score: 0, quizQuestions: [], answerHistory: [] },
-            SECRET_CODE: SECRET_CODE, // グローバル変数から取得
+            SECRET_CODE: SECRET_CODE,
             
             ATTRIBUTES: { fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700' }, water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700' }, grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700' } },
             ATTRIBUTE_MAP: { '赤': 'fire', '青': 'water', '緑': 'grass', 'fire': '赤', 'water': '青', 'grass': '緑' },
 
             getSecretCode: () => SECRET_CODE,
-            // setSecretCode: async (code) => { ... } // パスワード変更機能は削除
 
             init(dbInstance, uid, path, ownerStatus) {
                 this.db = dbInstance;
@@ -171,7 +190,8 @@
                 listener(q, (snapshot) => {
                     this.questions = snapshot.docs.map(doc => {
                         const data = doc.data ? doc.data() : doc;
-                        return { id: doc.id, cardName: data.cardName || '無題のカード', charName: data.charName || '', series: data.series || '', ...data };
+                        // 永続化フィールドの初期化
+                        return { id: doc.id, cardName: data.cardName || '無題のカード', charName: data.charName || '', series: data.series || '', ...data, createdAt: data.createdAt || Date.now() };
                     });
                     if (['admin', 'home'].includes(this.currentScreen) || !this.renderedOnce) {
                         this.renderApp();
@@ -211,7 +231,7 @@
                 }
             },
             
-            // handleSecretCodeUpdate ロジックを削除
+            // handleSecretCodeUpdate ロジックは削除
 
             startQuiz() {
                 if (this.questions.length < 1) { this.showMessage("問題が登録されていません。", 'error'); return; }
@@ -268,10 +288,13 @@
 
             // CRUD & CSV Logic (簡略化)
             async saveQuestion(id, cardName, charName, series, imageUrl, correctAttribute) {
+                if (!window.QuizApp.isAdminAuthenticated) { this.showMessage("管理パスワードでアクセスしてください。", 'error'); return; }
                 if (!isFirebaseConnected) { this.showMessage("データ永続化が無効なため、問題を保存できません。", 'error'); return; }
                 if (!imageUrl || !correctAttribute) { this.showMessage("画像URLと正解属性は必須です。", 'error'); return; }
                 
                 const questionData = { cardName, charName, series, imageUrl: imageUrl.trim(), correctAttribute, choices: ['fire', 'water', 'grass'] };
+                // 修正: 作成日時を追加
+                if (!id) questionData.createdAt = Date.now();
 
                 try {
                     if (id) { await updateDoc(doc(this.db, this.collectionPath, id), questionData); this.showMessage("問題を更新しました。", 'success'); } 
@@ -281,6 +304,7 @@
             },
 
             async deleteQuestion(id) {
+                if (!window.QuizApp.isAdminAuthenticated) { this.showMessage("管理パスワードでアクセスしてください。", 'error'); return; }
                 if (!isFirebaseConnected) { this.showMessage("データ永続化が無効なため、問題を削除できません。", 'error'); return; }
                 if (confirm('本当にこの問題を削除しますか？')) {
                     try { await deleteDoc(doc(this.db, this.collectionPath, id)); this.showMessage("問題を削除しました。", 'success'); } 
@@ -289,6 +313,7 @@
             },
 
             handleCsvUpload(file) {
+                if (!window.QuizApp.isAdminAuthenticated) { this.showMessage("管理パスワードでアクセスしてください。", 'error'); return; }
                 if (!isFirebaseConnected) { this.showMessage("データ永続化が無効なため、CSVインポートはできません。", 'error'); return; }
                 if (!file) { this.showMessage("ファイルを選択してください。", 'error'); return; }
 
@@ -305,7 +330,7 @@
                         const correctAttribute = this.ATTRIBUTE_MAP[japaneseAttribute];
 
                         if (correctAttribute && imageUrl) {
-                            newQuestions.push({ cardName, charName, series, imageUrl, correctAttribute, choices: ['fire', 'water', 'grass'] });
+                            newQuestions.push({ cardName, charName, series, imageUrl, correctAttribute, choices: ['fire', 'water', 'grass'], createdAt: Date.now() }); // 作成日時を追加
                         }
                     }
 
@@ -370,8 +395,17 @@
                 const firebaseWarning = isFirebaseConnected ? '' : `<div id="firebase-warning" class="p-3 text-center text-sm font-semibold text-red-700 bg-red-200 rounded-xl mb-4 border border-red-400">デモモード: データ永続化が無効です。問題管理機能は利用できません。</div>`;
                 
                 // 新着カード情報（最新3件）を準備
-                const latestCards = [...this.questions].sort((a, b) => b.id.localeCompare(a.id)).slice(0, 3);
-                const cardList = latestCards.map(q => `<li class="truncate text-sm text-gray-700">【${q.series || '不明'}】${q.cardName}</li>`).join('');
+                const latestCards = [...this.questions].sort((a, b) => b.createdAt ? b.createdAt - a.createdAt : b.id.localeCompare(a.id)).slice(0, 3);
+                
+                const cardList = latestCards.map(q => {
+                    // IDまたはcreatedAtフィールドから日付を生成
+                    const date = q.createdAt ? new Date(q.createdAt) : new Date(); // createdAtがない場合は現在時刻
+                    const formattedDate = `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+                    
+                    // 修正: 属性情報（答え）を削除し、日付とカード名のみ表示
+                    return `<li class="truncate text-sm text-gray-700"><span class="font-mono text-gray-500 mr-2">[${formattedDate}]</span>【${q.series || '不明'}】${q.cardName}</li>`;
+                }).join('');
+
 
                 return `
                     ${firebaseWarning}
@@ -444,6 +478,8 @@
             
             renderAdmin() {
                 const totalQuestions = this.questions.length;
+                
+                // パスワード設定エリアを削除（不要な機能）
                 
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
