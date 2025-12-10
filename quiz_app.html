@@ -539,6 +539,9 @@
                     case 'quiz':
                         content = this.renderQuiz();
                         break;
+                    case 'cardList':
+                        content = this.renderCardList();
+                        break;
                     case 'admin':
                         content = isAdminAuthenticated ? this.renderAdmin() : this.renderPasswordScreen();
                         break;
@@ -629,6 +632,10 @@
                         <div class="space-y-4">
                             <button id="start-quiz-btn" class="w-full text-xl py-4 rounded-xl text-white font-bold transition duration-150 transform hover:scale-[1.02] bg-indigo-600 hover:bg-indigo-700 shadow-lg">
                                 クイズスタート (${this.questions.length > 0 ? Math.min(this.quizSettings.totalQuestions, this.questions.length) : 0}問)
+                            </button>
+                            
+                            <button id="nav-card-list-btn" class="w-full py-3 rounded-xl text-gray-600 border-2 border-gray-300 hover:bg-gray-100 bg-white transition duration-150">
+                                登録済みカード一覧 (${this.questions.length}枚)
                             </button>
                             
                             ${recentCardsHtml}
@@ -790,6 +797,44 @@
                 `;
             },
 
+            renderCardList() {
+                const totalQuestions = this.questions.length;
+
+                const questionList = this.questions.map(q => {
+                    const attrData = this.ATTRIBUTES[q.correctAttribute] || this.ATTRIBUTES.fire;
+                    return `
+                        <li class="p-4 border-b last:border-b-0 flex items-center gap-3 hover:bg-gray-50 transition duration-100">
+                            <div class="w-16 h-16 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden">
+                                <img src="${q.imageUrl}" alt="${q.cardName}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/64x64/6b7280/ffffff?text=No+Image';" />
+                            </div>
+                            <div class="flex-1 min-w-0 pr-4">
+                                <p class="font-medium truncate">${q.cardName}</p>
+                                <p class="text-sm text-gray-500 truncate">キャラ: ${q.charName || '---'} / シリーズ: ${q.series || '---'}</p>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full text-white ${attrData.color.replace('hover:bg-', 'bg-').replace('border-', 'border-')}">
+                                    ${attrData.name}
+                                </span>
+                            </div>
+                        </li>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">登録済みカード一覧 (${totalQuestions}枚)</h2>
+                        
+                        <ul class="divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
+                            ${totalQuestions > 0 ? questionList : '<li class="p-4 text-center text-gray-500">カードがありません。</li>'}
+                        </ul>
+
+                        <button id="back-home-btn" class="w-full mt-6 py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                            ホームに戻る
+                        </button>
+                    </div>
+                `;
+            },
+
             renderAdmin() {
                 const totalQuestions = this.questions.length;
                 const currentSecretCode = this.getSecretCode();
@@ -938,6 +983,10 @@
                     } else {
                         this.showMessage("出題数は1問以上に設定してください。", 'error');
                     }
+                });
+
+                document.getElementById('nav-card-list-btn')?.addEventListener('click', () => {
+                    this.setScreen('cardList');
                 });
 
                 document.getElementById('nav-admin-btn')?.addEventListener('click', () => {
