@@ -572,42 +572,25 @@
                 
                 let recentCardsHtml = '';
                 if (this.recentQuestions.length > 0) {
-                    const cardsHtml = this.recentQuestions.map(q => {
-                        const attrData = this.ATTRIBUTES[q.correctAttribute] || this.ATTRIBUTES.fire;
+                    const newsItems = this.recentQuestions.map(q => {
                         const date = q.createdAt?.toDate ? q.createdAt.toDate() : new Date(q.createdAt);
-                        const dateStr = date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+                        const dateStr = `${String(date.getFullYear()).slice(2)}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+                        const charInfo = q.charName ? `（${q.charName}）` : '';
                         
                         return `
-                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-indigo-300 transition duration-150">
-                                <div class="flex gap-3">
-                                    <div class="w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden">
-                                        <img src="${q.imageUrl}" alt="${q.cardName}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/80x80/6b7280/ffffff?text=No+Image';" />
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="font-semibold text-gray-900 truncate text-sm">${q.cardName}</p>
-                                        <p class="text-xs text-gray-500 truncate">${q.charName || '---'}</p>
-                                        <div class="flex items-center gap-2 mt-1">
-                                            <span class="px-2 py-0.5 text-xs font-semibold rounded-full text-white ${attrData.color.replace('hover:bg-', 'bg-').split(' ')[0]}">
-                                                ${attrData.name}
-                                            </span>
-                                            <span class="text-xs text-gray-400">${dateStr}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="text-sm text-gray-700 py-1">
+                                <span class="text-gray-500">${dateStr}</span>　${q.cardName}${charInfo}
                             </div>
                         `;
                     }).join('');
                     
                     recentCardsHtml = `
-                        <div class="bg-white rounded-xl shadow-md p-4 mb-4">
-                            <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                                新着カード
+                        <div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-gray-200">
+                            <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center">
+                                📢 お知らせ (新着カード情報)
                             </h3>
-                            <div class="space-y-2">
-                                ${cardsHtml}
+                            <div class="space-y-1">
+                                ${newsItems}
                             </div>
                         </div>
                     `;
@@ -634,11 +617,11 @@
                                 クイズスタート (${this.questions.length > 0 ? Math.min(this.quizSettings.totalQuestions, this.questions.length) : 0}問)
                             </button>
                             
+                            ${recentCardsHtml}
+                            
                             <button id="nav-card-list-btn" class="w-full py-3 rounded-xl text-gray-600 border-2 border-gray-300 hover:bg-gray-100 bg-white transition duration-150">
                                 登録済みカード一覧 (${this.questions.length}枚)
                             </button>
-                            
-                            ${recentCardsHtml}
                             
                             <button id="nav-admin-btn" class="w-full py-3 rounded-xl ${isManagementEnabled ? 'text-gray-600 border-2 border-gray-300 hover:bg-gray-100' : 'text-gray-400 border-2 border-gray-200 cursor-not-allowed' } bg-white transition duration-150" ${isManagementEnabled ? '' : 'disabled'}>
                                 問題管理 (全${this.questions.length}問)
@@ -799,11 +782,25 @@
 
             renderCardList() {
                 const totalQuestions = this.questions.length;
+                
+                // キャラ名の一覧を取得（重複なし、空欄を除く）
+                const charNames = [...new Set(this.questions
+                    .map(q => q.charName)
+                    .filter(name => name && name.trim() !== '')
+                )].sort();
+                
+                // フィルター用のプルダウンオプション
+                const charOptions = charNames.map(name => 
+                    `<option value="${name}">${name}</option>`
+                ).join('');
+                
+                // フィルター適用後の質問リスト（初期表示は全件）
+                const filteredQuestions = this.questions;
 
-                const questionList = this.questions.map(q => {
+                const questionList = filteredQuestions.map(q => {
                     const attrData = this.ATTRIBUTES[q.correctAttribute] || this.ATTRIBUTES.fire;
                     return `
-                        <li class="p-4 border-b last:border-b-0 flex items-center gap-3 hover:bg-gray-50 transition duration-100">
+                        <li class="card-list-item p-4 border-b last:border-b-0 flex items-center gap-3 hover:bg-gray-50 transition duration-100" data-char-name="${q.charName || ''}">
                             <div class="w-16 h-16 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden">
                                 <img src="${q.imageUrl}" alt="${q.cardName}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/64x64/6b7280/ffffff?text=No+Image';" />
                             </div>
@@ -822,9 +819,19 @@
 
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
-                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">登録済みカード一覧 (${totalQuestions}枚)</h2>
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">登録済みカード一覧 (<span id="filtered-count">${totalQuestions}</span>枚)</h2>
                         
-                        <ul class="divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
+                        ${charNames.length > 0 ? `
+                        <div class="mb-4 flex items-center gap-3">
+                            <label for="char-filter" class="text-sm font-medium text-gray-700 whitespace-nowrap">キャラ名で絞り込み:</label>
+                            <select id="char-filter" class="flex-grow p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="">すべて表示</option>
+                                ${charOptions}
+                            </select>
+                        </div>
+                        ` : ''}
+                        
+                        <ul id="card-list-container" class="divide-y divide-gray-200 border border-gray-200 rounded-xl overflow-hidden">
                             ${totalQuestions > 0 ? questionList : '<li class="p-4 text-center text-gray-500">カードがありません。</li>'}
                         </ul>
 
@@ -1061,6 +1068,29 @@
                 document.getElementById('import-csv-btn')?.addEventListener('click', () => {
                     const fileInput = document.getElementById('csv-file-input');
                     this.handleCsvUpload(fileInput.files[0]);
+                });
+
+                // キャラ名フィルターのイベントリスナー
+                document.getElementById('char-filter')?.addEventListener('change', (e) => {
+                    const selectedChar = e.target.value;
+                    const listItems = document.querySelectorAll('.card-list-item');
+                    let visibleCount = 0;
+                    
+                    listItems.forEach(item => {
+                        const charName = item.dataset.charName;
+                        if (selectedChar === '' || charName === selectedChar) {
+                            item.style.display = 'flex';
+                            visibleCount++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                    
+                    // 表示件数を更新
+                    const countElement = document.getElementById('filtered-count');
+                    if (countElement) {
+                        countElement.textContent = visibleCount;
+                    }
                 });
             }
         };
