@@ -81,6 +81,10 @@
                 
                 <p class="text-lg text-gray-700 font-semibold mb-2 mt-4">必要な追加人数</p>
                 <p id="neededPeople" class="text-3xl font-extrabold text-green-700">- 人</p>
+                
+                <!-- 弱体化率の表示を移動 -->
+                <p class="text-lg text-gray-700 font-semibold mb-2 mt-4">弱体化率 (デバフ率)</p>
+                <p id="debuffRate" class="text-3xl font-extrabold text-red-600">- %</p>
             </div>
             
             <!-- 修正: かかる時間表示エリアを縦並び(flex-col)に修正 -->
@@ -177,6 +181,7 @@
             // 値が空の場合、エラーではなく結果表示をリセットする
             if (myPowerInput.value === "" || enemyPowerInput.value === "") {
                 document.getElementById('neededSquads').textContent = '- 班';
+                document.getElementById('debuffRate').textContent = '- %'; // NEW: 弱体化率リセット
                 document.getElementById('neededPeople').textContent = '- 人';
                 document.getElementById('timeLv1Sec').textContent = '- 秒';
                 document.getElementById('timeLv2Sec').textContent = '- 秒';
@@ -191,6 +196,7 @@
                 errorMessageDiv.textContent = '戦力には1以上の正の数を入力してください。';
                 errorMessageDiv.classList.remove('hidden');
                 document.getElementById('neededSquads').textContent = '- 班';
+                document.getElementById('debuffRate').textContent = '- %'; // NEW: 弱体化率リセット
                 document.getElementById('neededPeople').textContent = '- 人';
                 document.getElementById('timeLv1Sec').textContent = '- 秒';
                 document.getElementById('timeLv2Sec').textContent = '- 秒';
@@ -210,11 +216,17 @@
             // 敵戦力に対する戦力の不足率を計算: (1 - P_my / P_enemy)
             const deficitRatio = 1 - (effectiveMyPower / enemyPower);
 
+            // NEW: 弱体化率の初期化と計算
+            let debuffRate = 0;
+            
             let neededSquads = 0;
             let neededPeople = 0;
             
             // 4. 不足率が0より大きい場合、班の計算を実行
             if (deficitRatio > 0) {
+                // 不足率をパーセンテージに変換し、小数点以下2桁で丸める
+                debuffRate = (deficitRatio * 100).toFixed(2);
+                
                 // 不足率に定数80を乗じる: (1 - Ratio) * 80
                 const squadCalculationBase = deficitRatio * SQUAD_SCALING_FACTOR;
                 
@@ -226,11 +238,15 @@
                 
                 // 5. 人数を計算 (1班 = 6人)
                 neededPeople = neededSquads * 6;
+            } else {
+                // 自分の戦力が敵以上の場合、弱体化率は0%
+                debuffRate = (0).toFixed(2);
             }
 
             // 6. 結果の表示
             document.getElementById('neededSquads').textContent = `${neededSquads} 班`;
             document.getElementById('neededPeople').textContent = `${neededPeople} 人`;
+            document.getElementById('debuffRate').textContent = `${debuffRate} %`; // NEW: 弱体化率の表示
             
             // 7. かかる時間の計算と表示 (秒と分)
             const timeLv1Sec = neededSquads * TIME_COEFFICIENTS.lv1;
