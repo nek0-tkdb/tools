@@ -166,8 +166,9 @@
             
             <!-- 合計戦力サマリー -->
             <div id="summaryPower" class="text-center p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-gray-700 font-semibold shadow-sm">
-                <p class="text-lg">味方有効合計戦力: <span id="effectiveTotalPower" class="text-yellow-800 font-extrabold">0</span> 万</p>
-                <p class="text-lg">敵合計戦力: <span id="enemyTotalPower" class="text-red-600 font-extrabold">0</span> 万</p>
+                <p class="text-lg mb-1">味方有効合計戦力: <span id="effectiveTotalPower" class="text-yellow-800 font-extrabold">0</span> 万</p>
+                <p class="text-lg mb-2">敵合計戦力: <span id="enemyTotalPower" class="text-red-600 font-extrabold">0</span> 万</p>
+                <p class="text-base pt-2 border-t border-yellow-200">弱体化率: <span id="debuffRatio" class="text-purple-700 font-extrabold">- %</span></p>
             </div>
 
             <!-- 必要な班数と人数 -->
@@ -404,13 +405,15 @@
             const errorMessageDiv = document.getElementById('errorMessage');
             const outputDiv = document.getElementById('output');
             const timeEstimateDiv = document.getElementById('timeEstimate');
+            const debuffRatioSpan = document.getElementById('debuffRatio');
             
             errorMessageDiv.classList.add('hidden');
             
             let totalEffectiveMyPower = 0;
             let totalEnemyPower = 0;
-            let hasValidInput = false;
+            let hasValidInput = false; // 変数宣言を修正
             let multiplierDetailsHtml = '';
+            let calculatedDebuffRatio = 0;
 
             // 1. 敵の合計戦力 (totalEnemyPower) の計算
             // 展開されている全ての敵スロットの戦力を合計する (i <= currentEnemySlotCount)
@@ -459,6 +462,13 @@
                 // 敵の戦力がゼロの場合は、計算を停止し、入力待ち状態を維持
                 hasValidInput = false;
             }
+            
+            // 3. 弱体化率の計算
+            if (totalEnemyPower > 0) {
+                calculatedDebuffRatio = Math.max(0, 1 - (totalEffectiveMyPower / totalEnemyPower)) * 100;
+            } else {
+                calculatedDebuffRatio = 0; // 敵戦力が0の場合は0%
+            }
 
 
             // 必須入力項目のチェック (有効な入力が1組でもなければエラー/入力待ち)
@@ -470,6 +480,7 @@
                 document.getElementById('neededPeople').textContent = '入力待ち';
                 document.getElementById('effectiveTotalPower').textContent = '0';
                 document.getElementById('enemyTotalPower').textContent = totalEnemyPower.toFixed(2);
+                debuffRatioSpan.textContent = '- %'; // 弱体化率もリセット
                 document.getElementById('multiplierText').innerHTML = '<p class="text-sm text-gray-500">主力ごとの属性補正率がここに入ります (入力があった組のみ)</p>';
 
                 // 結果エリアの色を入力待ち（グレー）に
@@ -486,19 +497,20 @@
             outputDiv.classList.remove('bg-gray-100', 'border-gray-300');
 
 
-            // 3. 合計戦力と属性補正詳細の表示
+            // 4. 合計戦力と属性補正詳細の表示
             
             document.getElementById('effectiveTotalPower').textContent = totalEffectiveMyPower.toFixed(2);
             document.getElementById('enemyTotalPower').textContent = totalEnemyPower.toFixed(2);
+            debuffRatioSpan.textContent = `${calculatedDebuffRatio.toFixed(2)} %`; // 弱体化率の更新
             
             // 属性補正テキストの更新
             document.getElementById('multiplierText').innerHTML = multiplierDetailsHtml;
 
 
-            // 4. 不足率と班数の計算
+            // 5. 不足率と班数の計算
             
-            // 敵戦力に対する有効戦力の不足率を計算
-            const deficitRatio = 1 - (totalEffectiveMyPower / totalEnemyPower);
+            // 敵戦力に対する有効戦力の不足率を計算 (ここで使う deficitRatio は班数計算のベース)
+            const deficitRatio = calculatedDebuffRatio / 100;
 
             let neededSquads = 0;
             let neededPeople = 0;
@@ -517,7 +529,7 @@
                 neededPeople = neededSquads * 6;
             }
 
-            // 5. 最終結果の表示
+            // 6. 最終結果の表示
             document.getElementById('neededSquads').textContent = `${neededSquads} 班`;
             document.getElementById('neededPeople').textContent = `${neededPeople} 人`;
             
@@ -534,7 +546,7 @@
                 outputDiv.classList.remove('bg-blue-100', 'border-blue-300');
                 outputDiv.classList.add('bg-green-100', 'border-green-300');
                 
-                // 6. 時間の計算と表示 (文字色を修正)
+                // 7. 時間の計算と表示
                 const timeLv1 = neededSquads * 4;
                 const timeLv2 = neededSquads * 3;
                 const timeLv3 = neededSquads * 2;
