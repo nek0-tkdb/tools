@@ -166,6 +166,7 @@
             currentScreen: 'home',
             questions: [],
             recentQuestions: [],
+            selectedCharacters: [], // 選択されたキャラ名のリスト（空=全選択）
             quizSettings: {
                 totalQuestions: 3
             },
@@ -272,6 +273,27 @@
                 
                 this.recentQuestions = questionsWithDate.slice(0, 3);
             },
+            
+            // 選択中のキャラ情報を表示
+            renderSelectedCharactersInfo() {
+                // 全キャラ選択中（selectedCharactersが空）の場合は何も表示しない
+                if (this.selectedCharacters.length === 0) {
+                    return '';
+                }
+                
+                const charList = this.selectedCharacters.map(char => 
+                    `<span class="inline-block px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full mr-1 mb-1">${char}</span>`
+                ).join('');
+                
+                return `
+                    <div class="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-xs font-medium text-gray-600 mb-2">出題対象キャラ:</p>
+                        <div class="flex flex-wrap">
+                            ${charList}
+                        </div>
+                    </div>
+                `;
+            },
 
             setScreen(screenName) {
                 const alertDiv = document.getElementById('message-alert');
@@ -329,8 +351,21 @@
                     this.showMessage("問題が登録されていません。管理画面から問題を登録してください。", 'error');
                     return;
                 }
-                const availableQuestions = [...this.questions];
                 
+                // キャラで絞り込み（selectedCharactersが空の場合は全問題）
+                let availableQuestions = [...this.questions];
+                if (this.selectedCharacters.length > 0) {
+                    availableQuestions = availableQuestions.filter(q => 
+                        this.selectedCharacters.includes(q.charName)
+                    );
+                }
+                
+                if (availableQuestions.length < 1) {
+                    this.showMessage("選択したキャラの問題がありません。", 'error');
+                    return;
+                }
+                
+                // 問題をシャッフル
                 for (let i = availableQuestions.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [availableQuestions[i], availableQuestions[j]] = [availableQuestions[j], availableQuestions[i]];
@@ -566,6 +601,9 @@
                     case 'cardList':
                         content = this.renderCardList();
                         break;
+                    case 'charSelect':
+                        content = this.renderCharSelect();
+                        break;
                     case 'admin':
                         content = isAdminAuthenticated ? this.renderAdmin() : this.renderPasswordScreen();
                         break;
@@ -634,6 +672,14 @@
                                 </button>
                             </div>
                             <p class="mt-2 text-xs text-gray-500">（最大${this.questions.length}問まで設定可能です）</p>
+                        </div>
+                        
+                        <!-- 出題キャラ選択ボタンと選択中表示 -->
+                        <div class="mb-6 border-b pb-4">
+                            <button id="nav-char-select-btn" class="w-full py-3 rounded-xl text-gray-600 border-2 border-gray-300 hover:bg-gray-100 bg-white transition duration-150 mb-2">
+                                🎯 出題キャラを選択
+                            </button>
+                            ${this.renderSelectedCharactersInfo()}
                         </div>
                         
                         <div class="space-y-4">
@@ -866,6 +912,72 @@
                 `;
             },
 
+            renderCharSelect() {
+                // キャラ名の一覧を取得（重複なし、空欄を除く）
+                const allCharNames = [...new Set(this.questions
+                    .map(q => q.charName)
+                    .filter(name => name && name.trim() !== '')
+                )].sort();
+                
+                if (allCharNames.length === 0) {
+                    return `
+                        <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 text-center">
+                            <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">出題キャラ選択</h2>
+                            <p class="text-gray-600 mb-6">キャラ名が登録された問題がありません。</p>
+                            <button id="back-home-btn" class="w-full py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                                ホームに戻る
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                // 初期状態: selectedCharactersが空なら全選択状態とする
+                const currentSelected = this.selectedCharacters.length === 0 ? allCharNames : this.selectedCharacters;
+                
+                const charCheckboxes = allCharNames.map(charName => {
+                    const isChecked = currentSelected.includes(charName);
+                    const questionCount = this.questions.filter(q => q.charName === charName).length;
+                    
+                    return `
+                        <label class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition duration-150">
+                            <input type="checkbox" value="${charName}" class="char-checkbox w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 mr-3" ${isChecked ? 'checked' : ''} />
+                            <span class="flex-1 text-gray-800">${charName}</span>
+                            <span class="text-sm text-gray-500">(${questionCount}問)</span>
+                        </label>
+                    `;
+                }).join('');
+                
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6 border-b pb-2">出題キャラ選択</h2>
+                        
+                        <p class="text-sm text-gray-600 mb-4">クイズに出題するキャラを選択してください（複数選択可）</p>
+                        
+                        <div class="flex gap-2 mb-4">
+                            <button id="select-all-chars-btn" class="flex-1 py-2 rounded-lg text-sm font-medium text-indigo-600 border-2 border-indigo-600 hover:bg-indigo-50 transition duration-150">
+                                全選択
+                            </button>
+                            <button id="deselect-all-chars-btn" class="flex-1 py-2 rounded-lg text-sm font-medium text-gray-600 border-2 border-gray-300 hover:bg-gray-50 transition duration-150">
+                                全解除
+                            </button>
+                        </div>
+                        
+                        <div id="char-checkboxes-container" class="space-y-2 mb-6 max-h-96 overflow-y-auto">
+                            ${charCheckboxes}
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <button id="apply-char-selection-btn" class="w-full py-3 rounded-xl text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md">
+                                選択を確定してホームに戻る
+                            </button>
+                            <button id="back-home-from-char-btn" class="w-full py-3 rounded-xl text-gray-600 border-2 border-gray-300 bg-white hover:bg-gray-100 transition duration-150">
+                                キャンセル
+                            </button>
+                        </div>
+                    </div>
+                `;
+            },
+
             renderAdmin() {
                 const totalQuestions = this.questions.length;
                 const currentSecretCode = this.getSecretCode();
@@ -1019,6 +1131,10 @@
                 document.getElementById('nav-card-list-btn')?.addEventListener('click', () => {
                     this.setScreen('cardList');
                 });
+                
+                document.getElementById('nav-char-select-btn')?.addEventListener('click', () => {
+                    this.setScreen('charSelect');
+                });
 
                 document.getElementById('nav-admin-btn')?.addEventListener('click', () => {
                     isFirebaseConnected ? this.setScreen('admin') : this.showMessage("デモモードでは問題管理はできません。", 'error');
@@ -1115,6 +1231,51 @@
                     if (countElement) {
                         countElement.textContent = visibleCount;
                     }
+                });
+                
+                // キャラ選択画面 - 全選択ボタン
+                document.getElementById('select-all-chars-btn')?.addEventListener('click', () => {
+                    document.querySelectorAll('.char-checkbox').forEach(cb => {
+                        cb.checked = true;
+                    });
+                });
+                
+                // キャラ選択画面 - 全解除ボタン
+                document.getElementById('deselect-all-chars-btn')?.addEventListener('click', () => {
+                    document.querySelectorAll('.char-checkbox').forEach(cb => {
+                        cb.checked = false;
+                    });
+                });
+                
+                // キャラ選択画面 - 選択確定ボタン
+                document.getElementById('apply-char-selection-btn')?.addEventListener('click', () => {
+                    const checkedBoxes = document.querySelectorAll('.char-checkbox:checked');
+                    
+                    if (checkedBoxes.length === 0) {
+                        this.showMessage("キャラが選択されていません", 'error');
+                        return;
+                    }
+                    
+                    const selectedChars = Array.from(checkedBoxes).map(cb => cb.value);
+                    
+                    // 全キャラが選択されている場合は空配列にする
+                    const allCharNames = [...new Set(this.questions
+                        .map(q => q.charName)
+                        .filter(name => name && name.trim() !== '')
+                    )];
+                    
+                    if (selectedChars.length === allCharNames.length) {
+                        this.selectedCharacters = [];
+                    } else {
+                        this.selectedCharacters = selectedChars;
+                    }
+                    
+                    this.setScreen('home');
+                });
+                
+                // キャラ選択画面 - キャンセルボタン
+                document.getElementById('back-home-from-char-btn')?.addEventListener('click', () => {
+                    this.setScreen('home');
                 });
             }
         };
