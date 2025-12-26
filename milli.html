@@ -85,7 +85,7 @@
             </div>
         </div>
 
-        <!-- キャラクター選択 -->
+        <!-- キャラクター選択、画像選択、クロップ画面などは省略せずに維持 -->
         <div v-if="view === 'char-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
@@ -105,7 +105,6 @@
             </div>
         </div>
 
-        <!-- 画像選択 -->
         <div v-if="view === 'image-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
@@ -122,7 +121,6 @@
             </div>
         </div>
 
-        <!-- 位置調整 -->
         <div v-if="view === 'crop-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
                 <div class="p-4 bg-gray-50 border-b font-bold flex justify-between items-center">
@@ -138,9 +136,7 @@
                         <img :src="currentSelectedImageUrl" class="absolute max-w-none pointer-events-none" :style="currentCropImgStyle" crossorigin="anonymous">
                     </div>
                     <div class="mt-8 space-y-6">
-                        <div>
-                            <input type="range" v-model.number="crop.zoom" min="1" max="5" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        </div>
+                        <input type="range" v-model.number="crop.zoom" min="1" max="5" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                         <div class="flex gap-4">
                             <button @click="resetCrop" class="flex-1 py-2 text-sm text-gray-500 border border-gray-200 rounded hover:bg-gray-50">中央に戻す</button>
                             <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">配置を決定</button>
@@ -150,7 +146,6 @@
             </div>
         </div>
 
-        <!-- プレビュー -->
         <div v-if="view === 'preview'" class="text-center pb-20">
             <div class="flex flex-wrap justify-center gap-4 mb-8 sticky top-4 z-10">
                 <button @click="downloadPDF" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg">PDF保存</button>
@@ -159,7 +154,7 @@
             </div>
             <div class="preview-wrapper">
                 <div id="preview-container" class="preview-scale">
-                    <div id="miri-shira-sheet" class="a4-landscape" :style="sheetGridStyle">
+                    <div id="miri-shira-sheet" class="a4-landscape" style="grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(3, 1fr); gap: 4px; padding: 10px;">
                         <div v-for="(slot, index) in slots" :key="index" class="slot-box">
                             <div class="slot-img-container">
                                 <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
@@ -199,10 +194,9 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // ESM 対応の Vue ビルドをインポートするように修正
         import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-        // ★ ご自身のFirebaseコンソールの内容に書き換えてください
+        // ★ ご自身のFirebase設定に書き換えてください
         const firebaseConfig = {
             apiKey: "AIzaSyBwflCp99P6kWbeoy52_5glAhulVP7TRmI",
             authDomain: "milli-835f0.firebaseapp.com",
@@ -215,7 +209,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = "mirishira-app-01"; // アプリを識別するID（任意）
+        const appId = "mirishira-app-01";
 
         createApp({
             setup() {
@@ -237,8 +231,10 @@
                 const csvInput = ref('');
 
                 onMounted(async () => {
-                    await signInAnonymously(auth);
-                    onAuthStateChanged(auth, (u) => { user.value = u; });
+                    try {
+                        await signInAnonymously(auth);
+                        onAuthStateChanged(auth, (u) => { user.value = u; });
+                    } catch (e) { console.error("Auth Error", e); }
                 });
 
                 watch(user, (u) => {
@@ -254,6 +250,9 @@
                                 csvInput.value = csvStr.trim();
                             }
                             loading.value = false;
+                        }, (err) => {
+                            console.error("Firestore Listen Error:", err);
+                            loading.value = false;
                         });
                     }
                 });
@@ -264,6 +263,7 @@
                 const finishSlot = () => { slots.value[currentSlotIndex.value] = { imageUrl: currentSelectedImageUrl.value, ...crop.value }; view.value = 'main'; };
                 const getSlotImgStyle = (s) => ({ width: `${s.zoom * 100}%`, height: 'auto', left: `${50 + s.x}%`, top: `${50 + s.y}%`, transform: 'translate(-50%, -50%)', position: 'absolute', maxWidth: 'none' });
                 const currentCropImgStyle = computed(() => getSlotImgStyle(crop.value));
+                
                 const startDragging = (e) => { isDragging.value = true; lastPos.value = { x: e.clientX, y: e.clientY }; e.target.setPointerCapture(e.pointerId); };
                 const doDragging = (e) => {
                     if (!isDragging.value || !cropContainer.value) return;
@@ -273,9 +273,11 @@
                     lastPos.value = { x: e.clientX, y: e.clientY };
                 };
                 const stopDragging = () => { isDragging.value = false; };
+                
                 const resetCrop = () => { crop.value = { zoom: 1, x: 0, y: 0 }; };
                 const openAdmin = () => { view.value = 'admin'; };
                 const checkPassword = () => { if (adminPassword.value === '252') isAdminAuthenticated.value = true; else alert('パスワードが違います'); };
+                
                 const importCSV = async () => {
                     saving.value = true;
                     const newData = {};
@@ -287,16 +289,23 @@
                         }
                     });
                     try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'characters'), { list: newData });
+                        const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters');
+                        await setDoc(charDocRef, { list: newData });
+                        alert("クラウドに保存しました。");
                         view.value = 'main';
+                    } catch (err) {
+                        console.error("Save Error:", err);
+                        alert("保存に失敗しました: " + err.message);
                     } finally { saving.value = false; }
                 };
+
                 const downloadPDF = async () => {
                     const canvas = await generateCanvas();
                     const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] });
                     pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794);
                     pdf.save('mirishira.pdf');
                 };
+
                 const downloadPNG = async () => {
                     const canvas = await generateCanvas();
                     const link = document.createElement('a');
@@ -304,6 +313,7 @@
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                 };
+
                 const generateCanvas = async () => {
                     const sheet = document.getElementById('miri-shira-sheet');
                     const wrapper = document.getElementById('preview-container');
@@ -318,7 +328,6 @@
                     startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
                     startDragging, doDragging, stopDragging, resetCrop, openAdmin, checkPassword, importCSV, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
-                    sheetGridStyle: { gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', gap: '4px', padding: '10px' },
                     adminPassword, isAdminAuthenticated, csvInput
                 };
             }
