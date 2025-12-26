@@ -61,7 +61,10 @@
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <p class="text-blue-800 text-sm font-bold">枠をクリックしてキャラクターを選択してください</p>
-                    <span class="text-xs text-blue-600">配置済み: {{ filledCount }}/21</span>
+                    <div class="flex items-center gap-4 mt-1">
+                        <span class="text-xs text-blue-600">配置済み: {{ filledCount }}/21</span>
+                        <button v-if="filledCount > 0" @click="clearSheet" class="text-[10px] text-red-500 hover:underline">シートをクリア</button>
+                    </div>
                 </div>
                 <div class="flex gap-2">
                     <button v-if="filledCount >= 1" @click="view = 'preview'" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-bold shadow-lg">プレビュー・保存へ</button>
@@ -82,7 +85,9 @@
                             </div>
                         </div>
                         <div class="flex-1 bg-white border-t border-gray-100 flex flex-col">
-                            <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400">名前：</div>
+                            <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400 truncate">
+                                {{ slot ? slot.charName : '名前：' }}
+                            </div>
                             <div class="flex-1 p-1 text-[8px] text-gray-400">性格/特徴：</div>
                         </div>
                     </div>
@@ -100,7 +105,14 @@
                 <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <div v-for="char in charData" :key="char.name" 
                          @click="selectCharacter(char.name)"
-                         class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50">
+                         class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50 relative group">
+                        
+                        <!-- 配置済みバッジ -->
+                        <div v-if="selectedCharNames.includes(char.name)" 
+                             class="absolute inset-0 bg-black/40 z-10 flex items-center justify-center rounded">
+                            <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow">配置済み</span>
+                        </div>
+
                         <div class="w-full aspect-square bg-gray-200 mb-2 rounded overflow-hidden">
                             <img :src="char.urls[0]" class="w-full h-full object-cover" crossorigin="anonymous">
                         </div>
@@ -127,7 +139,7 @@
             </div>
         </div>
 
-        <!-- 位置調整（ピンチズーム対応） -->
+        <!-- 位置調整 -->
         <div v-if="view === 'crop-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
                 <div class="p-4 bg-gray-50 border-b font-bold flex justify-between items-center">
@@ -172,7 +184,7 @@
                                 <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
                             </div>
                             <div class="slot-info">
-                                <div class="slot-name">名前：</div>
+                                <div class="slot-name">{{ slot ? slot.charName : '名前：' }}</div>
                                 <div class="slot-desc">性格/特徴：</div>
                             </div>
                         </div>
@@ -225,7 +237,7 @@
         createApp({
             setup() {
                 const view = ref('main');
-                const charData = ref([]); // 配列に変更
+                const charData = ref([]); 
                 const slots = ref(Array(21).fill(null));
                 const user = ref(null);
                 const loading = ref(true);
@@ -239,17 +251,29 @@
                 const isAdminAuthenticated = ref(false);
                 const csvInput = ref('');
 
-                // ドラッグ・ピンチ操作用
                 const pointers = new Map();
                 let lastPinchDiff = 0;
                 const lastPos = ref({ x: 0, y: 0 });
 
                 onMounted(async () => {
+                    const savedSlots = localStorage.getItem('mirishira_temp_slots');
+                    if (savedSlots) {
+                        try {
+                            slots.value = JSON.parse(savedSlots);
+                        } catch (e) {
+                            console.error("Failed to restore slots", e);
+                        }
+                    }
+
                     try {
                         await signInAnonymously(auth);
                         onAuthStateChanged(auth, (u) => { user.value = u; });
                     } catch (e) { console.error("Auth Error", e); }
                 });
+
+                watch(slots, (newVal) => {
+                    localStorage.setItem('mirishira_temp_slots', JSON.stringify(newVal));
+                }, { deep: true });
 
                 watch(user, (u) => {
                     if (u) {
@@ -277,6 +301,13 @@
                     csvInput.value = csvStr.trim();
                 };
 
+                // 配置済みのキャラクター名のリストを取得
+                const selectedCharNames = computed(() => {
+                    return slots.value
+                        .filter(s => s !== null)
+                        .map(s => s.charName);
+                });
+
                 const currentSelectedCharUrls = computed(() => {
                     const char = charData.value.find(c => c.name === currentSelectedCharName.value);
                     return char ? char.urls : [];
@@ -285,7 +316,16 @@
                 const startSelecting = (index) => { currentSlotIndex.value = index; view.value = 'char-select'; };
                 const selectCharacter = (name) => { currentSelectedCharName.value = name; view.value = 'image-select'; };
                 const selectImage = (url) => { currentSelectedImageUrl.value = url; crop.value = { zoom: 1, x: 0, y: 0 }; view.value = 'crop-select'; };
-                const finishSlot = () => { slots.value[currentSlotIndex.value] = { imageUrl: currentSelectedImageUrl.value, ...crop.value }; view.value = 'main'; };
+                
+                // スロット確定時にキャラ名も含めて保存
+                const finishSlot = () => { 
+                    slots.value[currentSlotIndex.value] = { 
+                        charName: currentSelectedCharName.value,
+                        imageUrl: currentSelectedImageUrl.value, 
+                        ...crop.value 
+                    }; 
+                    view.value = 'main'; 
+                };
                 
                 const getSlotImgStyle = (s) => ({ 
                     width: `${s.zoom * 100}%`, 
@@ -355,7 +395,7 @@
                     try {
                         const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters', 'global');
                         await setDoc(charDocRef, { list: newData });
-                        alert("クラウドに保存しました。登録順が保持されます。");
+                        alert("クラウドに保存しました。");
                         view.value = 'main';
                     } catch (err) {
                         alert("保存に失敗しました: " + err.message);
@@ -370,11 +410,22 @@
                 };
 
                 const downloadPNG = async () => {
-                    const canvas = await generateCanvas();
-                    const link = document.createElement('a');
-                    link.download = 'mirishira.png';
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
+                    try {
+                        const canvas = await generateCanvas();
+                        canvas.toBlob((blob) => {
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.download = 'mirishira.png';
+                            link.href = url;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                        }, 'image/png');
+                    } catch (err) {
+                        console.error("PNG Download Error:", err);
+                        alert("PNGの保存に失敗しました。");
+                    }
                 };
 
                 const generateCanvas = async () => {
@@ -386,12 +437,19 @@
                     return canvas;
                 };
 
+                const clearSheet = () => {
+                    if (confirm("シートをリセットしてよろしいですか？")) {
+                        slots.value = Array(21).fill(null);
+                    }
+                };
+
                 return {
                     view, charData, slots, loading, saving, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
                     startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
                     startDragging, doDragging, stopDragging, resetCrop, openAdmin, checkPassword, importCSV, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
-                    currentSelectedCharUrls, adminPassword, isAdminAuthenticated, csvInput
+                    currentSelectedCharUrls, adminPassword, isAdminAuthenticated, csvInput, clearSheet,
+                    selectedCharNames // 公開
                 };
             }
         }).mount('#app');
