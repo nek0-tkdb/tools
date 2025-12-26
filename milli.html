@@ -85,8 +85,9 @@
                             </div>
                         </div>
                         <div class="flex-1 bg-white border-t border-gray-100 flex flex-col">
+                            <!-- 「ミリしら」のため、実際の名前は表示せず「名前：」のラベルのみ表示 -->
                             <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400 truncate">
-                                {{ slot ? slot.charName : '名前：' }}
+                                名前：
                             </div>
                             <div class="flex-1 p-1 text-[8px] text-gray-400">性格/特徴：</div>
                         </div>
@@ -184,7 +185,8 @@
                                 <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
                             </div>
                             <div class="slot-info">
-                                <div class="slot-name">{{ slot ? slot.charName : '名前：' }}</div>
+                                <!-- プレビューでも実際の名前は伏せる -->
+                                <div class="slot-name">名前：</div>
                                 <div class="slot-desc">性格/特徴：</div>
                             </div>
                         </div>
@@ -301,7 +303,6 @@
                     csvInput.value = csvStr.trim();
                 };
 
-                // 配置済みのキャラクター名のリストを取得
                 const selectedCharNames = computed(() => {
                     return slots.value
                         .filter(s => s !== null)
@@ -317,7 +318,6 @@
                 const selectCharacter = (name) => { currentSelectedCharName.value = name; view.value = 'image-select'; };
                 const selectImage = (url) => { currentSelectedImageUrl.value = url; crop.value = { zoom: 1, x: 0, y: 0 }; view.value = 'crop-select'; };
                 
-                // スロット確定時にキャラ名も含めて保存
                 const finishSlot = () => { 
                     slots.value[currentSlotIndex.value] = { 
                         charName: currentSelectedCharName.value,
@@ -449,7 +449,7 @@
                     startDragging, doDragging, stopDragging, resetCrop, openAdmin, checkPassword, importCSV, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
                     currentSelectedCharUrls, adminPassword, isAdminAuthenticated, csvInput, clearSheet,
-                    selectedCharNames // 公開
+                    selectedCharNames 
                 };
             }
         }).mount('#app');
