@@ -49,7 +49,7 @@
 
     <div id="app" class="max-w-6xl mx-auto" v-cloak>
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800 cursor-pointer" @click="view = 'main'">東ディバ ミリしらシートメーカー</h1>
+            <h1 class="text-2xl font-bold text-gray-800 cursor-pointer" @click="view = 'main'">ミリしらシートメーカー</h1>
             <div class="flex items-center gap-3">
                 <span v-if="loading" class="text-xs text-gray-400">同期中...</span>
                 <button @click="openAdmin" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">管理画面</button>
@@ -85,7 +85,6 @@
                             </div>
                         </div>
                         <div class="flex-1 bg-white border-t border-gray-100 flex flex-col">
-                            <!-- 「ミリしら」のため、実際の名前は表示せず「名前：」のラベルのみ表示 -->
                             <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400 truncate">
                                 名前：
                             </div>
@@ -108,7 +107,6 @@
                          @click="selectCharacter(char.name)"
                          class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50 relative group">
                         
-                        <!-- 配置済みバッジ -->
                         <div v-if="selectedCharNames.includes(char.name)" 
                              class="absolute inset-0 bg-black/40 z-10 flex items-center justify-center rounded">
                             <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow">配置済み</span>
@@ -162,9 +160,16 @@
                             <input type="range" v-model.number="crop.zoom" min="1" max="5" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                             <span class="text-xs text-gray-400">拡大</span>
                         </div>
-                        <div class="flex gap-4">
+                        <div class="flex gap-2">
                             <button @click="resetCrop" class="flex-1 py-2 text-sm text-gray-500 border border-gray-200 rounded hover:bg-gray-50">リセット</button>
-                            <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">配置を決定</button>
+                            <!-- 回転ボタンを追加 -->
+                            <button @click="rotateImage" class="flex-1 py-2 text-sm text-blue-600 border border-blue-200 rounded hover:bg-blue-50 flex items-center justify-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                90度回転
+                            </button>
+                            <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-md">配置を決定</button>
                         </div>
                     </div>
                 </div>
@@ -185,7 +190,6 @@
                                 <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
                             </div>
                             <div class="slot-info">
-                                <!-- プレビューでも実際の名前は伏せる -->
                                 <div class="slot-name">名前：</div>
                                 <div class="slot-desc">性格/特徴：</div>
                             </div>
@@ -249,7 +253,7 @@
                 const user = ref(null);
                 const loading = ref(true);
                 const saving = ref(false);
-                const crop = ref({ zoom: 1, x: 0, y: 0 });
+                const crop = ref({ zoom: 1, x: 0, y: 0, rotate: 0 }); // rotateを追加
                 const currentSlotIndex = ref(null);
                 const currentSelectedCharName = ref('');
                 const currentSelectedImageUrl = ref('');
@@ -321,7 +325,11 @@
 
                 const startSelecting = (index) => { currentSlotIndex.value = index; view.value = 'char-select'; };
                 const selectCharacter = (name) => { currentSelectedCharName.value = name; view.value = 'image-select'; };
-                const selectImage = (url) => { currentSelectedImageUrl.value = url; crop.value = { zoom: 1, x: 0, y: 0 }; view.value = 'crop-select'; };
+                const selectImage = (url) => { 
+                    currentSelectedImageUrl.value = url; 
+                    crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; 
+                    view.value = 'crop-select'; 
+                };
                 
                 const finishSlot = () => { 
                     slots.value[currentSlotIndex.value] = { 
@@ -337,7 +345,8 @@
                     height: 'auto', 
                     left: `${50 + s.x}%`, 
                     top: `${50 + s.y}%`, 
-                    transform: 'translate(-50%, -50%)', 
+                    // rotateをtransformに追加
+                    transform: `translate(-50%, -50%) rotate(${s.rotate || 0}deg)`, 
                     position: 'absolute', 
                     maxWidth: 'none' 
                 });
@@ -379,7 +388,13 @@
                     if (pointers.size < 2) lastPinchDiff = 0;
                 };
                 
-                const resetCrop = () => { crop.value = { zoom: 1, x: 0, y: 0 }; };
+                const resetCrop = () => { crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; };
+                
+                // 画像回転ロジック
+                const rotateImage = () => {
+                    crop.value.rotate = (crop.value.rotate + 90) % 360;
+                };
+
                 const openAdmin = () => { view.value = 'admin'; };
                 const checkPassword = () => { if (adminPassword.value === '252') isAdminAuthenticated.value = true; else alert('パスワードが違います'); };
                 
@@ -451,7 +466,7 @@
                 return {
                     view, charData, slots, loading, saving, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
                     startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
-                    startDragging, doDragging, stopDragging, resetCrop, openAdmin, checkPassword, importCSV, downloadPDF, downloadPNG,
+                    startDragging, doDragging, stopDragging, resetCrop, rotateImage, openAdmin, checkPassword, importCSV, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
                     currentSelectedCharUrls, adminPassword, isAdminAuthenticated, csvInput, clearSheet,
                     selectedCharNames 
