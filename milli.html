@@ -98,13 +98,13 @@
                     <button @click="view = 'main'" class="text-2xl">&times;</button>
                 </div>
                 <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <div v-for="(charImages, name) in charData" :key="name" 
-                         @click="selectCharacter(name)"
+                    <div v-for="char in charData" :key="char.name" 
+                         @click="selectCharacter(char.name)"
                          class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50">
                         <div class="w-full aspect-square bg-gray-200 mb-2 rounded overflow-hidden">
-                            <img :src="charImages[0]" class="w-full h-full object-cover" crossorigin="anonymous">
+                            <img :src="char.urls[0]" class="w-full h-full object-cover" crossorigin="anonymous">
                         </div>
-                        <div class="text-xs font-bold truncate">{{ name }}</div>
+                        <div class="text-xs font-bold truncate">{{ char.name }}</div>
                     </div>
                 </div>
             </div>
@@ -118,7 +118,7 @@
                     <button @click="view = 'char-select'" class="text-blue-600 text-sm">戻る</button>
                 </div>
                 <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div v-for="url in charData[currentSelectedCharName]" :key="url" 
+                    <div v-for="url in currentSelectedCharUrls" :key="url" 
                          @click="selectImage(url)"
                          class="cursor-pointer border-4 border-transparent hover:border-blue-500 rounded overflow-hidden aspect-square">
                         <img :src="url" class="w-full h-full object-cover" crossorigin="anonymous">
@@ -208,7 +208,6 @@
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-        // ★ ご自身のFirebase設定に書き換えてください
         const firebaseConfig = {
             apiKey: "AIzaSyBwflCp99P6kWbeoy52_5glAhulVP7TRmI",
             authDomain: "milli-835f0.firebaseapp.com",
@@ -226,7 +225,7 @@
         createApp({
             setup() {
                 const view = ref('main');
-                const charData = ref({});
+                const charData = ref([]); // 配列に変更
                 const slots = ref(Array(21).fill(null));
                 const user = ref(null);
                 const loading = ref(true);
@@ -257,12 +256,8 @@
                         const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters', 'global');
                         onSnapshot(charDocRef, (snap) => {
                             if (snap.exists()) {
-                                charData.value = snap.data().list || {};
-                                let csvStr = '';
-                                for (const name in charData.value) {
-                                    charData.value[name].forEach(url => { csvStr += `${name},${url}\n`; });
-                                }
-                                csvInput.value = csvStr.trim();
+                                charData.value = Array.isArray(snap.data().list) ? snap.data().list : [];
+                                updateCsvInput();
                             }
                             loading.value = false;
                         }, (err) => {
@@ -272,10 +267,26 @@
                     }
                 });
 
+                const updateCsvInput = () => {
+                    let csvStr = '';
+                    charData.value.forEach(char => {
+                        char.urls.forEach(url => {
+                            csvStr += `${char.name},${url}\n`;
+                        });
+                    });
+                    csvInput.value = csvStr.trim();
+                };
+
+                const currentSelectedCharUrls = computed(() => {
+                    const char = charData.value.find(c => c.name === currentSelectedCharName.value);
+                    return char ? char.urls : [];
+                });
+
                 const startSelecting = (index) => { currentSlotIndex.value = index; view.value = 'char-select'; };
                 const selectCharacter = (name) => { currentSelectedCharName.value = name; view.value = 'image-select'; };
                 const selectImage = (url) => { currentSelectedImageUrl.value = url; crop.value = { zoom: 1, x: 0, y: 0 }; view.value = 'crop-select'; };
                 const finishSlot = () => { slots.value[currentSlotIndex.value] = { imageUrl: currentSelectedImageUrl.value, ...crop.value }; view.value = 'main'; };
+                
                 const getSlotImgStyle = (s) => ({ 
                     width: `${s.zoom * 100}%`, 
                     height: 'auto', 
@@ -287,7 +298,6 @@
                 });
                 const currentCropImgStyle = computed(() => getSlotImgStyle(crop.value));
                 
-                // ポインターイベントによる操作
                 const startDragging = (e) => { 
                     pointers.set(e.pointerId, e);
                     if (pointers.size === 1) {
@@ -304,21 +314,16 @@
                     pointers.set(e.pointerId, e);
 
                     if (pointers.size === 1) {
-                        // シングルタッチ: 移動
                         const rect = cropContainer.value.getBoundingClientRect();
                         crop.value.x += ((e.clientX - lastPos.value.x) / rect.width) * 100;
                         crop.value.y += ((e.clientY - lastPos.value.y) / rect.height) * 100;
                         lastPos.value = { x: e.clientX, y: e.clientY };
                     } else if (pointers.size === 2) {
-                        // マルチタッチ: ピンチズーム
                         const pts = Array.from(pointers.values());
                         const currentDiff = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
-                        
                         if (lastPinchDiff > 0) {
                             const ratio = currentDiff / lastPinchDiff;
-                            let nextZoom = crop.value.zoom * ratio;
-                            // ズーム範囲 1.0 - 5.0 に制限
-                            crop.value.zoom = Math.min(Math.max(nextZoom, 1), 5);
+                            crop.value.zoom = Math.min(Math.max(crop.value.zoom * ratio, 1), 5);
                         }
                         lastPinchDiff = currentDiff;
                     }
@@ -326,9 +331,7 @@
 
                 const stopDragging = (e) => { 
                     pointers.delete(e.pointerId);
-                    if (pointers.size < 2) {
-                        lastPinchDiff = 0;
-                    }
+                    if (pointers.size < 2) lastPinchDiff = 0;
                 };
                 
                 const resetCrop = () => { crop.value = { zoom: 1, x: 0, y: 0 }; };
@@ -337,21 +340,24 @@
                 
                 const importCSV = async () => {
                     saving.value = true;
-                    const newData = {};
+                    const newData = [];
                     csvInput.value.split('\n').forEach(line => {
                         const [name, url] = line.split(',').map(s => s.trim());
                         if (name && url) {
-                            if (!newData[name]) newData[name] = [];
-                            newData[name].push(url);
+                            const existing = newData.find(item => item.name === name);
+                            if (existing) {
+                                existing.urls.push(url);
+                            } else {
+                                newData.push({ name, urls: [url] });
+                            }
                         }
                     });
                     try {
                         const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters', 'global');
                         await setDoc(charDocRef, { list: newData });
-                        alert("クラウドに保存しました。");
+                        alert("クラウドに保存しました。登録順が保持されます。");
                         view.value = 'main';
                     } catch (err) {
-                        console.error("Save Error:", err);
                         alert("保存に失敗しました: " + err.message);
                     } finally { saving.value = false; }
                 };
@@ -385,7 +391,7 @@
                     startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
                     startDragging, doDragging, stopDragging, resetCrop, openAdmin, checkPassword, importCSV, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
-                    adminPassword, isAdminAuthenticated, csvInput
+                    currentSelectedCharUrls, adminPassword, isAdminAuthenticated, csvInput
                 };
             }
         }).mount('#app');
