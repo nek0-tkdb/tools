@@ -239,7 +239,8 @@
 
                 watch(user, (u) => {
                     if (u) {
-                        const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters');
+                        // パスを6セグメント（偶数）に修正
+                        const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters', 'global');
                         onSnapshot(charDocRef, (snap) => {
                             if (snap.exists()) {
                                 charData.value = snap.data().list || {};
@@ -289,7 +290,8 @@
                         }
                     });
                     try {
-                        const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters');
+                        // パスを6セグメント（偶数）に修正
+                        const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters', 'global');
                         await setDoc(charDocRef, { list: newData });
                         alert("クラウドに保存しました。");
                         view.value = 'main';
