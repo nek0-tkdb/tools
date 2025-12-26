@@ -199,16 +199,17 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.global.js";
+        // ESM 対応の Vue ビルドをインポートするように修正
+        import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
         // ★ ご自身のFirebaseコンソールの内容に書き換えてください
         const firebaseConfig = {
-  apiKey: "AIzaSyBwflCp99P6kWbeoy52_5glAhulVP7TRmI",
-  authDomain: "milli-835f0.firebaseapp.com",
-  projectId: "milli-835f0",
-  storageBucket: "milli-835f0.firebasestorage.app",
-  messagingSenderId: "895963869242",
-  appId: "1:895963869242:web:3d40e32de3b54b535cc503",
+            apiKey: "AIzaSyBwflCp99P6kWbeoy52_5glAhulVP7TRmI",
+            authDomain: "milli-835f0.firebaseapp.com",
+            projectId: "milli-835f0",
+            storageBucket: "milli-835f0.firebasestorage.app",
+            messagingSenderId: "895963869242",
+            appId: "1:895963869242:web:3d40e32de3b54b535cc503",
         };
 
         const app = initializeApp(firebaseConfig);
