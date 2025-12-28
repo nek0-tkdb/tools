@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>キッチンカー男子と文化祭ロマンス</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&display=swap');
+        body {
+            font-family: 'Kiwi Maru', serif;
+            background-color: #1a1a1a;
+            margin: 0;
+            overflow: hidden;
+        }
+        .text-shadow {
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+        }
+        .bg-glass {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        .fade-in {
+            animation: fadeIn 1.2s ease-in forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .character-container {
+            height: 60vh;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            width: 100%;
+            position: relative;
+            z-index: 5;
+        }
+        .character-img {
+            max-height: 100%;
+            width: auto;
+            object-fit: contain;
+            transition: all 0.5s ease;
+        }
+        .choice-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+        .choice-btn:hover {
+            background: rgba(249, 115, 22, 0.8);
+            transform: translateY(-2px);
+        }
+        .slide-layer {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 2s ease-in-out;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        .ending-overlay {
+            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.8) 100%);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const SCENARIO = [
+            {
+                id: 'prologue',
+                day: 'Prologue',
+                location: '校門前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_19.jpg',
+                name: '翔',
+                text: 'あ、センパイ。ちょっと時間ある?\n\n実はさ、文化祭でキッチンカー出すことになったんだけど、人手が足りなくて。センパイ、手伝ってくんねえ?',
+                choices: [
+                    { text: '面白そう! やってみる', points: 0, next: 'prologue_2' },
+                    { text: '忙しいんだけど…', points: 0, next: 'prologue_retry' }
+                ]
+            },
+            {
+                id: 'prologue_2',
+                day: 'Prologue',
+                location: '校門前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_19.jpg',
+                name: '翔',
+                text: 'マジで!? 助かるわ。じゃあ明日から準備始めるから、放課後来てくれよ',
+                next: 'day1'
+            },
+            {
+                id: 'prologue_retry',
+                day: 'Prologue',
+                location: '校門前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_19.jpg',
+                name: '翔',
+                text: 'そこをなんとか！オレ一人じゃ無理なんだよ。頼む、センパイ！',
+                choices: [
+                    { text: 'しょうがないなあ、手伝うよ', points: 0, next: 'prologue_2' }
+                ]
+            },
+            {
+                id: 'day1',
+                day: 'Day 1',
+                location: 'キッチンカー前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_11.jpg',
+                name: '翔',
+                text: '文化祭スペシャルメニュー、何にするか決めねえと。センパイはどう思う?',
+                choices: [
+                    { text: '定番のタコ焼きとかは?', points: 0, feedback: '「無難だけど、オレはもっと攻めたいんだよな」', next: 'day1_post' },
+                    { text: '翔くんの得意料理で勝負しようよ', points: 10, feedback: '「お、わかってんな。オレに任せろ」', next: 'day1_post' }
+                ]
+            },
+            {
+                id: 'day1_post',
+                day: 'Day 1',
+                location: 'キッチンカー前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_11.jpg',
+                name: '翔',
+                text: 'じゃあオレ特製のガパオライスとトムヤムクン麺で行くわ。アジアンフュージョンってことで',
+                next: 'day2'
+            },
+            {
+                id: 'day2',
+                day: 'Day 2',
+                location: '商店街',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei01.jpg',
+                name: '翔',
+                text: '材料仕入れに付き合ってくれ。バイクの後ろ乗ってけよ',
+                choices: [
+                    { text: 'ちょっと怖いかも…', points: 0, feedback: '「大丈夫だって。ヘルメット被ってな」', next: 'day2_post' },
+                    { text: '楽しみ! 乗りたい！', points: 10, feedback: '「そっか。じゃあ安全運転するわ」', next: 'day2_post' }
+                ]
+            },
+            {
+                id: 'day2_post',
+                day: 'Day 2',
+                location: '走行中',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei01.jpg',
+                name: '翔',
+                text: 'センパイ、しっかり掴まってろよ',
+                next: 'day3'
+            },
+            {
+                id: 'day3',
+                day: 'Day 3',
+                location: '美術室',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_11.jpg',
+                name: '翔',
+                text: 'センパイ、看板のデザインだけど、どっちがいいと思う? (A:シンプル vs B:ポップ)',
+                choices: [
+                    { text: 'Aの方が見やすくていい', points: 0, feedback: '「確かにそっちのほうが無難かもな…」', next: 'day3_post' },
+                    { text: 'Bの方が翔くんらしくて格好いい', points: 10, feedback: '「オレの好みわかってんじゃん、センパイ」', next: 'day3_post' }
+                ]
+            },
+            {
+                id: 'day3_post',
+                day: 'Day 3',
+                location: '美術室',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_11.jpg',
+                name: '翔',
+                text: 'Bで行くわ。一緒に色塗ってくれよ',
+                next: 'day4'
+            },
+            {
+                id: 'day4',
+                day: 'Day 4',
+                location: 'キッチンカー',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_spr.jpg',
+                name: '翔',
+                text: '試作作ったから、味見してくれ',
+                choices: [
+                    { text: '美味しい! でも甘みがもう少し…', points: 10, feedback: '「そっか。調整してみるわ」', next: 'day4_post' },
+                    { text: '完璧! このままでいいよ', points: 5, feedback: '「マジで? ありがとな」', next: 'day4_post' }
+                ]
+            },
+            {
+                id: 'day4_post',
+                day: 'Day 4',
+                location: 'キッチンカー',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_spr.jpg',
+                name: '翔',
+                text: 'センパイの意見、参考になるわ。味覚センスいいんだな',
+                next: 'day5'
+            },
+            {
+                id: 'day5',
+                day: 'Day 5',
+                location: 'キッチンカー前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_choco.jpg',
+                name: '翔',
+                text: '文化祭成功したらさ、何かご褒美くれんの?',
+                choices: [
+                    { text: 'ダイナーでご飯奢ってあげる', points: 0, feedback: '「一番高いメニューで頼むわ」', next: 'day6' },
+                    { text: 'バイクで一緒にデートしてあげる', points: 10, feedback: '「オレのとっておきの場所に案内するわ」', next: 'day6' }
+                ]
+            },
+            {
+                id: 'day6',
+                day: 'Day 6',
+                location: '購買部前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_tar.jpg',
+                name: '翔',
+                text: 'ヤベえ、食材の一部が届いてねえ…',
+                choices: [
+                    { text: '別の業者探そう', points: 0, feedback: '「時間ねえよ…」', next: 'day6_post' },
+                    { text: '親戚の八百屋に電話してみる', points: 15, feedback: '「マジで!? 助かる!」', next: 'day6_post' }
+                ]
+            },
+            {
+                id: 'day6_post',
+                day: 'Day 6',
+                location: '購買部前',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_tar.jpg',
+                name: '翔',
+                text: 'センパイ、本当に助かったわ。センパイがいてくれてよかった',
+                next: 'day7'
+            },
+            {
+                id: 'day7',
+                day: 'Day 7',
+                location: '廊下',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_19.jpg',
+                name: '翔',
+                text: 'チラシ配りすっか。一緒に校内回ろうぜ',
+                choices: [
+                    { text: '翔くん、頼もしいね', points: 5, feedback: '「そんなんじゃねえよ」', next: 'day7_post' },
+                    { text: '二人で頑張ろうね', points: 10, feedback: '「ああ、センパイと一緒なら完璧だわ」', next: 'day7_post' }
+                ]
+            },
+            {
+                id: 'day7_post',
+                day: 'Day 7',
+                location: '廊下',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_19.jpg',
+                name: '主人公',
+                text: '(彼、私のこと誇らしげに話してる…)',
+                next: 'day8'
+            },
+            {
+                id: 'day8',
+                day: 'Day 8',
+                location: 'キッチンカー',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei01.jpg',
+                name: '翔',
+                text: '明後日が本番か…緊張してきたわ',
+                choices: [
+                    { text: '私も翔くんがいるから頑張れる', points: 15, feedback: '「…そっか」', next: 'day9' },
+                    { text: '当日もよろしくね', points: 5, feedback: '「ああ、任せろ」', next: 'day9' }
+                ]
+            },
+            {
+                id: 'day9',
+                day: 'Day 9',
+                location: 'キッチンカー前・夕暮れ時',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_choco.jpg',
+                name: '翔',
+                text: 'この数日間、センパイと一緒に準備できて、楽しかったわ',
+                choices: [
+                    { text: '私も一緒にいれてよかったよ', points: 20, feedback: '「センパイ、オレ……何でもねえ」', next: 'day10' },
+                    { text: 'いい思い出ができてよかったね', points: 0, feedback: '「ああ、明日もよろしくな」', next: 'day10' }
+                ]
+            },
+            {
+                id: 'day10',
+                day: 'Day 10',
+                location: 'キッチンカー',
+                image: 'https://nek0-tkdb.github.io/tools/img/shohei_19.jpg',
+                name: '翔',
+                text: '完売だ! センパイのおかげだわ',
+                next: 'ending_check'
+            }
+        ];
+
+        const SLIDE_IMAGES = [
+            'https://nek0-tkdb.github.io/tools/img/shohei_19.jpg',
+            'https://nek0-tkdb.github.io/tools/img/shohei_11.jpg',
+            'https://nek0-tkdb.github.io/tools/img/shohei01.jpg',
+            'https://nek0-tkdb.github.io/tools/img/shohei_spr.jpg',
+            'https://nek0-tkdb.github.io/tools/img/shohei_choco.jpg',
+            'https://nek0-tkdb.github.io/tools/img/shohei_tar.jpg'
+        ];
+
+        const GOOD_ENDING_FINAL_IMG = 'https://nek0-tkdb.github.io/tools/img/shohei_hol.jpg';
+
+        const GOOD_ENDING_LINES = [
+            { name: '翔', text: 'センパイ、よかったら後夜祭で花火一緒に見ねえ?' },
+            { name: '主人公', text: 'うん、行きたい。' },
+            { name: 'ナレーション', text: '校庭の隅。夜空に色とりどりの打ち上げ花火が上がる。' },
+            { name: '翔', text: 'なあ、センパイ。オレ、この文化祭でセンパイともっと一緒にいたいって思ったんだ。' },
+            { name: '翔', text: '……センパイのこと、好きだ。付き合ってくれねえ?' },
+            { name: '主人公', text: '私も、翔くんのことが好きだよ。' },
+            { name: 'ナレーション', text: '花火の音に紛れて、二人は静かに微笑み合った。' }
+        ];
+
+        const BAD_ENDING_LINES = [
+            { name: '翔', text: 'センパイ、手伝ってくれてありがとな。助かったわ。' },
+            { name: '主人公', text: 'うん、楽しかったよ。' },
+            { name: '翔', text: 'じゃあな。また学校でな。' },
+            { name: '主人公', text: '（……もっと積極的に関われば、違ったのかな……）' },
+            { name: 'ナレーション', text: '特別な進展はなく、文化祭のキッチンカーは幕を閉じた。' }
+        ];
+
+        function App() {
+            const [gameState, setGameState] = useState('title');
+            const [currentSceneId, setCurrentSceneId] = useState('prologue');
+            const [affection, setAffection] = useState(0);
+            const [isBgmOn, setIsBgmOn] = useState(false);
+            const [feedbackText, setFeedbackText] = useState('');
+            const [slideIndex, setSlideIndex] = useState(0);
+            const [endingStep, setEndingStep] = useState(0);
+            const [isSlideshowActive, setIsSlideshowActive] = useState(false);
+            const [endingFinished, setEndingFinished] = useState(false);
+            
+            const audioRef = useRef(null);
+            const currentScene = SCENARIO.find(s => s.id === currentSceneId) || SCENARIO[0];
+
+            useEffect(() => {
+                if (audioRef.current) {
+                    audioRef.current.loop = true;
+                    if (isBgmOn) {
+                        audioRef.current.play().catch(e => console.log("Play blocked"));
+                    } else {
+                        audioRef.current.pause();
+                    }
+                }
+            }, [isBgmOn, gameState]);
+
+            // スライドショーの切り替えロジック
+            useEffect(() => {
+                let interval;
+                if (isSlideshowActive) {
+                    interval = setInterval(() => {
+                        setSlideIndex(prev => (prev + 1) % SLIDE_IMAGES.length);
+                    }, 3500); 
+                }
+                return () => clearInterval(interval);
+            }, [isSlideshowActive]);
+
+            const handleStart = () => {
+                setGameState('playing');
+                setCurrentSceneId('prologue');
+                setAffection(0);
+                setSlideIndex(0);
+                setEndingStep(0);
+                setIsSlideshowActive(false);
+                setEndingFinished(false);
+            };
+
+            const handleChoice = (choice) => {
+                setAffection(prev => prev + (choice.points || 0));
+                if (choice.feedback) {
+                    setFeedbackText(choice.feedback);
+                    setTimeout(() => {
+                        setFeedbackText('');
+                        proceed(choice.next);
+                    }, 1500);
+                } else {
+                    proceed(choice.next);
+                }
+            };
+
+            const proceed = (nextId) => {
+                if (nextId === 'ending_check') {
+                    setGameState('ending');
+                } else {
+                    setCurrentSceneId(nextId);
+                }
+            };
+
+            const getBgmUrl = () => {
+                if (gameState === 'ending' && affection >= 100) {
+                    return "https://nek0-tkdb.github.io/tools/media/kirakira.mp3";
+                }
+                return "https://nek0-tkdb.github.io/tools/media/kitchen_bgm.mp3";
+            };
+
+            const nextEndingStep = () => {
+                const isGoodEnd = affection >= 100;
+                const lines = isGoodEnd ? GOOD_ENDING_LINES : BAD_ENDING_LINES;
+                
+                if (endingStep < lines.length - 1) {
+                    setEndingStep(prev => prev + 1);
+                } else {
+                    if (isGoodEnd) {
+                        // グッドエンドの場合、セリフ終了後にスライドショーへ
+                        setIsSlideshowActive(true);
+                        setEndingFinished(true);
+                    } else {
+                        // バッドエンドはそのまま終了
+                        setEndingFinished(true);
+                    }
+                }
+            };
+
+            if (gameState === 'title') {
+                return (
+                    <div className="h-screen w-screen flex flex-col items-center justify-center bg-cover bg-center relative" style={{backgroundImage: `url(${SCENARIO[0].image})`}}>
+                        <div className="absolute inset-0 bg-black/60"></div>
+                        <div className="z-10 text-center text-white px-4">
+                            <h1 className="text-4xl md:text-6xl font-bold mb-8 text-shadow tracking-widest leading-tight">
+                                キッチンカー男子と<br/>文化祭ロマンス
+                            </h1>
+                            <button 
+                                onClick={handleStart}
+                                className="bg-orange-500 hover:bg-orange-600 text-white px-12 py-4 rounded-full text-xl font-bold transition-transform hover:scale-105 shadow-2xl mb-6"
+                            >
+                                物語を始める
+                            </button>
+                            <div className="flex items-center justify-center gap-2">
+                                <button 
+                                    onClick={() => setIsBgmOn(!isBgmOn)}
+                                    className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg hover:bg-white/20 transition text-sm font-bold"
+                                >
+                                    {isBgmOn ? "🔊 BGM: ON" : "🔇 BGM: OFF"}
+                                </button>
+                            </div>
+                        </div>
+                        <audio ref={audioRef} src={getBgmUrl()} />
+                    </div>
+                );
+            }
+
+            if (gameState === 'ending') {
+                const isGoodEnd = affection >= 100;
+                const lines = isGoodEnd ? GOOD_ENDING_LINES : BAD_ENDING_LINES;
+                const currentLine = !endingFinished ? lines[endingStep] : null;
+
+                return (
+                    <div className="h-screen w-screen flex flex-col items-center justify-center bg-black relative overflow-hidden">
+                        {/* 背景レイヤー */}
+                        {!isSlideshowActive ? (
+                            // セリフ進行中の背景
+                            <div 
+                                className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+                                style={{
+                                    backgroundImage: `url(${isGoodEnd ? GOOD_ENDING_FINAL_IMG : SCENARIO[0].image})`,
+                                    opacity: 0.6
+                                }}
+                            />
+                        ) : (
+                            // スライドショーの背景
+                            SLIDE_IMAGES.map((img, idx) => (
+                                <div 
+                                    key={idx}
+                                    className="slide-layer"
+                                    style={{
+                                        backgroundImage: `url(${img})`,
+                                        opacity: slideIndex === idx ? 0.6 : 0
+                                    }}
+                                />
+                            ))
+                        )}
+                        
+                        <div className="absolute inset-0 ending-overlay"></div>
+                        <audio ref={audioRef} src={getBgmUrl()} autoPlay={isBgmOn} loop />
+                        
+                        <div className="relative z-10 h-full w-full flex flex-col items-center justify-end">
+                            {/* HUD */}
+                            <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
+                                <div className={`bg-black/70 px-4 py-1 rounded-full text-xs border uppercase tracking-widest font-bold ${isGoodEnd ? 'text-pink-400 border-pink-400/30' : 'text-gray-400 border-white/10'}`}>
+                                    {isGoodEnd ? '♥ Happy Ending' : 'Normal Ending'}
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={() => setIsBgmOn(!isBgmOn)}
+                                className="absolute top-6 right-6 bg-black/70 text-white p-3 rounded-full hover:bg-black/90 z-20 border border-white/10"
+                            >
+                                {isBgmOn ? "🔊" : "🔇"}
+                            </button>
+
+                            {/* Dialogue or Result Box */}
+                            <div className="w-full max-w-4xl px-4 relative z-20 pb-10 fade-in">
+                                <div className="bg-glass min-h-[180px] p-6 md:p-10 rounded-3xl border border-white/20 text-white shadow-2xl flex flex-col transition-all">
+                                    {!endingFinished ? (
+                                        <>
+                                            <div className={`absolute top-[-1.4rem] left-10 px-10 py-1.5 rounded-xl font-bold text-shadow shadow-xl tracking-wider ${currentLine.name === '翔' ? 'bg-orange-600' : currentLine.name === 'ナレーション' ? 'bg-gray-700' : 'bg-pink-600'}`}>
+                                                {currentLine.name}
+                                            </div>
+                                            
+                                            <div className="flex-grow">
+                                                <p className="text-xl md:text-2xl leading-relaxed text-shadow drop-shadow-sm font-medium whitespace-pre-wrap">
+                                                    {currentLine.text}
+                                                </p>
+                                            </div>
+
+                                            <button 
+                                                onClick={nextEndingStep}
+                                                className="mt-6 w-full bg-white/5 hover:bg-white/10 p-4 rounded-2xl text-center transition animate-pulse font-bold tracking-[0.3em] text-orange-400"
+                                            >
+                                                NEXT
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-6 text-center animate-fade-in">
+                                            <h2 className={`text-4xl font-bold mb-4 tracking-widest ${isGoodEnd ? 'text-pink-400' : 'text-gray-400'}`}>
+                                                {isGoodEnd ? 'EPILOGUE' : 'FINISH'}
+                                            </h2>
+                                            <p className="text-sm opacity-80 mb-8 italic">
+                                                {isGoodEnd ? '～ 文化祭の思い出と共に ～' : `最終親密度: ${affection} / 100`}
+                                            </p>
+                                            <button 
+                                                onClick={() => setGameState('title')}
+                                                className="bg-white/10 hover:bg-orange-500 text-white px-12 py-4 rounded-full flex items-center gap-2 transition-all font-bold border border-white/20"
+                                            >
+                                                タイトルに戻る
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-screen w-screen bg-black relative flex flex-col items-center overflow-hidden">
+                    <audio ref={audioRef} src={getBgmUrl()} />
+                    <div className="absolute inset-0 bg-cover bg-center transition-all duration-1000 opacity-40 blur-sm" style={{backgroundImage: `url(${currentScene.image})`}}></div>
+                    
+                    <div className="relative z-10 h-full w-full flex flex-col items-center justify-end">
+                        <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
+                            <div className="bg-black/70 text-white px-4 py-1 rounded-full text-xs border border-white/10 uppercase tracking-widest font-bold shadow-lg">
+                                {currentScene.day} | {currentScene.location}
+                            </div>
+                            <div className="bg-black/70 text-pink-400 px-4 py-1 rounded-full text-xs border border-pink-400/30 flex items-center gap-2 font-bold shadow-lg">
+                                ♥ {affection}
+                            </div>
+                        </div>
+
+                        <button 
+                            onClick={() => setIsBgmOn(!isBgmOn)}
+                            className="absolute top-6 right-6 bg-black/70 text-white p-3 rounded-full hover:bg-black/90 z-20 border border-white/10 shadow-lg"
+                        >
+                            {isBgmOn ? "🔊" : "🔇"}
+                        </button>
+
+                        <div className="character-container">
+                            <img 
+                                src={currentScene.image} 
+                                alt={currentScene.name}
+                                className="character-img fade-in drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]"
+                                key={currentScene.image}
+                            />
+                        </div>
+
+                        <div className="w-full max-w-4xl px-4 relative z-20 pb-10">
+                            <div className="bg-glass min-h-[170px] p-6 md:p-10 rounded-3xl border border-white/10 text-white shadow-2xl flex flex-col">
+                                <div className="absolute top-[-1.4rem] left-10 bg-orange-600 px-10 py-1.5 rounded-xl font-bold text-shadow shadow-xl tracking-wider">
+                                    {currentScene.name}
+                                </div>
+                                
+                                <div className="flex-grow overflow-y-auto max-h-[130px] pr-2 custom-scrollbar">
+                                    <p className="text-xl md:text-2xl leading-relaxed text-shadow drop-shadow-sm font-medium whitespace-pre-wrap">
+                                        {feedbackText || currentScene.text}
+                                    </p>
+                                </div>
+
+                                {!feedbackText && (
+                                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {currentScene.choices ? (
+                                            currentScene.choices.map((choice, i) => (
+                                                <button 
+                                                    key={i}
+                                                    onClick={() => handleChoice(choice)}
+                                                    className="choice-btn p-4 rounded-2xl text-left transition-all text-shadow font-bold text-lg md:text-xl shadow-md"
+                                                >
+                                                    {choice.text}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <button 
+                                                onClick={() => proceed(currentScene.next)}
+                                                className="w-full bg-white/5 hover:bg-white/10 p-4 rounded-2xl text-center transition animate-pulse font-bold tracking-[0.3em] text-orange-400"
+                                            >
+                                                TAP TO NEXT
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
