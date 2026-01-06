@@ -44,7 +44,7 @@
 
         .header {
             background: linear-gradient(135deg, #ff9ed4 0%, #c9a0dc 100%);
-            padding: 12px 20px;
+            padding: 8px 15px;
             text-align: center;
             position: relative;
             overflow: hidden;
@@ -54,57 +54,61 @@
         .header::before {
             content: '✨';
             position: absolute;
-            font-size: 25px;
+            font-size: 18px;
             opacity: 0.2;
             animation: float 3s ease-in-out infinite;
         }
 
-        .header::before { left: 10px; top: 5px; }
+        .header::before { left: 8px; top: 3px; }
 
         .header::after {
             content: '🌸';
             position: absolute;
-            font-size: 25px;
+            font-size: 18px;
             opacity: 0.2;
-            right: 10px;
-            top: 5px;
+            right: 8px;
+            top: 3px;
             animation: float 4s ease-in-out infinite;
         }
 
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+            50% { transform: translateY(-10px); }
         }
 
         h1 {
             color: white;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
             position: relative;
             z-index: 1;
-            margin-bottom: 2px;
+            margin: 0;
+            line-height: 1.2;
         }
 
         .subtitle {
             color: rgba(255, 255, 255, 0.9);
-            font-size: 11px;
+            font-size: 10px;
             margin-top: 2px;
             font-weight: 400;
+            line-height: 1.2;
         }
 
         .unofficial-notice {
             color: rgba(255, 255, 255, 0.8);
-            font-size: 9px;
-            margin-top: 4px;
+            font-size: 8px;
+            margin-top: 2px;
             font-weight: 300;
             font-style: italic;
+            line-height: 1.2;
         }
 
         .cat-icon {
-            font-size: 24px;
+            font-size: 20px;
             animation: wave 2s ease-in-out infinite;
-            margin-bottom: 3px;
+            margin: 0;
+            line-height: 1;
         }
         
         @media (min-width: 769px) {
@@ -605,7 +609,7 @@
         function initializeChat() {
             const chatContainer = document.getElementById('chatContainer');
             chatContainer.innerHTML = '';
-            addMessage('bot', 'こんにちは！🐱 東京ディバンカーのFAQボットです。<br><small style="color: #999;">※このボットは非公式のファンメイドです。公式情報は<a href="https://tokyo-debunker.jp/" target="_blank" style="color: #ff9ed4;">公式サイト</a>をご確認ください。</small><br><br>何について知りたいですか？', 'categories');
+            addMessage('bot', 'こんにちは！🐱 東京ディバンカーのFAQボットです。<br><small style="color: #999;">※このボットは非公式のファンメイドです。</small><br><br>何について知りたいですか？', 'categories');
         }
 
         // エラー表示
