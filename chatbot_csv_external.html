@@ -16,43 +16,58 @@
             font-family: 'Quicksand', 'Noto Sans JP', sans-serif;
             background: linear-gradient(135deg, #ffd4e5 0%, #c9a0dc 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }
 
         .container {
             max-width: 900px;
             margin: 0 auto;
             background: white;
-            border-radius: 30px;
+            border-radius: 20px;
             box-shadow: 0 20px 60px rgba(255, 158, 212, 0.3);
             overflow: hidden;
+            height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+            
+            .container {
+                height: 100vh;
+                border-radius: 0;
+            }
         }
 
         .header {
             background: linear-gradient(135deg, #ff9ed4 0%, #c9a0dc 100%);
-            padding: 30px;
+            padding: 20px;
             text-align: center;
             position: relative;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .header::before {
             content: '✨';
             position: absolute;
-            font-size: 60px;
+            font-size: 40px;
             opacity: 0.2;
             animation: float 3s ease-in-out infinite;
         }
 
-        .header::before { left: 20px; top: 10px; }
+        .header::before { left: 10px; top: 5px; }
 
         .header::after {
             content: '🌸';
             position: absolute;
-            font-size: 50px;
+            font-size: 35px;
             opacity: 0.2;
-            right: 30px;
-            top: 20px;
+            right: 10px;
+            top: 5px;
             animation: float 4s ease-in-out infinite;
         }
 
@@ -63,7 +78,7 @@
 
         h1 {
             color: white;
-            font-size: 28px;
+            font-size: 20px;
             font-weight: 600;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
             position: relative;
@@ -72,14 +87,45 @@
 
         .subtitle {
             color: rgba(255, 255, 255, 0.9);
-            font-size: 14px;
-            margin-top: 8px;
+            font-size: 12px;
+            margin-top: 5px;
             font-weight: 400;
         }
 
         .cat-icon {
-            font-size: 40px;
+            font-size: 30px;
             animation: wave 2s ease-in-out infinite;
+        }
+        
+        @media (min-width: 769px) {
+            .header {
+                padding: 30px;
+            }
+            
+            .header::before {
+                font-size: 60px;
+                left: 20px;
+                top: 10px;
+            }
+            
+            .header::after {
+                font-size: 50px;
+                right: 30px;
+                top: 20px;
+            }
+            
+            h1 {
+                font-size: 28px;
+            }
+            
+            .subtitle {
+                font-size: 14px;
+                margin-top: 8px;
+            }
+            
+            .cat-icon {
+                font-size: 40px;
+            }
         }
 
         @keyframes wave {
@@ -89,15 +135,15 @@
         }
 
         .chat-container {
-            height: 500px;
+            flex: 1;
             overflow-y: auto;
-            padding: 30px;
+            padding: 15px;
             background: #fafafa;
             scroll-behavior: smooth;
         }
 
         .chat-container::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         .chat-container::-webkit-scrollbar-thumb {
@@ -106,7 +152,19 @@
         }
 
         .message {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @media (min-width: 769px) {
+            .chat-container {
+                padding: 30px;
+            }
+            
+            .message {
+                margin-bottom: 20px;
+            }
+        }
             animation: slideIn 0.3s ease-out;
         }
 
@@ -123,7 +181,7 @@
 
         .bot-message, .user-message {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             align-items: flex-start;
         }
 
@@ -132,13 +190,13 @@
         }
 
         .avatar {
-            width: 45px;
-            height: 45px;
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 18px;
             flex-shrink: 0;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
@@ -152,51 +210,117 @@
         }
 
         .message-content {
-            max-width: 70%;
-            padding: 15px 20px;
-            border-radius: 20px;
-            line-height: 1.6;
-            font-size: 15px;
+            max-width: 75%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            line-height: 1.5;
+            font-size: 13px;
         }
 
         .bot-message .message-content {
             background: white;
             border: 2px solid #ff9ed4;
-            border-radius: 20px 20px 20px 5px;
+            border-radius: 15px 15px 15px 5px;
             box-shadow: 0 4px 12px rgba(255, 158, 212, 0.2);
         }
 
         .user-message .message-content {
             background: linear-gradient(135deg, #ff9ed4, #ffa8d8);
             color: white;
-            border-radius: 20px 20px 5px 20px;
+            border-radius: 15px 15px 5px 15px;
+            box-shadow: 0 4px 12px rgba(255, 158, 212, 0.3);
+        }
+        
+        @media (min-width: 769px) {
+            .bot-message, .user-message {
+                gap: 12px;
+            }
+            
+            .avatar {
+                width: 45px;
+                height: 45px;
+                font-size: 24px;
+            }
+            
+            .message-content {
+                max-width: 70%;
+                padding: 15px 20px;
+                border-radius: 20px;
+                font-size: 15px;
+                line-height: 1.6;
+            }
+            
+            .bot-message .message-content {
+                border-radius: 20px 20px 20px 5px;
+            }
+            
+            .user-message .message-content {
+                border-radius: 20px 20px 5px 20px;
+            }
+        }
             box-shadow: 0 4px 12px rgba(255, 158, 212, 0.3);
         }
 
         .category-buttons {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 6px;
+            margin-top: 10px;
         }
 
         .category-btn {
             background: linear-gradient(135deg, #ffd4e5, #ffb8d4);
             color: #d946a6;
             border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
+            padding: 6px 12px;
+            border-radius: 15px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 500;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 8px rgba(255, 158, 212, 0.2);
+            box-shadow: 0 2px 6px rgba(255, 158, 212, 0.2);
         }
 
         .category-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(255, 158, 212, 0.4);
+            box-shadow: 0 4px 12px rgba(255, 158, 212, 0.4);
             background: linear-gradient(135deg, #ffb8d4, #ff9ed4);
+        }
+        
+        .yes-btn {
+            background: linear-gradient(135deg, #a0dcff, #6eb5ff) !important;
+            color: white !important;
+        }
+        
+        .yes-btn:hover {
+            background: linear-gradient(135deg, #6eb5ff, #4a9eff) !important;
+        }
+        
+        .no-btn {
+            background: linear-gradient(135deg, #e0e0e0, #c0c0c0) !important;
+            color: #666 !important;
+        }
+        
+        .no-btn:hover {
+            background: linear-gradient(135deg, #c0c0c0, #a0a0a0) !important;
+        }
+        
+        @media (min-width: 769px) {
+            .category-buttons {
+                gap: 10px;
+                margin-top: 15px;
+            }
+            
+            .category-btn {
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-size: 14px;
+                box-shadow: 0 4px 8px rgba(255, 158, 212, 0.2);
+            }
+            
+            .category-btn:hover {
+                box-shadow: 0 6px 16px rgba(255, 158, 212, 0.4);
+            }
         }
 
         .typing-indicator {
@@ -242,23 +366,24 @@
         }
 
         .input-area {
-            padding: 25px 30px;
+            padding: 15px;
             background: white;
             border-top: 2px solid #ffd4e5;
+            flex-shrink: 0;
         }
 
         .input-group {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             align-items: center;
         }
 
         #userInput {
             flex: 1;
-            padding: 15px 20px;
+            padding: 10px 15px;
             border: 2px solid #ffd4e5;
-            border-radius: 25px;
-            font-size: 15px;
+            border-radius: 20px;
+            font-size: 13px;
             font-family: 'Noto Sans JP', sans-serif;
             outline: none;
             transition: all 0.3s ease;
@@ -273,10 +398,10 @@
             background: linear-gradient(135deg, #ff9ed4, #c9a0dc);
             color: white;
             border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
+            padding: 10px 20px;
+            border-radius: 20px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(255, 158, 212, 0.3);
@@ -290,43 +415,68 @@
         #sendBtn:active {
             transform: translateY(0);
         }
+        
+        @media (min-width: 769px) {
+            .input-area {
+                padding: 25px 30px;
+            }
+            
+            .input-group {
+                gap: 12px;
+            }
+            
+            #userInput {
+                padding: 15px 20px;
+                border-radius: 25px;
+                font-size: 15px;
+            }
+            
+            #sendBtn {
+                padding: 15px 30px;
+                border-radius: 25px;
+                font-size: 15px;
+            }
+        }
 
         .faq-item {
             background: #fff;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 15px;
-            border-left: 4px solid #ff9ed4;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 12px;
+            border-left: 3px solid #ff9ed4;
             box-shadow: 0 2px 8px rgba(255, 158, 212, 0.1);
         }
 
         .faq-title {
             font-weight: 600;
             color: #d946a6;
-            margin-bottom: 8px;
-            font-size: 16px;
+            margin-bottom: 6px;
+            font-size: 13px;
         }
 
         .faq-content {
             color: #666;
-            line-height: 1.6;
-            font-size: 14px;
+            line-height: 1.5;
+            font-size: 12px;
         }
-
-        .loading-message {
-            text-align: center;
-            padding: 30px;
-            color: #ff9ed4;
-            font-size: 16px;
-        }
-
-        .error-message {
-            background: #ffe0e0;
-            color: #d94646;
-            padding: 15px;
-            border-radius: 15px;
-            margin: 15px 0;
-            border-left: 4px solid #d94646;
+        
+        @media (min-width: 769px) {
+            .faq-item {
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 15px;
+                border-left: 4px solid #ff9ed4;
+            }
+            
+            .faq-title {
+                margin-bottom: 8px;
+                font-size: 16px;
+            }
+            
+            .faq-content {
+                line-height: 1.6;
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -356,7 +506,7 @@
                 <input 
                     type="text" 
                     id="userInput" 
-                    placeholder="キーワードを入力してください...✨"
+                    placeholder="質問を入力してください...✨"
                     disabled
                 >
                 <button id="sendBtn" onclick="sendMessage()" disabled>送信 💌</button>
@@ -365,115 +515,58 @@
     </div>
 
     <script>
+        // FAQデータを直接埋め込み（JSONから変換）
         let faqData = [];
         let categories = new Set();
+        
 
-        // CSVファイルを読み込む
-        async function loadCSV() {
+        // データ初期化
+        function initializeData() {
             try {
-                const response = await fetch('faq_data.csv');
-                if (!response.ok) {
-                    throw new Error('CSVファイルが見つかりません');
-                }
-                const csvText = await response.text();
-                parseCSV(csvText);
+                faqData = JSON.parse(FAQ_DATA_JSON);
+                faqData.forEach(faq => {
+                    categories.add(faq.category);
+                });
                 initializeChat();
             } catch (error) {
-                console.error('CSV読み込みエラー:', error);
-                showError('FAQデータの読み込みに失敗しました。faq_data.csvファイルが同じフォルダにあることを確認してください。');
+                console.error('データ初期化エラー:', error);
+                showError('FAQデータの読み込みに失敗しました。');
             }
-        }
-
-        // CSVをパース
-        function parseCSV(csvText) {
-            const lines = csvText.split('\n');
-            // ヘッダー行をスキップ
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-
-                // CSVパース（カンマで分割、ダブルクォートを考慮）
-                const columns = parseCSVLine(line);
-                if (columns.length >= 5) {
-                    const category = columns[0];
-                    const keywords = columns[1].split('|').map(k => k.trim());
-                    const title = columns[2];
-                    const content = columns[3];
-                    const priority = parseInt(columns[4]) || 1;
-
-                    faqData.push({
-                        category,
-                        keywords,
-                        title,
-                        content,
-                        priority
-                    });
-
-                    categories.add(category);
-                }
-            }
-        }
-
-        // CSV行をパース（ダブルクォート対応）
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                const nextChar = line[i + 1];
-
-                if (char === '"') {
-                    if (inQuotes && nextChar === '"') {
-                        current += '"';
-                        i++;
-                    } else {
-                        inQuotes = !inQuotes;
-                    }
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current);
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            result.push(current);
-            return result;
-        }
-
-        // エラー表示
-        function showError(message) {
-            const chatContainer = document.getElementById('chatContainer');
-            chatContainer.innerHTML = `<div class="error-message">${message}</div>`;
         }
 
         // チャット初期化
         function initializeChat() {
             const chatContainer = document.getElementById('chatContainer');
-            const userInput = document.getElementById('userInput');
-            const sendBtn = document.getElementById('sendBtn');
-
             chatContainer.innerHTML = '';
-            userInput.disabled = false;
-            sendBtn.disabled = false;
+            addMessage('bot', 'こんにちは！🐱 東京ディバンカーのFAQボットです。何について知りたいですか？', 'categories');
+        }
 
-            addMessage('bot', 'こんにちは！🐱 東京ディバンカーのFAQボットです。何について知りたいですか？', true);
+        // エラー表示
+        function showError(message) {
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.innerHTML = `<div style="text-align: center; padding: 30px; color: #d94646;">${message}</div>`;
         }
 
         // メッセージを追加
-        function addMessage(sender, content, showCategories = false) {
+        function addMessage(sender, content, buttonType = 'none') {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
 
             if (sender === 'bot') {
+                let buttons = '';
+                if (buttonType === 'categories') {
+                    buttons = createCategoryButtons();
+                } else if (buttonType === 'yesno') {
+                    buttons = createYesNoButtons();
+                }
+                
                 messageDiv.innerHTML = `
                     <div class="bot-message">
                         <div class="avatar bot-avatar">🐱</div>
                         <div class="message-content">
                             ${content}
-                            ${showCategories ? createCategoryButtons() : ''}
+                            ${buttons}
                         </div>
                     </div>
                 `;
@@ -500,7 +593,33 @@
             return html;
         }
 
-        // タイピングインジケーターの表示/非表示
+        // 「ある」「ない」ボタンを作成
+        function createYesNoButtons() {
+            return `
+                <div class="category-buttons">
+                    <button class="category-btn yes-btn" onclick="showCategories()">ある 💡</button>
+                    <button class="category-btn no-btn" onclick="handleNoMore()">大丈夫です 👌</button>
+                </div>
+            `;
+        }
+
+        // カテゴリを表示
+        function showCategories() {
+            addMessage('user', 'カテゴリを見せてください');
+            setTimeout(() => {
+                addMessage('bot', 'こちらからお選びください！✨', 'categories');
+            }, 300);
+        }
+
+        // 「ない」を選択した場合
+        function handleNoMore() {
+            addMessage('user', '大丈夫です');
+            setTimeout(() => {
+                addMessage('bot', 'またいつでも聞いてくださいね！🐱💕');
+            }, 300);
+        }
+
+        // タイピングインジケーター
         function showTypingIndicator() {
             document.getElementById('typingIndicator').classList.add('active');
             const chatContainer = document.getElementById('chatContainer');
@@ -523,7 +642,6 @@
 
             showTypingIndicator();
 
-            // ユーザーの入力を処理
             setTimeout(() => {
                 hideTypingIndicator();
                 processQuery(query);
@@ -535,7 +653,7 @@
             const results = searchFAQ(query);
 
             if (results.length === 0) {
-                addMessage('bot', '申し訳ありません。該当する情報が見つかりませんでした。😿<br>別のキーワードで試してみてください。', true);
+                addMessage('bot', '申し訳ありません。該当する情報が見つかりませんでした。😿<br>別のキーワードで試してみてください。', 'categories');
                 return;
             }
 
@@ -561,7 +679,7 @@
             
             // 再質問を促す
             setTimeout(() => {
-                addMessage('bot', '他に何か知りたいことはありますか？✨', true);
+                addMessage('bot', '他に何か知りたいことはありますか？✨', 'yesno');
             }, 500);
         }
 
@@ -634,7 +752,7 @@
                 
                 // 再質問を促す
                 setTimeout(() => {
-                    addMessage('bot', '他に何か知りたいことはありますか？✨', true);
+                    addMessage('bot', '他に何か知りたいことはありますか？✨', 'yesno');
                 }, 500);
             }, 800);
         }
@@ -648,8 +766,8 @@
                 }
             });
 
-            // CSVを読み込む
-            loadCSV();
+            // データ初期化
+            initializeData();
         });
     </script>
 </body>
