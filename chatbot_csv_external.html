@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>東京ディバンカー 非公式 FAQ チャットボット</title>
+    <title>東京ディバンカー FAQ チャットボット</title>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -92,6 +92,14 @@
             font-weight: 400;
         }
 
+        .unofficial-notice {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 10px;
+            margin-top: 8px;
+            font-weight: 300;
+            font-style: italic;
+        }
+
         .cat-icon {
             font-size: 30px;
             animation: wave 2s ease-in-out infinite;
@@ -121,6 +129,11 @@
             .subtitle {
                 font-size: 14px;
                 margin-top: 8px;
+            }
+            
+            .unofficial-notice {
+                font-size: 11px;
+                margin-top: 10px;
             }
             
             .cat-icon {
@@ -434,7 +447,7 @@
             }
         }
 
-        .非公式FAQ-item {
+        .faq-item {
             background: #fff;
             padding: 10px;
             margin: 8px 0;
@@ -443,33 +456,33 @@
             box-shadow: 0 2px 8px rgba(255, 158, 212, 0.1);
         }
 
-        .非公式FAQ-title {
+        .faq-title {
             font-weight: 600;
             color: #d946a6;
             margin-bottom: 6px;
             font-size: 13px;
         }
 
-        .非公式FAQ-content {
+        .faq-content {
             color: #666;
             line-height: 1.5;
             font-size: 12px;
         }
         
         @media (min-width: 769px) {
-            .非公式FAQ-item {
+            .faq-item {
                 padding: 15px;
                 margin: 10px 0;
                 border-radius: 15px;
                 border-left: 4px solid #ff9ed4;
             }
             
-            .非公式FAQ-title {
+            .faq-title {
                 margin-bottom: 8px;
                 font-size: 16px;
             }
             
-            .非公式FAQ-content {
+            .faq-content {
                 line-height: 1.6;
                 font-size: 14px;
             }
@@ -486,8 +499,9 @@
     <div class="container">
         <div class="header">
             <div class="cat-icon">🐱</div>
-            <h1>東京ディバンカー 非公式FAQ</h1>
+            <h1>東京ディバンカー FAQ</h1>
             <p class="subtitle">何でも聞いてね！</p>
+            <p class="unofficial-notice">※ 非公式ファンメイドFAQボットです</p>
         </div>
 
         <div class="chat-container" id="chatContainer">
@@ -589,7 +603,7 @@
         function initializeChat() {
             const chatContainer = document.getElementById('chatContainer');
             chatContainer.innerHTML = '';
-            addMessage('bot', 'こんにちは！🐱 東京ディバンカーの非公式FAQボットです。何について知りたいですか？', 'categories');
+            addMessage('bot', 'こんにちは！🐱 東京ディバンカーのFAQボットです。<br><small style="color: #999;">※このボットは非公式のファンメイドです。公式情報は公式サイトをご確認ください。</small><br><br>何について知りたいですか？', 'categories');
         }
 
         // エラー表示
@@ -779,7 +793,7 @@
             return matches.slice(0, 3);
         }
 
-        // カテゴリで検索
+        // カテゴリで検索（小分類ボタンを表示）
         function searchByCategory(category) {
             addMessage('user', `カテゴリ：${category}`);
             
@@ -789,15 +803,51 @@
                 
                 const results = faqData.filter(faq => faq.category === category);
                 
-                let response = `「${category}」に関する情報です！🌸<br><br>`;
-                results.forEach(result => {
-                    response += `
-                        <div class="faq-item">
-                            <div class="faq-title">${result.title}</div>
-                            <div class="faq-content">${result.content}</div>
-                        </div>
-                    `;
+                let response = `「${category}」に関する項目です！🌸<br>詳しく知りたい項目を選んでください。<br><br>`;
+                response += '<div class="category-buttons">';
+                results.forEach((result, index) => {
+                    response += `<button class="category-btn" onclick="showFAQDetail('${category}', ${index})">${result.title}</button>`;
                 });
+                response += '</div>';
+
+                addMessage('bot', response);
+                
+                // 再質問を促す
+                setTimeout(() => {
+                    addMessage('bot', '他に何か知りたいことはありますか？✨', 'yesno');
+                }, 500);
+            }, 800);
+        }
+
+        // FAQ詳細を表示
+        function showFAQDetail(category, index) {
+            const results = faqData.filter(faq => faq.category === category);
+            const faq = results[index];
+            
+            addMessage('user', faq.title);
+            
+            showTypingIndicator();
+            setTimeout(() => {
+                hideTypingIndicator();
+                
+                let response = `
+                    <div class="faq-item">
+                        <div class="faq-title">${faq.title}</div>
+                        <div class="faq-content">${faq.content}</div>
+                    </div>
+                `;
+                
+                // 同じカテゴリの他の項目も表示
+                if (results.length > 1) {
+                    response += '<br><div style="font-size: 12px; color: #999; margin-top: 10px;">同じカテゴリの他の項目：</div>';
+                    response += '<div class="category-buttons">';
+                    results.forEach((r, i) => {
+                        if (i !== index) {
+                            response += `<button class="category-btn" onclick="showFAQDetail('${category}', ${i})">${r.title}</button>`;
+                        }
+                    });
+                    response += '</div>';
+                }
 
                 addMessage('bot', response);
                 
