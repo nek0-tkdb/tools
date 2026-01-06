@@ -356,7 +356,7 @@
                 <input 
                     type="text" 
                     id="userInput" 
-                    placeholder="キーワードを入力してください...✨"
+                    placeholder="質問を入力してください...✨"
                     disabled
                 >
                 <button id="sendBtn" onclick="sendMessage()" disabled>送信 💌</button>
@@ -558,6 +558,11 @@
             }
 
             addMessage('bot', response);
+            
+            // 再質問を促す
+            setTimeout(() => {
+                addMessage('bot', '他に何か知りたいことはありますか？✨', true);
+            }, 500);
         }
 
         // FAQ検索
@@ -626,6 +631,11 @@
                 });
 
                 addMessage('bot', response);
+                
+                // 再質問を促す
+                setTimeout(() => {
+                    addMessage('bot', '他に何か知りたいことはありますか？✨', true);
+                }, 500);
             }, 800);
         }
 
