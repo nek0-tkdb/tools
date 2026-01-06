@@ -124,6 +124,7 @@
 
     <script>
         let faqData = [];
+        let lastResults = []; // 候補リストを一時保存
         const chatWindow = document.getElementById('chat-window');
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
@@ -140,8 +141,6 @@
                 const headers = rows[0].split(',');
                 
                 faqData = rows.slice(1).filter(row => row.trim() !== '').map(row => {
-                    // カンマ区切りだが、内容にカンマが含まれる場合を考慮したパース
-                    // 本格的な場合はライブラリ推奨だが、今回は正規表現で対応
                     const values = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
                     const cleanValues = values.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"'));
                     
@@ -203,7 +202,7 @@
             // 一致するものがない場合、タイトルや内容から検索
             if (matches.length === 0) {
                 matches = faqData.filter(item => {
-                    return item.title.includes(query) || item.content.includes(query);
+                    return item.title.toLowerCase().includes(lowerQuery) || item.content.toLowerCase().includes(lowerQuery);
                 });
             }
 
@@ -226,28 +225,40 @@
             // タイピング中を表示
             const indicator = addMessage('bot', '', true);
 
-            // 少し待機して回答（自然な演出）
             setTimeout(() => {
                 indicator.remove();
+
+                // 1. 番号選択のチェック (lastResultsがある場合)
+                const selectedIndex = parseInt(text) - 1;
+                if (lastResults.length > 0 && !isNaN(selectedIndex) && lastResults[selectedIndex]) {
+                    const res = lastResults[selectedIndex];
+                    addMessage('bot', `【${res.title}】\n\n${res.content}`);
+                    lastResults = []; // 回答後はリストをクリア
+                    return;
+                }
+
+                // 2. 通常検索
                 const results = findAnswer(text);
 
                 if (results) {
                     if (results.length === 1) {
                         const res = results[0];
                         addMessage('bot', `【${res.title}】\n\n${res.content}`);
+                        lastResults = [];
                     } else {
                         // 複数候補がある場合
-                        let responseText = `複数の候補が見つかりました：\n\n`;
-                        results.slice(0, 3).forEach((res, i) => {
-                            responseText += `${i+1}. ${res.title}\n`;
+                        lastResults = results.slice(0, 5); // 最大5件保持
+                        let responseText = `複数の候補が見つかりました。番号を入力して選択してください：\n\n`;
+                        lastResults.forEach((res, i) => {
+                            responseText += `${i + 1}. ${res.title}\n`;
                         });
-                        responseText += `\n詳しく知りたい項目のキーワードを入力してください。`;
                         addMessage('bot', responseText);
                     }
                 } else {
+                    lastResults = [];
                     addMessage('bot', 'すみません、その質問に関する情報が見つかりませんでした。別のキーワードでお試しください。');
                 }
-            }, 800);
+            }, 600);
         });
 
         // 初期化
