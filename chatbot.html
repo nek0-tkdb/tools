@@ -15,12 +15,14 @@
             height: 100dvh;
             display: flex;
             flex-direction: column;
+            overflow: hidden; /* ボディ全体のスクロールを抑止 */
         }
 
         .chat-container {
             flex: 1;
             overflow-y: auto;
             scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch; /* iOSでのスクロールを滑らかに */
         }
 
         .message-bubble {
@@ -73,7 +75,7 @@
 <body class="max-w-md mx-auto w-full border-x border-gray-200 shadow-xl bg-gray-50">
 
     <!-- Header -->
-    <header class="bg-indigo-600 text-white p-4 flex items-center justify-between shadow-md z-10">
+    <header class="bg-indigo-600 text-white p-4 flex items-center justify-between shadow-md z-10 flex-shrink-0">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                 <i class="fas fa-robot text-xl"></i>
@@ -103,19 +105,19 @@
     </main>
 
     <!-- Input Area -->
-    <footer class="bg-white border-t p-4 pb-6 md:pb-4">
-        <form id="chat-form" class="flex items-center gap-2">
+    <footer class="bg-white border-t p-4 pb-6 md:pb-4 flex-shrink-0">
+        <form id="chat-form" class="flex items-center gap-2 w-full overflow-hidden">
             <input 
                 type="text" 
                 id="user-input" 
                 placeholder="メッセージを入力..." 
-                class="flex-1 bg-gray-100 border-none rounded-full px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                class="flex-1 min-w-0 bg-gray-100 border-none rounded-full px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                 autocomplete="off"
             >
             <button 
                 type="submit" 
                 id="send-btn"
-                class="bg-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-indigo-700 active:scale-95 transition-all shadow-lg"
+                class="flex-shrink-0 bg-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-indigo-700 active:scale-95 transition-all shadow-lg"
             >
                 <i class="fas fa-paper-plane"></i>
             </button>
@@ -138,7 +140,6 @@
                 
                 // CSVパース (簡易版)
                 const rows = csvText.split(/\r?\n/);
-                const headers = rows[0].split(',');
                 
                 faqData = rows.slice(1).filter(row => row.trim() !== '').map(row => {
                     const values = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
