@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card & Skill Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        .card-image-container {
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            background-color: #f3f4f6;
+        }
+        .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .card-image:hover {
+            transform: scale(1.05);
+        }
+        .skill-badge {
+            font-size: 0.7rem;
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+
+    <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col py-4 gap-4">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-xl font-bold text-blue-600">Card Database</h1>
+                    <div id="data-status" class="text-xs text-gray-500">データを準備中...</div>
+                </div>
+                
+                <div id="filter-controls" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 opacity-50 pointer-events-none">
+                    <!-- 全体検索 -->
+                    <div class="relative">
+                        <input type="text" id="search-main" placeholder="名前・キャラ・属性で検索..." 
+                            class="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <!-- スキル検索 -->
+                    <div class="relative">
+                        <input type="text" id="search-skill" placeholder="スキル名・効果で検索..." 
+                            class="w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <!-- レア度フィルタ -->
+                    <select id="filter-rarity" class="w-full px-3 py-2 border rounded-lg outline-none">
+                        <option value="">すべてのレア度</option>
+                        <option value="SSR">SSR</option>
+                        <option value="SR">SR</option>
+                        <option value="R">R</option>
+                    </select>
+                    <!-- 属性フィルタ -->
+                    <select id="filter-attr" class="w-full px-3 py-2 border rounded-lg outline-none">
+                        <option value="">すべての属性</option>
+                        <option value="青">青</option>
+                        <option value="赤">赤</option>
+                        <option value="緑">緑</option>
+                        <option value="黄">黄</option>
+                        <option value="紫">紫</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Error / Upload Fallback -->
+        <div id="setup-area" class="hidden text-center py-10 bg-white rounded-xl border-2 border-dashed border-gray-200 mb-8">
+            <h2 class="text-lg font-bold text-gray-700 mb-2">自動読み込みに失敗しました</h2>
+            <p class="text-sm text-gray-500 mb-4">ローカル実行やプレビュー環境では、以下のボタンからCSVファイルを手動で選択してください。</p>
+            <div class="flex flex-col items-center gap-3">
+                <label class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg cursor-pointer transition-colors">
+                    CSVファイルを選択 (2つ同時に選択)
+                    <input type="file" id="file-input" multiple accept=".csv" class="hidden">
+                </label>
+                <div class="text-xs text-gray-400">※ card_data.csv と skill_data.csv を選んでください</div>
+            </div>
+        </div>
+
+        <div id="loading" class="text-center py-20">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+            <p class="mt-4 text-gray-600">CSVデータを読み込んでいます...</p>
+        </div>
+
+        <div id="card-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 hidden">
+            <!-- Cards will be injected here -->
+        </div>
+
+        <div id="no-results" class="hidden text-center py-20 text-gray-500">
+            条件に一致するカードが見つかりませんでした。
+        </div>
+    </main>
+
+    <!-- Details Modal -->
+    <div id="modal" class="fixed inset-0 z-[60] hidden bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button id="close-modal" class="absolute top-4 right-4 text-gray-500 hover:text-black text-2xl font-bold">&times;</button>
+            <div id="modal-content" class="p-6">
+                <!-- Detailed content goes here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cardData = [];
+        let skillData = [];
+
+        const elements = {
+            grid: document.getElementById('card-grid'),
+            loading: document.getElementById('loading'),
+            status: document.getElementById('data-status'),
+            noResults: document.getElementById('no-results'),
+            searchMain: document.getElementById('search-main'),
+            searchSkill: document.getElementById('search-skill'),
+            filterRarity: document.getElementById('filter-rarity'),
+            filterAttr: document.getElementById('filter-attr'),
+            filterControls: document.getElementById('filter-controls'),
+            setupArea: document.getElementById('setup-area'),
+            fileInput: document.getElementById('file-input'),
+            modal: document.getElementById('modal'),
+            modalContent: document.getElementById('modal-content'),
+            closeModal: document.getElementById('close-modal')
+        };
+
+        // Initialize App
+        async function init() {
+            // まずは各種ボタンや入力欄のリスナーを登録（手動選択ボタンを使えるようにするため）
+            setupListeners();
+
+            try {
+                // 自動読み込みを試行
+                const [cardsCsv, skillsCsv] = await Promise.all([
+                    fetchCsv('card_data.csv'),
+                    fetchCsv('skill_data.csv')
+                ]);
+
+                processData(cardsCsv, skillsCsv);
+            } catch (error) {
+                console.warn('Auto-load failed. Showing manual upload fallback.');
+                elements.loading.classList.add('hidden');
+                elements.setupArea.classList.remove('hidden');
+                elements.status.innerText = '手動読み込み待機中';
+            }
+        }
+
+        async function fetchCsv(fileName) {
+            const url = new URL(fileName, window.location.href).href;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.text();
+        }
+
+        function processData(cardsCsv, skillsCsv) {
+            cardData = parseCsv(cardsCsv);
+            skillData = parseCsv(skillsCsv);
+
+            // スキルをカードIDでグループ化
+            const skillsMap = {};
+            skillData.forEach(s => {
+                const id = s['カードID'];
+                if (!id) return;
+                if (!skillsMap[id]) skillsMap[id] = [];
+                skillsMap[id].push(s);
+            });
+
+            // カードにスキルを紐付け
+            cardData.forEach(card => {
+                const id = card['カードID'];
+                card.skills = skillsMap[id] || [];
+            });
+
+            // UIの更新
+            elements.loading.classList.add('hidden');
+            elements.setupArea.classList.add('hidden');
+            elements.grid.classList.remove('hidden');
+            elements.filterControls.classList.remove('opacity-50', 'pointer-events-none');
+            
+            elements.status.innerText = `${cardData.length} 件のデータを読み込み完了`;
+            renderCards(cardData);
+        }
+
+        function parseCsv(csvString) {
+            const result = Papa.parse(csvString.trim(), {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true
+            });
+            return result.data;
+        }
+
+        function setupListeners() {
+            const filterAction = () => {
+                const query = elements.searchMain.value.toLowerCase();
+                const skillQuery = elements.searchSkill.value.toLowerCase();
+                const rarity = elements.filterRarity.value;
+                const attr = elements.filterAttr.value;
+
+                if (!cardData.length) return;
+
+                const filtered = cardData.filter(card => {
+                    const matchMain = !query || 
+                        String(card['カード名']).toLowerCase().includes(query) ||
+                        String(card['キャラクター名']).toLowerCase().includes(query) ||
+                        String(card['属性']).toLowerCase().includes(query);
+
+                    const matchRarity = !rarity || card['レア度'] === rarity;
+                    const matchAttr = !attr || card['属性'] === attr;
+
+                    const matchSkill = !skillQuery || card.skills.some(s => 
+                        String(s['スキル名']).toLowerCase().includes(skillQuery) ||
+                        String(s['効果内容']).toLowerCase().includes(skillQuery)
+                    );
+
+                    return matchMain && matchRarity && matchAttr && matchSkill;
+                });
+
+                renderCards(filtered);
+            };
+
+            elements.searchMain.addEventListener('input', filterAction);
+            elements.searchSkill.addEventListener('input', filterAction);
+            elements.filterRarity.addEventListener('change', filterAction);
+            elements.filterAttr.addEventListener('change', filterAction);
+            
+            elements.closeModal.onclick = () => elements.modal.classList.add('hidden');
+            window.onclick = (e) => { if(e.target === elements.modal) elements.modal.classList.add('hidden'); };
+
+            // 手動ファイル選択時の処理
+            elements.fileInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length < 2) {
+                    alert('card_data.csv と skill_data.csv の2つのファイルを選択してください。');
+                    return;
+                }
+
+                let cCsv = null, sCsv = null;
+
+                for (const file of files) {
+                    const text = await file.text();
+                    if (file.name.toLowerCase().includes('card')) cCsv = text;
+                    else if (file.name.toLowerCase().includes('skill')) sCsv = text;
+                }
+
+                if (cCsv && sCsv) {
+                    processData(cCsv, sCsv);
+                } else {
+                    alert('ファイル名に "card" と "skill" が含まれるCSVをそれぞれ選択してください。');
+                }
+            });
+        }
+
+        function renderCards(data) {
+            elements.grid.innerHTML = '';
+            if (data.length === 0) {
+                elements.noResults.classList.remove('hidden');
+            } else {
+                elements.noResults.classList.add('hidden');
+                data.forEach(card => {
+                    const cardEl = document.createElement('div');
+                    cardEl.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-shadow flex flex-col';
+                    
+                    const attrColor = getAttrColor(card['属性']);
+                    
+                    cardEl.innerHTML = `
+                        <div class="card-image-container relative">
+                            <img src="${card['URL']}" alt="${card['カード名']}" class="card-image" onerror="this.src='https://via.placeholder.com/400x225?text=No+Image'">
+                            <div class="absolute top-2 left-2 flex gap-1">
+                                <span class="bg-black/60 text-white px-2 py-0.5 rounded text-[10px] font-bold">${card['レア度'] || '??'}</span>
+                                <span class="${attrColor} text-white px-2 py-0.5 rounded text-[10px] font-bold">${card['属性'] || '無'}</span>
+                            </div>
+                        </div>
+                        <div class="p-4 flex-grow">
+                            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">${card['キャラクター名'] || 'Unknown'}</div>
+                            <h3 class="font-bold text-gray-800 line-clamp-1 mb-2">${card['カード名'] || 'Untitled'}</h3>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                ${card.skills.slice(0, 3).map(s => `
+                                    <span class="skill-badge bg-blue-50 text-blue-600 border border-blue-100">${s['スキル名']}</span>
+                                `).join('')}
+                                ${card.skills.length > 3 ? `<span class="skill-badge bg-gray-50 text-gray-400">...</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    cardEl.onclick = () => showDetail(card);
+                    elements.grid.appendChild(cardEl);
+                });
+            }
+        }
+
+        function getAttrColor(attr) {
+            const colors = {
+                '赤': 'bg-red-500',
+                '青': 'bg-blue-500',
+                '緑': 'bg-green-500',
+                '黄': 'bg-yellow-400',
+                '紫': 'bg-purple-500'
+            };
+            return colors[attr] || 'bg-gray-500';
+        }
+
+        function showDetail(card) {
+            const attrColor = getAttrColor(card['属性']);
+            elements.modalContent.innerHTML = `
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="w-full md:w-1/2">
+                        <img src="${card['URL']}" alt="${card['カード名']}" class="w-full rounded-lg shadow-sm" onerror="this.src='https://via.placeholder.com/400x225?text=No+Image'">
+                        <div class="grid grid-cols-2 gap-2 mt-4 text-sm">
+                            <div class="bg-gray-50 p-2 rounded">
+                                <span class="block text-gray-400 text-xs">アタッカータイプ</span>
+                                <span class="font-bold text-gray-700">${card['アタッカータイプ'] || '-'}</span>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded">
+                                <span class="block text-gray-400 text-xs">シリーズ</span>
+                                <span class="font-bold text-gray-700">${card['シリーズ'] || '-'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 rounded text-xs font-bold text-white ${attrColor}">${card['属性'] || '無'}</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold bg-gray-800 text-white">${card['レア度'] || '??'}</span>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-1">${card['カード名'] || 'Untitled'}</h2>
+                        <p class="text-gray-500 mb-4">${card['キャラクター名'] || 'Unknown'}</p>
+                        
+                        <div class="space-y-4">
+                            ${card['ユニークスキル名'] ? `
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-400 uppercase mb-2">Unique Skill</h4>
+                                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                    <div class="font-bold text-blue-800">${card['ユニークスキル名']}</div>
+                                    <div class="text-sm text-blue-700 mt-1">${card['ユニークスキル効果'] || ''}</div>
+                                </div>
+                            </div>` : ''}
+
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-400 uppercase mb-2">Skills</h4>
+                                <div class="space-y-2">
+                                    ${card.skills.length > 0 ? card.skills.map(s => `
+                                        <div class="border-l-4 border-gray-200 pl-3 py-1">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-bold ${s['スキル種別'] === 'パッシブ' ? 'text-green-600' : 'text-orange-600'}">[${s['スキル種別']}]</span>
+                                                <span class="font-bold">${s['スキル名']}</span>
+                                                ${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[10px] bg-gray-100 px-1 rounded">TU: ${s['消費TU']}</span>` : ''}
+                                                ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[10px] bg-gray-100 px-1 rounded">MP: ${s['消費MP']}</span>` : ''}
+                                            </div>
+                                            <div class="text-xs text-gray-600 mt-1">${s['効果内容'] || ''}</div>
+                                            ${s['使用条件'] ? `<div class="text-[10px] text-red-500 mt-0.5 italic">※${s['使用条件']}</div>` : ''}
+                                        </div>
+                                    `).join('') : '<p class="text-sm text-gray-400 italic">スキル情報なし</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            elements.modal.classList.remove('hidden');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
