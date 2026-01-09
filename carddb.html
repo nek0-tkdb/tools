@@ -62,7 +62,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
-                    <span class="text-sm font-bold">検索条件</span>
+                    <span class="text-sm font-bold">検索・ソート</span>
                     <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
                 </button>
             </div>
@@ -95,6 +95,34 @@
                                 <option value="青">青</option>
                                 <option value="赤">赤</option>
                                 <option value="緑">緑</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- ソート設定 -->
+                    <div class="grid grid-cols-2 gap-2 border-t pt-2 mt-1">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え項目</label>
+                            <select id="sort-key" class="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="カードID">カードID</option>
+                                <option value="HP">HP</option>
+                                <option value="攻撃力">攻撃力</option>
+                                <option value="俊敏性">俊敏性</option>
+                                <option value="物攻">物攻</option>
+                                <option value="特攻">特攻</option>
+                                <option value="物防">物防</option>
+                                <option value="特防">特防</option>
+                                <option value="狂暴性">狂暴性</option>
+                                <option value="人間性">人間性</option>
+                                <option value="耐久性">耐久性</option>
+                                <option value="魔性">魔性</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 ml-1">順序</label>
+                            <select id="sort-order" class="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="asc">低い順 (昇順)</option>
+                                <option value="desc" selected>高い順 (降順)</option>
                             </select>
                         </div>
                     </div>
@@ -158,6 +186,8 @@
             filterChar: document.getElementById('filter-char'),
             filterAttr: document.getElementById('filter-attr'),
             filterSkill: document.getElementById('filter-skill'),
+            sortKey: document.getElementById('sort-key'),
+            sortOrder: document.getElementById('sort-order'),
             filterArea: document.getElementById('filter-area'),
             toggleFilters: document.getElementById('toggle-filters'),
             filterIndicator: document.getElementById('filter-indicator'),
@@ -213,8 +243,8 @@
             elements.setupArea.classList.add('hidden');
             elements.grid.classList.remove('hidden');
             
-            renderCards(cardData);
-            updateStatusText(cardData.length);
+            // 初回表示（ソート・フィルター実行）
+            runFilterAndSort();
         }
 
         function parseCsv(csvString) {
@@ -249,29 +279,51 @@
             elements.status.innerText = `${count} 枚のカードを表示中`;
         }
 
+        function runFilterAndSort() {
+            const char = elements.filterChar.value;
+            const attr = elements.filterAttr.value;
+            const skill = elements.filterSkill.value;
+            const sortKey = elements.sortKey.value;
+            const sortOrder = elements.sortOrder.value;
+
+            // フィルター中インジケーター（デフォルトのIDソート以外またはフィルター選択中）
+            const isFiltered = char || attr || skill || sortKey !== 'カードID';
+            elements.filterIndicator.classList.toggle('hidden', !isFiltered);
+
+            // 絞り込み
+            let filtered = cardData.filter(card => {
+                const matchChar = !char || card['キャラクター名'] === char;
+                const matchAttr = !attr || card['属性'] === attr;
+                const matchSkill = !skill || card.skills.some(s => String(s['スキル名']) === skill);
+                return matchChar && matchAttr && matchSkill;
+            });
+
+            // 並び替え
+            filtered.sort((a, b) => {
+                let valA = a[sortKey];
+                let valB = b[sortKey];
+
+                // 数値として比較（未定義は0扱い）
+                valA = (valA === undefined || valA === null) ? 0 : Number(valA);
+                valB = (valB === undefined || valB === null) ? 0 : Number(valB);
+
+                if (sortOrder === 'asc') {
+                    return valA - valB;
+                } else {
+                    return valB - valA;
+                }
+            });
+
+            renderCards(filtered);
+            updateStatusText(filtered.length);
+        }
+
         function setupListeners() {
-            const filterAction = () => {
-                const char = elements.filterChar.value;
-                const attr = elements.filterAttr.value;
-                const skill = elements.filterSkill.value;
-
-                const isFiltered = char || attr || skill;
-                elements.filterIndicator.classList.toggle('hidden', !isFiltered);
-
-                const filtered = cardData.filter(card => {
-                    const matchChar = !char || card['キャラクター名'] === char;
-                    const matchAttr = !attr || card['属性'] === attr;
-                    const matchSkill = !skill || card.skills.some(s => String(s['スキル名']) === skill);
-                    return matchChar && matchAttr && matchSkill;
-                });
-
-                renderCards(filtered);
-                updateStatusText(filtered.length);
-            };
-
-            elements.filterChar.addEventListener('change', filterAction);
-            elements.filterAttr.addEventListener('change', filterAction);
-            elements.filterSkill.addEventListener('change', filterAction);
+            elements.filterChar.addEventListener('change', runFilterAndSort);
+            elements.filterAttr.addEventListener('change', runFilterAndSort);
+            elements.filterSkill.addEventListener('change', runFilterAndSort);
+            elements.sortKey.addEventListener('change', runFilterAndSort);
+            elements.sortOrder.addEventListener('change', runFilterAndSort);
             
             elements.toggleFilters.onclick = () => {
                 elements.filterArea.classList.toggle('hidden');
