@@ -12,7 +12,7 @@
             -webkit-overflow-scrolling: touch;
         }
         .card-image-container {
-            aspect-ratio: 4 / 3;
+            aspect-ratio: 1 / 1; /* 正方形に変更 */
             overflow: hidden;
             background-color: #f3f4f6;
         }
@@ -126,13 +126,23 @@
                             </select>
                         </div>
                     </div>
+
+                    <!-- リセットボタン -->
+                    <div class="pt-2">
+                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-sm font-bold rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            条件をリセット
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </nav>
 
     <main class="max-w-7xl mx-auto px-2 py-3">
-        <!-- 手動アップロード（エラー時のみ表示） -->
+        <!-- 手動アップロード -->
         <div id="setup-area" class="hidden p-6 bg-white rounded-xl border-2 border-dashed border-gray-300 text-center my-4">
             <p class="text-sm font-bold text-gray-600 mb-3">CSVを読み込めませんでした</p>
             <label class="block">
@@ -188,6 +198,7 @@
             filterSkill: document.getElementById('filter-skill'),
             sortKey: document.getElementById('sort-key'),
             sortOrder: document.getElementById('sort-order'),
+            resetBtn: document.getElementById('reset-filters'),
             filterArea: document.getElementById('filter-area'),
             toggleFilters: document.getElementById('toggle-filters'),
             filterIndicator: document.getElementById('filter-indicator'),
@@ -243,7 +254,6 @@
             elements.setupArea.classList.add('hidden');
             elements.grid.classList.remove('hidden');
             
-            // 初回表示（ソート・フィルター実行）
             runFilterAndSort();
         }
 
@@ -286,11 +296,9 @@
             const sortKey = elements.sortKey.value;
             const sortOrder = elements.sortOrder.value;
 
-            // フィルター中インジケーター（デフォルトのIDソート以外またはフィルター選択中）
             const isFiltered = char || attr || skill || sortKey !== 'カードID';
             elements.filterIndicator.classList.toggle('hidden', !isFiltered);
 
-            // 絞り込み
             let filtered = cardData.filter(card => {
                 const matchChar = !char || card['キャラクター名'] === char;
                 const matchAttr = !attr || card['属性'] === attr;
@@ -298,20 +306,12 @@
                 return matchChar && matchAttr && matchSkill;
             });
 
-            // 並び替え
             filtered.sort((a, b) => {
                 let valA = a[sortKey];
                 let valB = b[sortKey];
-
-                // 数値として比較（未定義は0扱い）
                 valA = (valA === undefined || valA === null) ? 0 : Number(valA);
                 valB = (valB === undefined || valB === null) ? 0 : Number(valB);
-
-                if (sortOrder === 'asc') {
-                    return valA - valB;
-                } else {
-                    return valB - valA;
-                }
+                return sortOrder === 'asc' ? valA - valB : valB - valA;
             });
 
             renderCards(filtered);
@@ -327,6 +327,15 @@
             
             elements.toggleFilters.onclick = () => {
                 elements.filterArea.classList.toggle('hidden');
+            };
+
+            elements.resetBtn.onclick = () => {
+                elements.filterChar.value = "";
+                elements.filterAttr.value = "";
+                elements.filterSkill.value = "";
+                elements.sortKey.value = "カードID";
+                elements.sortOrder.value = "desc";
+                runFilterAndSort();
             };
 
             const closeModal = () => elements.modal.classList.add('hidden');
@@ -358,7 +367,7 @@
                 
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
-                        <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x150?text=No+Image'">
+                        <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
                         <div class="absolute bottom-1 left-1 flex gap-0.5">
                             <span class="bg-black/70 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">${card['レア度'] || '??'}</span>
                             <span class="${attrColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold">${card['属性'] || '無'}</span>
@@ -382,7 +391,6 @@
         function showDetail(card) {
             const attrColor = getAttrColor(card['属性']);
             
-            // ステータス項目の一覧
             const stats = [
                 { label: 'HP', val: card['HP'] },
                 { label: '攻撃力', val: card['攻撃力'] },
@@ -400,7 +408,9 @@
             elements.modalContent.innerHTML = `
                 <div class="md:flex md:gap-6">
                     <div class="md:w-1/2">
-                        <img src="${card['画像URL']}" class="w-full rounded-xl shadow-sm mb-4" onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
+                        <div class="card-image-container mb-4 rounded-xl shadow-sm">
+                            <img src="${card['画像URL']}" class="card-image" onerror="this.src='https://via.placeholder.com/400x400?text=No+Image'">
+                        </div>
                         <div class="flex gap-2 mb-3">
                             <span class="px-3 py-1 rounded-full text-xs font-bold text-white ${attrColor}">${card['属性'] || '無'}</span>
                             <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-800 text-white">${card['レア度'] || '??'}</span>
@@ -421,7 +431,6 @@
                     </div>
                     
                     <div class="md:w-1/2 space-y-6">
-                        <!-- ステータスグリッド -->
                         <div>
                             <div class="flex items-center gap-2 mb-2 text-gray-500">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
