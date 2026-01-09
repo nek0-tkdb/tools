@@ -55,7 +55,7 @@
         <div class="max-w-7xl mx-auto px-3 py-3">
             <div class="flex items-center justify-between gap-2">
                 <div>
-                    <h1 class="text-lg font-bold text-blue-600 leading-none">Card Database ※工事中です</h1>
+                    <h1 class="text-lg font-bold text-blue-600 leading-none">Card Database</h1>
                     <div id="data-status" class="text-[10px] font-bold text-gray-400 mt-1">準備中...</div>
                 </div>
                 <button id="toggle-filters" class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors">
@@ -306,7 +306,7 @@
                 
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
-                        <img src="${card['URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x150?text=No+Image'">
+                        <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x150?text=No+Image'">
                         <div class="absolute bottom-1 left-1 flex gap-0.5">
                             <span class="bg-black/70 text-white px-1.5 py-0.5 rounded text-[8px] font-bold">${card['レア度'] || '??'}</span>
                             <span class="${attrColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold">${card['属性'] || '無'}</span>
@@ -329,10 +329,26 @@
 
         function showDetail(card) {
             const attrColor = getAttrColor(card['属性']);
+            
+            // ステータス項目の一覧
+            const stats = [
+                { label: 'HP', val: card['HP'] },
+                { label: '攻撃力', val: card['攻撃力'] },
+                { label: '俊敏性', val: card['俊敏性'] },
+                { label: '物攻', val: card['物攻'] },
+                { label: '特攻', val: card['特攻'] },
+                { label: '物防', val: card['物防'] },
+                { label: '特防', val: card['特防'] },
+                { label: '狂暴性', val: card['狂暴性'] },
+                { label: '人間性', val: card['人間性'] },
+                { label: '耐久性', val: card['耐久性'] },
+                { label: '魔性', val: card['魔性'] }
+            ];
+
             elements.modalContent.innerHTML = `
                 <div class="md:flex md:gap-6">
                     <div class="md:w-1/2">
-                        <img src="${card['URL']}" class="w-full rounded-xl shadow-sm mb-4" onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
+                        <img src="${card['画像URL']}" class="w-full rounded-xl shadow-sm mb-4" onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
                         <div class="flex gap-2 mb-3">
                             <span class="px-3 py-1 rounded-full text-xs font-bold text-white ${attrColor}">${card['属性'] || '無'}</span>
                             <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-800 text-white">${card['レア度'] || '??'}</span>
@@ -340,7 +356,7 @@
                         <h2 class="text-xl font-bold leading-tight">${card['カード名']}</h2>
                         <p class="text-sm text-gray-500 mb-4">${card['キャラクター名']}</p>
                         
-                        <div class="grid grid-cols-2 gap-2 mb-6">
+                        <div class="grid grid-cols-2 gap-2 mb-4">
                             <div class="bg-gray-50 p-2 rounded-lg border">
                                 <span class="block text-gray-400 text-[10px]">タイプ</span>
                                 <span class="text-sm font-bold text-gray-700">${card['アタッカータイプ'] || '-'}</span>
@@ -350,9 +366,33 @@
                                 <span class="text-sm font-bold text-gray-700">${card['シリーズ'] || '-'}</span>
                             </div>
                         </div>
+
+                        <div class="bg-gray-50 p-3 rounded-lg border mb-6">
+                            <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-2">入手方法</h4>
+                            <div class="text-xs text-gray-700 space-y-1">
+                                <div><span class="font-bold text-blue-600">①</span> ${card['入手方法1'] || '-'}</div>
+                                <div><span class="font-bold text-blue-600">②</span> ${card['入手方法2'] || '-'}</div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="md:w-1/2 space-y-6">
+                        <!-- ステータスグリッド -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-2 text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                <span class="text-xs font-bold uppercase tracking-widest">Stats</span>
+                            </div>
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                ${stats.map(s => `
+                                    <div class="bg-white border rounded p-1.5 text-center">
+                                        <div class="text-[9px] text-gray-400 leading-none mb-1">${s.label}</div>
+                                        <div class="text-sm font-bold text-gray-800 leading-none">${s.val ?? '-'}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
                         ${card['ユニークスキル名'] ? `
                         <div>
                             <div class="flex items-center gap-2 mb-2 text-blue-600">
