@@ -356,7 +356,7 @@
                         <h2 class="text-xl font-bold leading-tight">${card['カード名']}</h2>
                         <p class="text-sm text-gray-500 mb-4">${card['キャラクター名']}</p>
                         
-                        <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div class="grid grid-cols-2 gap-2 mb-6">
                             <div class="bg-gray-50 p-2 rounded-lg border">
                                 <span class="block text-gray-400 text-[10px]">タイプ</span>
                                 <span class="text-sm font-bold text-gray-700">${card['アタッカータイプ'] || '-'}</span>
@@ -364,14 +364,6 @@
                             <div class="bg-gray-50 p-2 rounded-lg border">
                                 <span class="block text-gray-400 text-[10px]">シリーズ</span>
                                 <span class="text-sm font-bold text-gray-700">${card['シリーズ'] || '-'}</span>
-                            </div>
-                        </div>
-
-                        <div class="bg-gray-50 p-3 rounded-lg border mb-6">
-                            <h4 class="text-[10px] font-bold text-gray-400 uppercase mb-2">入手方法</h4>
-                            <div class="text-xs text-gray-700 space-y-1">
-                                <div><span class="font-bold text-blue-600">①</span> ${card['入手方法1'] || '-'}</div>
-                                <div><span class="font-bold text-blue-600">②</span> ${card['入手方法2'] || '-'}</div>
                             </div>
                         </div>
                     </div>
