@@ -67,11 +67,11 @@
                 </button>
             </div>
 
-            <!-- 折りたたみフィルターエリア (デフォルトでhidden) -->
+            <!-- 折りたたみフィルターエリア -->
             <div id="filter-area" class="hidden mt-3 space-y-2 border-t pt-3">
                 <div class="grid grid-cols-3 gap-2">
                     
-                    <!-- スキル選択プルダウン -->
+                    <!-- スキル選択 -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">スキル</label>
                         <select id="filter-skill" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
@@ -79,7 +79,7 @@
                         </select>
                     </div>
 
-                    <!-- キャラクター選択プルダウン -->
+                    <!-- キャラクター選択 -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
                         <select id="filter-char" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
@@ -103,18 +103,9 @@
                         <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え項目</label>
                         <select id="sort-key" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="ソートNo" selected>ソートNo</option>
-                            <option value="カード名">カード名</option>
                             <option value="HP">HP</option>
                             <option value="攻撃力">攻撃力</option>
                             <option value="俊敏性">俊敏性</option>
-                            <option value="物攻">物攻</option>
-                            <option value="特攻">特攻</option>
-                            <option value="物防">物防</option>
-                            <option value="特防">特防</option>
-                            <option value="狂暴性">狂暴性</option>
-                            <option value="人間性">人間性</option>
-                            <option value="耐久性">耐久性</option>
-                            <option value="魔性">魔性</option>
                         </select>
                     </div>
 
@@ -127,7 +118,7 @@
                         </select>
                     </div>
 
-                    <!-- リセットボタン -->
+                    <!-- リセット -->
                     <div class="flex items-end">
                         <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -167,14 +158,14 @@
     </main>
 
     <!-- 詳細モーダル -->
-    <div id="modal" class="fixed inset-0 z-[60] hidden bg-black bg-opacity-60 flex items-end md:items-center justify-center">
-        <div class="modal-content-container bg-white w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+    <div id="modal" class="fixed inset-0 z-[60] hidden bg-black bg-opacity-60 flex items-end md:items-center justify-center p-0 md:p-4">
+        <div class="modal-content-container bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
             <!-- 閉じるバー（モバイル用） -->
             <div class="md:hidden flex justify-center py-2 cursor-pointer" id="close-bar">
                 <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
             </div>
             
-            <div id="modal-content" class="overflow-y-auto p-4 md:p-6 no-scrollbar">
+            <div id="modal-content" class="overflow-y-auto p-4 md:p-8 no-scrollbar">
                 <!-- JSで注入 -->
             </div>
             
@@ -296,7 +287,6 @@
             const sortKey = elements.sortKey.value;
             const sortOrder = elements.sortOrder.value;
 
-            // インジケーター：デフォルト（ソートNo・降順・フィルタなし）以外で表示
             const isFiltered = char || attr || skill || sortKey !== 'ソートNo' || sortOrder !== 'desc';
             elements.filterIndicator.classList.toggle('hidden', !isFiltered);
 
@@ -379,7 +369,6 @@
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
                         <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
-                        <!-- タグオーバーレイ -->
                         <div class="absolute bottom-1 left-1 flex flex-wrap gap-0.5 max-w-[95%]">
                             <span class="bg-black/70 text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['レア度'] || '??'}</span>
                             <span class="${attrColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['属性'] || '無'}</span>
@@ -420,70 +409,72 @@
             ];
 
             elements.modalContent.innerHTML = `
-                <div class="md:flex md:gap-6">
-                    <div class="md:w-1/2">
-                        <div class="card-image-container mb-4 rounded-xl shadow-sm">
+                <div class="md:flex md:gap-8 items-start">
+                    <!-- 左カラム: メイン画像とステータス -->
+                    <div class="w-full md:w-[40%] flex-shrink-0">
+                        <div class="card-image-container mb-4 rounded-xl shadow-md border overflow-hidden">
                             <img src="${card['画像URL']}" class="card-image" onerror="this.src='https://via.placeholder.com/400x400?text=No+Image'">
                         </div>
                         <div class="flex flex-wrap gap-2 mb-3">
-                            <span class="px-3 py-1 rounded-full text-xs font-bold text-white ${attrColor}">${card['属性'] || '無'}</span>
-                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-800 text-white">${card['レア度'] || '??'}</span>
-                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">${card['アタッカータイプ'] || '-'}</span>
-                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">${card['シリーズ'] || '-'}</span>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold text-white ${attrColor}">${card['属性'] || '無'}</span>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-800 text-white">${card['レア度'] || '??'}</span>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">${card['アタッカータイプ'] || '-'}</span>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">${card['シリーズ'] || '-'}</span>
                         </div>
-                        <h2 class="text-xl font-bold leading-tight">${card['カード名']}</h2>
-                        <p class="text-sm text-gray-500 mb-4">${card['キャラクター名']}</p>
-                    </div>
-                    
-                    <div class="md:w-1/2 space-y-6">
-                        <!-- ステータスグリッド -->
-                        <div>
-                            <div class="flex items-center gap-2 mb-2 text-gray-500">
+                        <h2 class="text-xl font-bold leading-tight mb-1">${card['カード名']}</h2>
+                        <p class="text-sm text-gray-500 mb-6">${card['キャラクター名']}</p>
+
+                        <!-- ステータス（左側に配置） -->
+                        <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                            <div class="flex items-center gap-2 mb-3 text-gray-500">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                                <span class="text-xs font-bold uppercase tracking-widest">Stats</span>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Performance Stats</span>
                             </div>
-                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            <div class="grid grid-cols-3 gap-2">
                                 ${stats.map(s => `
-                                    <div class="bg-white border rounded p-1.5 text-center shadow-sm">
-                                        <div class="text-[9px] text-gray-400 leading-none mb-1">${s.label}</div>
-                                        <div class="text-sm font-bold text-gray-800 leading-none">${s.val ?? '-'}</div>
+                                    <div class="bg-white border border-gray-200 rounded-lg p-2 text-center shadow-sm">
+                                        <div class="text-[8px] text-gray-400 font-bold leading-none mb-1 truncate">${s.label}</div>
+                                        <div class="text-sm font-black text-gray-800 leading-none">${s.val ?? '-'}</div>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
-
+                    </div>
+                    
+                    <!-- 右カラム: スキル情報 -->
+                    <div class="w-full md:w-[60%] space-y-6 mt-8 md:mt-0">
                         ${card['ユニークスキル名'] ? `
-                        <div>
-                            <div class="flex items-center gap-2 mb-2 text-blue-600">
+                        <div class="animate-in fade-in slide-in-from-right duration-500">
+                            <div class="flex items-center gap-2 mb-3 text-blue-600">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                <span class="text-xs font-bold uppercase tracking-widest">Unique Skill</span>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Unique Ability</span>
                             </div>
-                            <div class="bg-blue-50 p-3 rounded-xl border border-blue-100 shadow-sm">
-                                <div class="font-bold text-blue-800 text-sm">${card['ユニークスキル名']}</div>
-                                <div class="text-xs text-blue-700 mt-1 leading-relaxed">${card['ユニークスキル効果'] || ''}</div>
+                            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-100 shadow-sm">
+                                <div class="font-bold text-blue-900 text-sm mb-1">${card['ユニークスキル名']}</div>
+                                <div class="text-xs text-blue-700 leading-relaxed">${card['ユニークスキル効果'] || ''}</div>
                             </div>
                         </div>` : ''}
 
-                        <div>
-                            <div class="flex items-center gap-2 mb-2 text-gray-500">
+                        <div class="animate-in fade-in slide-in-from-bottom duration-700">
+                            <div class="flex items-center gap-2 mb-3 text-gray-500">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                <span class="text-xs font-bold uppercase tracking-widest">Skills</span>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Battle Skills</span>
                             </div>
-                            <div class="space-y-3">
+                            <div class="space-y-4">
                                 ${card.skills.length > 0 ? card.skills.map(s => `
-                                    <div class="border-b border-gray-100 pb-3 last:border-0">
+                                    <div class="bg-white border-l-4 border-gray-200 pl-4 py-1 hover:border-blue-300 transition-colors">
                                         <div class="flex items-center gap-2 flex-wrap mb-1">
-                                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${s['スキル種別'] === 'パッシブ' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${s['スキル種別']}</span>
+                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm ${s['スキル種別'] === 'パッシブ' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${s['スキル種別']}</span>
                                             <span class="text-sm font-bold text-gray-800">${s['スキル名']}</span>
                                             <div class="flex gap-1 ml-auto">
-                                                ${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">TU ${s['消費TU']}</span>` : ''}
-                                                ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">MP ${s['消費MP']}</span>` : ''}
+                                                ${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}
+                                                ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">MP ${s['消費MP']}</span>` : ''}
                                             </div>
                                         </div>
-                                        <div class="text-xs text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
-                                        ${s['使用条件'] ? `<div class="text-[10px] text-red-400 mt-1 font-medium">条件: ${s['使用条件']}</div>` : ''}
+                                        <div class="text-[11px] text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
+                                        ${s['使用条件'] ? `<div class="text-[10px] text-red-400 mt-1 font-medium bg-red-50 inline-block px-1.5 rounded">条件: ${s['使用条件']}</div>` : ''}
                                     </div>
-                                `).join('') : '<p class="text-xs text-gray-400 italic">スキル情報なし</p>'}
+                                `).join('') : '<p class="text-xs text-gray-400 italic">スキル情報が登録されていません</p>'}
                             </div>
                         </div>
                     </div>
