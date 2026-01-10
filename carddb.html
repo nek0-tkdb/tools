@@ -12,7 +12,7 @@
             -webkit-overflow-scrolling: touch;
         }
         .card-image-container {
-            aspect-ratio: 1 / 1; /* 正方形に変更 */
+            aspect-ratio: 1 / 1;
             overflow: hidden;
             background-color: #f3f4f6;
         }
@@ -67,73 +67,72 @@
                 </button>
             </div>
 
-            <!-- 折りたたみフィルターエリア -->
-            <div id="filter-area" class="mt-3 space-y-3 border-t pt-3">
-                <div class="grid grid-cols-1 gap-2">
+            <!-- 折りたたみフィルターエリア (デフォルトでhidden) -->
+            <div id="filter-area" class="hidden mt-3 space-y-2 border-t pt-3">
+                <div class="grid grid-cols-2 gap-2">
                     
                     <!-- スキル選択プルダウン -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">スキル</label>
-                        <select id="filter-skill" class="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="filter-skill" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">すべて</option>
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <!-- キャラクター選択プルダウン -->
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
-                            <select id="filter-char" class="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">すべて</option>
-                            </select>
-                        </div>
-                        <!-- 属性フィルタ -->
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 ml-1">属性</label>
-                            <select id="filter-attr" class="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">すべて</option>
-                                <option value="青">青</option>
-                                <option value="赤">赤</option>
-                                <option value="緑">緑</option>
-                            </select>
-                        </div>
+                    <!-- キャラクター選択プルダウン -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
+                        <select id="filter-char" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                        </select>
                     </div>
 
-                    <!-- ソート設定 -->
-                    <div class="grid grid-cols-2 gap-2 border-t pt-2 mt-1">
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え項目</label>
-                            <select id="sort-key" class="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="カードID">カードID</option>
-                                <option value="HP">HP</option>
-                                <option value="攻撃力">攻撃力</option>
-                                <option value="俊敏性">俊敏性</option>
-                                <option value="物攻">物攻</option>
-                                <option value="特攻">特攻</option>
-                                <option value="物防">物防</option>
-                                <option value="特防">特防</option>
-                                <option value="狂暴性">狂暴性</option>
-                                <option value="人間性">人間性</option>
-                                <option value="耐久性">耐久性</option>
-                                <option value="魔性">魔性</option>
-                            </select>
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 ml-1">順序</label>
-                            <select id="sort-order" class="w-full px-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="asc">低い順 (昇順)</option>
-                                <option value="desc" selected>高い順 (降順)</option>
-                            </select>
-                        </div>
+                    <!-- 属性フィルタ -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">属性</label>
+                        <select id="filter-attr" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                            <option value="青">青</option>
+                            <option value="赤">赤</option>
+                            <option value="緑">緑</option>
+                        </select>
+                    </div>
+
+                    <!-- 並び替え項目 -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え項目</label>
+                        <select id="sort-key" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="カード名" selected>カード名</option>
+                            <option value="HP">HP</option>
+                            <option value="攻撃力">攻撃力</option>
+                            <option value="俊敏性">俊敏性</option>
+                            <option value="物攻">物攻</option>
+                            <option value="特攻">特攻</option>
+                            <option value="物防">物防</option>
+                            <option value="特防">特防</option>
+                            <option value="狂暴性">狂暴性</option>
+                            <option value="人間性">人間性</option>
+                            <option value="耐久性">耐久性</option>
+                            <option value="魔性">魔性</option>
+                        </select>
+                    </div>
+
+                    <!-- 順序 -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">順序</label>
+                        <select id="sort-order" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="asc" selected>低い順 (昇順)</option>
+                            <option value="desc">高い順 (降順)</option>
+                        </select>
                     </div>
 
                     <!-- リセットボタン -->
-                    <div class="pt-2">
-                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-sm font-bold rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="flex items-end">
+                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-xs font-bold rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
-                            条件をリセット
+                            リセット
                         </button>
                     </div>
                 </div>
@@ -296,7 +295,8 @@
             const sortKey = elements.sortKey.value;
             const sortOrder = elements.sortOrder.value;
 
-            const isFiltered = char || attr || skill || sortKey !== 'カードID';
+            // インジケーター：デフォルト（カード名・昇順・フィルタなし）以外で表示
+            const isFiltered = char || attr || skill || sortKey !== 'カード名' || sortOrder !== 'asc';
             elements.filterIndicator.classList.toggle('hidden', !isFiltered);
 
             let filtered = cardData.filter(card => {
@@ -309,9 +309,19 @@
             filtered.sort((a, b) => {
                 let valA = a[sortKey];
                 let valB = b[sortKey];
-                valA = (valA === undefined || valA === null) ? 0 : Number(valA);
-                valB = (valB === undefined || valB === null) ? 0 : Number(valB);
-                return sortOrder === 'asc' ? valA - valB : valB - valA;
+
+                const isNumA = typeof valA === 'number' || (!isNaN(parseFloat(valA)) && isFinite(valA));
+                const isNumB = typeof valB === 'number' || (!isNaN(parseFloat(valB)) && isFinite(valB));
+
+                if (isNumA && isNumB) {
+                    valA = Number(valA || 0);
+                    valB = Number(valB || 0);
+                    return sortOrder === 'asc' ? valA - valB : valB - valA;
+                } else {
+                    valA = String(valA || "");
+                    valB = String(valB || "");
+                    return sortOrder === 'asc' ? valA.localeCompare(valB, 'ja') : valB.localeCompare(valA, 'ja');
+                }
             });
 
             renderCards(filtered);
@@ -333,8 +343,8 @@
                 elements.filterChar.value = "";
                 elements.filterAttr.value = "";
                 elements.filterSkill.value = "";
-                elements.sortKey.value = "カードID";
-                elements.sortOrder.value = "desc";
+                elements.sortKey.value = "カード名";
+                elements.sortOrder.value = "asc";
                 runFilterAndSort();
             };
 
