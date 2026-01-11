@@ -360,6 +360,24 @@
             });
         }
 
+        // タイプに応じた色を返すヘルパー (一覧画面用: 濃色)
+        function getTypeTagColor(type) {
+            if (!type) return 'bg-indigo-600/80';
+            if (type.includes('物理')) return 'bg-orange-600/80';
+            if (type.includes('特殊')) return 'bg-fuchsia-600/80';
+            if (type.includes('混合')) return 'bg-teal-600/80';
+            return 'bg-indigo-600/80';
+        }
+
+        // タイプに応じた色を返すヘルパー (詳細画面用: 淡色)
+        function getTypeTagLightColor(type) {
+            if (!type) return 'bg-indigo-100 text-indigo-700';
+            if (type.includes('物理')) return 'bg-orange-100 text-orange-700';
+            if (type.includes('特殊')) return 'bg-fuchsia-100 text-fuchsia-700';
+            if (type.includes('混合')) return 'bg-teal-100 text-teal-700';
+            return 'bg-indigo-100 text-indigo-700';
+        }
+
         function renderCards(data) {
             elements.grid.innerHTML = '';
             elements.noResults.classList.toggle('hidden', data.length > 0);
@@ -369,6 +387,7 @@
                 cardEl.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden active:scale-95 transition-transform flex flex-col';
                 
                 const attrColor = getAttrColor(card['属性']);
+                const typeColor = getTypeTagColor(card['アタッカータイプ']);
                 
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
@@ -376,7 +395,7 @@
                         <div class="absolute bottom-1 left-1 flex flex-wrap gap-0.5 max-w-[95%]">
                             <span class="bg-black/70 text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['レア度'] || '??'}</span>
                             <span class="${attrColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['属性'] || '無'}</span>
-                            ${card['アタッカータイプ'] ? `<span class="bg-indigo-600/80 text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm truncate max-w-[60px]">${card['アタッカータイプ']}</span>` : ''}
+                            ${card['アタッカータイプ'] ? `<span class="${typeColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm truncate max-w-[60px]">${card['アタッカータイプ']}</span>` : ''}
                             ${card['シリーズ'] ? `<span class="bg-amber-600/80 text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm truncate max-w-[50px]">${card['シリーズ']}</span>` : ''}
                         </div>
                     </div>
@@ -397,6 +416,7 @@
 
         function showDetail(card) {
             const attrColor = getAttrColor(card['属性']);
+            const typeStyle = getTypeTagLightColor(card['アタッカータイプ']);
             
             const stats = [
                 { label: 'HP', val: card['HP'] },
@@ -422,7 +442,7 @@
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="px-3 py-1 rounded-full text-[10px] font-bold text-white ${attrColor}">${card['属性'] || '無'}</span>
                             <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-gray-800 text-white">${card['レア度'] || '??'}</span>
-                            <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">${card['アタッカータイプ'] || '-'}</span>
+                            <span class="px-3 py-1 rounded-full text-[10px] font-bold ${typeStyle}">${card['アタッカータイプ'] || '-'}</span>
                             <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">${card['シリーズ'] || '-'}</span>
                         </div>
                         <h2 class="text-xl font-bold leading-tight mb-1">${card['カード名']}</h2>
@@ -472,7 +492,7 @@
                                             <span class="text-sm font-bold text-gray-800">${s['スキル名']}</span>
                                             <div class="flex gap-1 ml-auto">
                                                 ${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}
-                                                ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[9px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">MP ${s['消費MP']}</span>` : ''}
+                                                ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">MP ${s['消費MP']}</span>` : ''}
                                             </div>
                                         </div>
                                         <div class="text-[11px] text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
