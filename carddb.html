@@ -21,7 +21,6 @@
             height: 100%;
             object-fit: cover;
         }
-        /* スキルバッジの微調整 */
         .skill-badge {
             font-size: 10px;
             padding: 1px 4px;
@@ -31,7 +30,6 @@
             text-overflow: ellipsis;
             max-width: 100%;
         }
-        /* モーダルのアニメーション */
         #modal {
             transition: opacity 0.2s ease-out;
         }
@@ -42,9 +40,15 @@
         #modal:not(.hidden) .modal-content-container {
             transform: translateY(0);
         }
-        /* スクロールバー非表示 */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
+        }
+        /* お気に入りボタンのアニメーション */
+        .heart-btn {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .heart-btn:active {
+            transform: scale(1.4);
         }
     </style>
 </head>
@@ -58,39 +62,39 @@
                     <h1 class="text-lg font-bold text-blue-600 leading-none">Card Database</h1>
                     <div id="data-status" class="text-[10px] font-bold text-gray-400 mt-1">準備中...</div>
                 </div>
-                <button id="toggle-filters" class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    <span class="text-sm font-bold">検索・ソート</span>
-                    <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
-                </button>
+                <div class="flex gap-2">
+                    <button id="toggle-filters" class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span class="text-xs font-bold">検索</span>
+                        <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
+                    </button>
+                </div>
             </div>
 
-            <!-- 折りたたみフィルターエリア (デフォルトでhidden) -->
+            <!-- 折りたたみフィルターエリア -->
             <div id="filter-area" class="hidden mt-3 space-y-2 border-t pt-3">
                 <div class="grid grid-cols-3 gap-2">
-                    
-                    <!-- スキル選択 -->
+                    <!-- お気に入りのみトグル -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">お気に入り</label>
+                        <button id="filter-fav" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors">
+                            <svg id="fav-icon-toggle" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                            <span>のみ</span>
+                        </button>
+                    </div>
+
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">スキル</label>
-                        <select id="filter-skill" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="filter-skill" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">すべて</option>
                         </select>
                     </div>
 
-                    <!-- キャラクター選択 -->
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
-                        <select id="filter-char" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">すべて</option>
-                        </select>
-                    </div>
-
-                    <!-- 属性フィルタ -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">属性</label>
-                        <select id="filter-attr" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="filter-attr" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">すべて</option>
                             <option value="青">青</option>
                             <option value="赤">赤</option>
@@ -98,11 +102,17 @@
                         </select>
                     </div>
 
-                    <!-- 並び替え項目 -->
                     <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え項目</label>
-                        <select id="sort-key" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="ソートNo" selected>ソートNo</option>
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
+                        <select id="filter-char" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え</label>
+                        <select id="sort-key" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ソートNo">ソートNo</option>
                             <option value="カード名">カード名</option>
                             <option value="HP">HP</option>
                             <option value="攻撃力">攻撃力</option>
@@ -110,22 +120,13 @@
                         </select>
                     </div>
 
-                    <!-- 順序 -->
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 ml-1">順序</label>
-                        <select id="sort-order" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="asc">低い順 (昇順)</option>
-                            <option value="desc" selected>高い順 (降順)</option>
+                    <div class="flex items-end gap-1">
+                        <select id="sort-order" class="flex-grow px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="asc">昇順</option>
+                            <option value="desc" selected>降順</option>
                         </select>
-                    </div>
-
-                    <!-- リセット -->
-                    <div class="flex items-end">
-                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            リセット
+                        <button id="reset-filters" class="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         </button>
                     </div>
                 </div>
@@ -134,7 +135,7 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-2 py-3">
-        <!-- 手動アップロード（エラー時用） -->
+        <!-- 手動アップロード -->
         <div id="setup-area" class="hidden p-6 bg-white rounded-xl border-2 border-dashed border-gray-300 text-center my-4">
             <p class="text-sm font-bold text-gray-600 mb-3">CSVを読み込めませんでした</p>
             <label class="block">
@@ -143,15 +144,11 @@
             </label>
         </div>
 
-        <!-- 読み込み中表示 -->
         <div id="loading" class="text-center py-20">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
         </div>
 
-        <!-- カード一覧 -->
-        <div id="card-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 hidden">
-            <!-- JSで注入 -->
-        </div>
+        <div id="card-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 hidden"></div>
 
         <div id="no-results" class="hidden text-center py-20 text-gray-400 text-sm">
             条件に一致するカードが見つかりません
@@ -160,15 +157,18 @@
 
     <!-- 詳細モーダル -->
     <div id="modal" class="fixed inset-0 z-[60] hidden bg-black bg-opacity-60 flex items-end md:items-center justify-center p-0 md:p-4">
-        <div class="modal-content-container bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
+        <div class="modal-content-container bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl relative">
+            <!-- PC用閉じるボタン -->
+            <button id="close-modal-pc" class="hidden md:block absolute top-4 right-4 z-10 p-2 bg-black/10 hover:bg-black/20 rounded-full text-gray-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
             <!-- 閉じるバー（モバイル用） -->
             <div class="md:hidden flex justify-center py-2 cursor-pointer" id="close-bar">
                 <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
             </div>
             
-            <div id="modal-content" class="overflow-y-auto p-4 md:p-8 no-scrollbar">
-                <!-- JSで注入 -->
-            </div>
+            <div id="modal-content" class="overflow-y-auto p-4 md:p-8 no-scrollbar"></div>
             
             <div class="p-4 border-t bg-gray-50 text-center md:hidden">
                 <button id="close-modal-btn" class="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl active:bg-gray-300 transition-colors">閉じる</button>
@@ -179,6 +179,8 @@
     <script>
         let cardData = [];
         let skillData = [];
+        let favorites = new Set();
+        let showOnlyFavorites = false;
 
         const elements = {
             grid: document.getElementById('card-grid'),
@@ -188,6 +190,8 @@
             filterChar: document.getElementById('filter-char'),
             filterAttr: document.getElementById('filter-attr'),
             filterSkill: document.getElementById('filter-skill'),
+            filterFav: document.getElementById('filter-fav'),
+            favIconToggle: document.getElementById('fav-icon-toggle'),
             sortKey: document.getElementById('sort-key'),
             sortOrder: document.getElementById('sort-order'),
             resetBtn: document.getElementById('reset-filters'),
@@ -199,10 +203,25 @@
             modal: document.getElementById('modal'),
             modalContent: document.getElementById('modal-content'),
             closeModalBtn: document.getElementById('close-modal-btn'),
+            closeModalPc: document.getElementById('close-modal-pc'),
             closeBar: document.getElementById('close-bar')
         };
 
+        // ローカルストレージからお気に入りを読み込み
+        function loadFavorites() {
+            const saved = localStorage.getItem('card_db_favorites');
+            if (saved) {
+                favorites = new Set(JSON.parse(saved));
+            }
+        }
+
+        // お気に入りを保存
+        function saveFavorites() {
+            localStorage.setItem('card_db_favorites', JSON.stringify(Array.from(favorites)));
+        }
+
         async function init() {
+            loadFavorites();
             setupListeners();
             try {
                 const [cardsCsv, skillsCsv] = await Promise.all([
@@ -228,7 +247,6 @@
             cardData = parseCsv(cardsCsv);
             skillData = parseCsv(skillsCsv);
 
-            // スキルを「カード名」で紐付け
             const skillsMap = {};
             skillData.forEach(s => {
                 const nameKey = s['カード名'];
@@ -237,18 +255,14 @@
                 skillsMap[nameKey].push(s);
             });
 
-            // カードデータにスキルを割り当て
             cardData.forEach(card => {
                 const nameKey = card['カード名'];
                 card.skills = skillsMap[nameKey] || [];
             });
 
             populateDropdowns();
-
             elements.loading.classList.add('hidden');
-            elements.setupArea.classList.add('hidden');
             elements.grid.classList.remove('hidden');
-            
             runFilterAndSort();
         }
 
@@ -257,31 +271,37 @@
         }
 
         function populateDropdowns() {
-            const chars = [...new Set(cardData.map(c => c['キャラクター名']))]
-                        .filter(name => name)
-                        .sort();
+            const chars = [...new Set(cardData.map(c => c['キャラクター名']))].filter(name => name).sort();
             elements.filterChar.innerHTML = '<option value="">すべて</option>';
             chars.forEach(name => {
                 const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
+                opt.value = name; opt.textContent = name;
                 elements.filterChar.appendChild(opt);
             });
 
-            const skills = [...new Set(skillData.map(s => s['スキル名']))]
-                        .filter(name => name)
-                        .sort();
+            const skills = [...new Set(skillData.map(s => s['スキル名']))].filter(name => name).sort();
             elements.filterSkill.innerHTML = '<option value="">すべて</option>';
             skills.forEach(name => {
                 const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
+                opt.value = name; opt.textContent = name;
                 elements.filterSkill.appendChild(opt);
             });
         }
 
-        function updateStatusText(count) {
-            elements.status.innerText = `${count} 枚のカードを表示中`;
+        function toggleFavorite(cardName, event) {
+            if (event) event.stopPropagation();
+            if (favorites.has(cardName)) {
+                favorites.delete(cardName);
+            } else {
+                favorites.add(cardName);
+            }
+            saveFavorites();
+            runFilterAndSort();
+            // 詳細表示中の場合は再描画
+            const activeCard = cardData.find(c => c['カード名'] === cardName);
+            if (activeCard && !elements.modal.classList.contains('hidden')) {
+                showDetail(activeCard);
+            }
         }
 
         function runFilterAndSort() {
@@ -291,37 +311,33 @@
             const sortKey = elements.sortKey.value;
             const sortOrder = elements.sortOrder.value;
 
-            // デフォルト設定以外が選択されている場合にインジケーターを表示
-            const isFiltered = char || attr || skill || sortKey !== 'ソートNo' || sortOrder !== 'desc';
+            const isFiltered = char || attr || skill || showOnlyFavorites || sortKey !== 'ソートNo' || sortOrder !== 'desc';
             elements.filterIndicator.classList.toggle('hidden', !isFiltered);
 
             let filtered = cardData.filter(card => {
                 const matchChar = !char || card['キャラクター名'] === char;
                 const matchAttr = !attr || card['属性'] === attr;
                 const matchSkill = !skill || card.skills.some(s => String(s['スキル名']) === skill);
-                return matchChar && matchAttr && matchSkill;
+                const matchFav = !showOnlyFavorites || favorites.has(card['カード名']);
+                return matchChar && matchAttr && matchSkill && matchFav;
             });
 
             filtered.sort((a, b) => {
                 let valA = a[sortKey];
                 let valB = b[sortKey];
-
                 const isNumA = typeof valA === 'number' || (!isNaN(parseFloat(valA)) && isFinite(valA));
                 const isNumB = typeof valB === 'number' || (!isNaN(parseFloat(valB)) && isFinite(valB));
-
                 if (isNumA && isNumB) {
-                    valA = Number(valA || 0);
-                    valB = Number(valB || 0);
+                    valA = Number(valA || 0); valB = Number(valB || 0);
                     return sortOrder === 'asc' ? valA - valB : valB - valA;
                 } else {
-                    valA = String(valA || "");
-                    valB = String(valB || "");
+                    valA = String(valA || ""); valB = String(valB || "");
                     return sortOrder === 'asc' ? valA.localeCompare(valB, 'ja') : valB.localeCompare(valA, 'ja');
                 }
             });
 
             renderCards(filtered);
-            updateStatusText(filtered.length);
+            elements.status.innerText = `${filtered.length} 枚表示中`;
         }
 
         function setupListeners() {
@@ -331,21 +347,29 @@
             elements.sortKey.addEventListener('change', runFilterAndSort);
             elements.sortOrder.addEventListener('change', runFilterAndSort);
             
-            elements.toggleFilters.onclick = () => {
-                elements.filterArea.classList.toggle('hidden');
+            elements.filterFav.onclick = () => {
+                showOnlyFavorites = !showOnlyFavorites;
+                elements.filterFav.classList.toggle('bg-red-50', showOnlyFavorites);
+                elements.filterFav.classList.toggle('text-red-500', showOnlyFavorites);
+                elements.filterFav.classList.toggle('border-red-200', showOnlyFavorites);
+                elements.favIconToggle.classList.toggle('fill-current', showOnlyFavorites);
+                runFilterAndSort();
             };
 
+            elements.toggleFilters.onclick = () => elements.filterArea.classList.toggle('hidden');
+
             elements.resetBtn.onclick = () => {
-                elements.filterChar.value = "";
-                elements.filterAttr.value = "";
-                elements.filterSkill.value = "";
-                elements.sortKey.value = "ソートNo";
-                elements.sortOrder.value = "desc";
+                elements.filterChar.value = ""; elements.filterAttr.value = ""; elements.filterSkill.value = "";
+                elements.sortKey.value = "ソートNo"; elements.sortOrder.value = "desc";
+                showOnlyFavorites = false;
+                elements.filterFav.classList.remove('bg-red-50', 'text-red-500', 'border-red-200');
+                elements.favIconToggle.classList.remove('fill-current');
                 runFilterAndSort();
             };
 
             const closeModal = () => elements.modal.classList.add('hidden');
             elements.closeModalBtn.onclick = closeModal;
+            elements.closeModalPc.onclick = closeModal;
             elements.closeBar.onclick = closeModal;
             window.onclick = (e) => { if(e.target === elements.modal) closeModal(); };
 
@@ -361,7 +385,6 @@
             });
         }
 
-        // タイプに応じた色を返すヘルパー (一覧画面用: 濃色・不透明度あり)
         function getTypeTagColor(type) {
             if (!type) return 'bg-indigo-600/80';
             if (type.includes('物理')) return 'bg-teal-600/80';
@@ -370,7 +393,6 @@
             return 'bg-indigo-600/80';
         }
 
-        // タイプに応じた色を返すヘルパー (詳細画面用: 淡色・テキスト色強調)
         function getTypeTagLightColor(type) {
             if (!type) return 'bg-indigo-100 text-indigo-700';
             if (type.includes('物理')) return 'bg-teal-100 text-teal-700';
@@ -385,20 +407,23 @@
             
             data.forEach(card => {
                 const cardEl = document.createElement('div');
-                cardEl.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden active:scale-95 transition-transform flex flex-col';
+                cardEl.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden active:scale-95 transition-transform flex flex-col relative';
                 
+                const isFav = favorites.has(card['カード名']);
                 const attrColor = getAttrColor(card['属性']);
                 const typeColor = getTypeTagColor(card['アタッカータイプ']);
                 
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
                         <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
-                        <!-- オーバーレイタグ -->
+                        <!-- お気に入りボタン -->
+                        <button onclick="toggleFavorite('${card['カード名']}', event)" class="heart-btn absolute top-1.5 right-1.5 z-10 p-1.5 bg-white/80 backdrop-blur shadow rounded-full ${isFav ? 'text-red-500' : 'text-gray-400'}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                        </button>
                         <div class="absolute bottom-1 left-1 flex flex-wrap gap-0.5 max-w-[95%]">
                             <span class="bg-black/70 text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['レア度'] || '??'}</span>
                             <span class="${attrColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['属性'] || '無'}</span>
                             ${card['アタッカータイプ'] ? `<span class="${typeColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm truncate max-w-[60px]">${card['アタッカータイプ']}</span>` : ''}
-                            ${card['シリーズ'] ? `<span class="bg-amber-600/80 text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm truncate max-w-[50px]">${card['シリーズ']}</span>` : ''}
                         </div>
                     </div>
                     <div class="p-2 flex-grow">
@@ -419,27 +444,23 @@
         function showDetail(card) {
             const attrColor = getAttrColor(card['属性']);
             const typeStyle = getTypeTagLightColor(card['アタッカータイプ']);
+            const isFav = favorites.has(card['カード名']);
             
             const stats = [
-                { label: 'HP', val: card['HP'] },
-                { label: '攻撃力', val: card['攻撃力'] },
-                { label: '俊敏性', val: card['俊敏性'] },
-                { label: '物攻', val: card['物攻'] },
-                { label: '特攻', val: card['特攻'] },
-                { label: '物防', val: card['物防'] },
-                { label: '特防', val: card['特防'] },
-                { label: '狂暴性', val: card['狂暴性'] },
-                { label: '人間性', val: card['人間性'] },
-                { label: '耐久性', val: card['耐久性'] },
-                { label: '魔性', val: card['魔性'] }
+                { label: 'HP', val: card['HP'] }, { label: '攻撃力', val: card['攻撃力'] }, { label: '俊敏性', val: card['俊敏性'] },
+                { label: '物攻', val: card['物攻'] }, { label: '特攻', val: card['特攻'] }, { label: '物防', val: card['物防'] },
+                { label: '特防', val: card['特防'] }, { label: '狂暴性', val: card['狂暴性'] }, { label: '人間性', val: card['人間性'] },
+                { label: '耐久性', val: card['耐久性'] }, { label: '魔性', val: card['魔性'] }
             ];
 
             elements.modalContent.innerHTML = `
                 <div class="md:flex md:gap-8 items-start">
-                    <!-- 左カラム: メイン画像と基本ステータス -->
                     <div class="w-full md:w-[40%] flex-shrink-0">
-                        <div class="card-image-container mb-4 rounded-xl shadow-md border overflow-hidden">
+                        <div class="relative card-image-container mb-4 rounded-xl shadow-md border overflow-hidden">
                             <img src="${card['画像URL']}" class="card-image" onerror="this.src='https://via.placeholder.com/400x400?text=No+Image'">
+                            <button onclick="toggleFavorite('${card['カード名']}', event)" class="heart-btn absolute top-4 right-4 z-10 p-3 bg-white/90 backdrop-blur shadow-lg rounded-full ${isFav ? 'text-red-500' : 'text-gray-400'}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                            </button>
                         </div>
                         <div class="flex flex-wrap gap-2 mb-3">
                             <span class="px-3 py-1 rounded-full text-[10px] font-bold text-white ${attrColor}">${card['属性'] || '無'}</span>
@@ -450,7 +471,6 @@
                         <h2 class="text-xl font-bold leading-tight mb-1">${card['カード名']}</h2>
                         <p class="text-sm text-gray-500 mb-6">${card['キャラクター名']}</p>
 
-                        <!-- 詳細ステータス -->
                         <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                             <div class="flex items-center gap-2 mb-3 text-gray-500">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -467,7 +487,6 @@
                         </div>
                     </div>
                     
-                    <!-- 右カラム: スキル情報 -->
                     <div class="w-full md:w-[60%] space-y-6 mt-8 md:mt-0">
                         ${card['ユニークスキル名'] ? `
                         <div class="animate-in fade-in slide-in-from-right duration-500">
@@ -494,7 +513,7 @@
                                             <span class="text-sm font-bold text-gray-800">${s['スキル名']}</span>
                                             <div class="flex gap-1 ml-auto">
                                                 ${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}
-                                                ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">MP ${s['消費MP']}</span>` : ''}
+                                                ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">MP ${s['消費MP']}</span>` : ''}
                                             </div>
                                         </div>
                                         <div class="text-[11px] text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
