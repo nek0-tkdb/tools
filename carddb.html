@@ -67,7 +67,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                         </svg>
-                        <span class="text-xs font-bold">検索</span>
+                        <span class="text-xs font-bold">検索・ソート</span>
                         <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
                     </button>
                 </div>
@@ -76,25 +76,27 @@
             <!-- 折りたたみフィルターエリア -->
             <div id="filter-area" class="hidden mt-3 space-y-2 border-t pt-3">
                 <div class="grid grid-cols-3 gap-2">
-                    <!-- お気に入りのみトグル -->
+                    
+                    <!-- スキル選択 -->
                     <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 ml-1">お気に入り</label>
-                        <button id="filter-fav" class="w-full px-2 py-2 bg-gray-50 border rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors">
-                            <svg id="fav-icon-toggle" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                            <span>のみ</span>
-                        </button>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 ml-1">スキル</label>
-                        <select id="filter-skill" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">スキル名</label>
+                        <select id="filter-skill" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">すべて</option>
                         </select>
                     </div>
 
+                    <!-- キャラクター選択 -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
+                        <select id="filter-char" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+
+                    <!-- 属性フィルタ -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">属性</label>
-                        <select id="filter-attr" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="filter-attr" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">すべて</option>
                             <option value="青">青</option>
                             <option value="赤">赤</option>
@@ -102,16 +104,34 @@
                         </select>
                     </div>
 
+                    <!-- 攻撃対象フィルタ -->
                     <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
-                        <select id="filter-char" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">対象</label>
+                        <select id="filter-target" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">すべて</option>
                         </select>
                     </div>
 
+                    <!-- 倍率フィルタ -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">倍率</label>
+                        <select id="filter-mult" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+
+                    <!-- お気に入りのみトグル -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">お気に入り</label>
+                        <button id="filter-fav" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors">
+                            <svg id="fav-icon-toggle" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                            <span>のみ</span>
+                        </button>
+                    </div>
+
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え</label>
-                        <select id="sort-key" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="sort-key" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="ソートNo">ソートNo</option>
                             <option value="カード名">カード名</option>
                             <option value="HP">HP</option>
@@ -120,13 +140,18 @@
                         </select>
                     </div>
 
-                    <div class="flex items-end gap-1">
-                        <select id="sort-order" class="flex-grow px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 ml-1">順序</label>
+                        <select id="sort-order" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="asc">昇順</option>
                             <option value="desc" selected>降順</option>
                         </select>
-                        <button id="reset-filters" class="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </div>
+
+                    <div class="flex items-end">
+                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 flex items-center justify-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            リセット
                         </button>
                     </div>
                 </div>
@@ -190,6 +215,8 @@
             filterChar: document.getElementById('filter-char'),
             filterAttr: document.getElementById('filter-attr'),
             filterSkill: document.getElementById('filter-skill'),
+            filterTarget: document.getElementById('filter-target'),
+            filterMult: document.getElementById('filter-mult'),
             filterFav: document.getElementById('filter-fav'),
             favIconToggle: document.getElementById('fav-icon-toggle'),
             sortKey: document.getElementById('sort-key'),
@@ -207,7 +234,6 @@
             closeBar: document.getElementById('close-bar')
         };
 
-        // ローカルストレージからお気に入りを読み込み
         function loadFavorites() {
             const saved = localStorage.getItem('card_db_favorites');
             if (saved) {
@@ -215,7 +241,6 @@
             }
         }
 
-        // お気に入りを保存
         function saveFavorites() {
             localStorage.setItem('card_db_favorites', JSON.stringify(Array.from(favorites)));
         }
@@ -286,6 +311,24 @@
                 opt.value = name; opt.textContent = name;
                 elements.filterSkill.appendChild(opt);
             });
+
+            // 攻撃対象
+            const targets = [...new Set(skillData.map(s => s['攻撃対象']))].filter(v => v).sort();
+            elements.filterTarget.innerHTML = '<option value="">すべて</option>';
+            targets.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v; opt.textContent = v;
+                elements.filterTarget.appendChild(opt);
+            });
+
+            // ダメージ倍率
+            const multipliers = [...new Set(skillData.map(s => s['ダメージ倍率']))].filter(v => v).sort();
+            elements.filterMult.innerHTML = '<option value="">すべて</option>';
+            multipliers.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v; opt.textContent = v;
+                elements.filterMult.appendChild(opt);
+            });
         }
 
         function toggleFavorite(cardName, event) {
@@ -297,7 +340,6 @@
             }
             saveFavorites();
             runFilterAndSort();
-            // 詳細表示中の場合は再描画
             const activeCard = cardData.find(c => c['カード名'] === cardName);
             if (activeCard && !elements.modal.classList.contains('hidden')) {
                 showDetail(activeCard);
@@ -308,18 +350,28 @@
             const char = elements.filterChar.value;
             const attr = elements.filterAttr.value;
             const skill = elements.filterSkill.value;
+            const target = elements.filterTarget.value;
+            const mult = elements.filterMult.value;
             const sortKey = elements.sortKey.value;
             const sortOrder = elements.sortOrder.value;
 
-            const isFiltered = char || attr || skill || showOnlyFavorites || sortKey !== 'ソートNo' || sortOrder !== 'desc';
+            const isFiltered = char || attr || skill || target || mult || showOnlyFavorites || sortKey !== 'ソートNo' || sortOrder !== 'desc';
             elements.filterIndicator.classList.toggle('hidden', !isFiltered);
 
             let filtered = cardData.filter(card => {
                 const matchChar = !char || card['キャラクター名'] === char;
                 const matchAttr = !attr || card['属性'] === attr;
-                const matchSkill = !skill || card.skills.some(s => String(s['スキル名']) === skill);
                 const matchFav = !showOnlyFavorites || favorites.has(card['カード名']);
-                return matchChar && matchAttr && matchSkill && matchFav;
+                
+                // スキル条件のチェック (すべて一致するスキルが1つ以上あるか)
+                const matchSkillFilters = card.skills.some(s => {
+                    const nMatch = !skill || String(s['スキル名']) === skill;
+                    const tMatch = !target || String(s['攻撃対象']) === target;
+                    const mMatch = !mult || String(s['ダメージ倍率']) === mult;
+                    return nMatch && tMatch && mMatch;
+                });
+
+                return matchChar && matchAttr && matchFav && matchSkillFilters;
             });
 
             filtered.sort((a, b) => {
@@ -341,11 +393,14 @@
         }
 
         function setupListeners() {
-            elements.filterChar.addEventListener('change', runFilterAndSort);
-            elements.filterAttr.addEventListener('change', runFilterAndSort);
-            elements.filterSkill.addEventListener('change', runFilterAndSort);
-            elements.sortKey.addEventListener('change', runFilterAndSort);
-            elements.sortOrder.addEventListener('change', runFilterAndSort);
+            const updateAction = () => runFilterAndSort();
+            elements.filterChar.addEventListener('change', updateAction);
+            elements.filterAttr.addEventListener('change', updateAction);
+            elements.filterSkill.addEventListener('change', updateAction);
+            elements.filterTarget.addEventListener('change', updateAction);
+            elements.filterMult.addEventListener('change', updateAction);
+            elements.sortKey.addEventListener('change', updateAction);
+            elements.sortOrder.addEventListener('change', updateAction);
             
             elements.filterFav.onclick = () => {
                 showOnlyFavorites = !showOnlyFavorites;
@@ -360,6 +415,7 @@
 
             elements.resetBtn.onclick = () => {
                 elements.filterChar.value = ""; elements.filterAttr.value = ""; elements.filterSkill.value = "";
+                elements.filterTarget.value = ""; elements.filterMult.value = "";
                 elements.sortKey.value = "ソートNo"; elements.sortOrder.value = "desc";
                 showOnlyFavorites = false;
                 elements.filterFav.classList.remove('bg-red-50', 'text-red-500', 'border-red-200');
@@ -515,6 +571,11 @@
                                                 ${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}
                                                 ${s['消費MP'] !== undefined && s['消費MP'] !== null ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">MP ${s['消費MP']}</span>` : ''}
                                             </div>
+                                        </div>
+                                        <!-- 攻撃対象・ダメージ倍率の追加表示 -->
+                                        <div class="flex flex-wrap gap-2 mb-1">
+                                            ${s['攻撃対象'] ? `<span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 rounded">対象: ${s['攻撃対象']}</span>` : ''}
+                                            ${s['ダメージ倍率'] ? `<span class="text-[10px] text-rose-600 bg-rose-50 px-1.5 rounded">倍率: ${s['ダメージ倍率']}</span>` : ''}
                                         </div>
                                         <div class="text-[11px] text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
                                         ${s['使用条件'] ? `<div class="text-[10px] text-red-400 mt-1 font-medium bg-red-50 inline-block px-1.5 rounded">条件: ${s['使用条件']}</div>` : ''}
