@@ -92,12 +92,8 @@
                         </select>
                     </div>
 
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 ml-1">倍率</label>
-                        <select id="filter-mult" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">すべて</option>
-                        </select>
-                    </div>
+                    <!-- 隙間を埋めるための空要素、または別の項目を入れることも可能 -->
+                    <div class="invisible"></div>
 
                     <!-- 2段目: カード基本情報に関するフィルタ -->
                     <div class="space-y-1">
@@ -213,7 +209,6 @@
             filterAttr: document.getElementById('filter-attr'),
             filterSkill: document.getElementById('filter-skill'),
             filterTarget: document.getElementById('filter-target'),
-            filterMult: document.getElementById('filter-mult'),
             filterFav: document.getElementById('filter-fav'),
             favIconToggle: document.getElementById('fav-icon-toggle'),
             sortKey: document.getElementById('sort-key'),
@@ -293,7 +288,6 @@
         }
 
         function populateDropdowns() {
-            // キャラクター一覧
             const chars = [...new Set(cardData.map(c => c['キャラクター名']))].filter(name => name).sort();
             elements.filterChar.innerHTML = '<option value="">すべて</option>';
             chars.forEach(name => {
@@ -302,7 +296,6 @@
                 elements.filterChar.appendChild(opt);
             });
 
-            // スキル名一覧
             const skills = [...new Set(skillData.map(s => s['スキル名']))].filter(name => name).sort();
             elements.filterSkill.innerHTML = '<option value="">すべて</option>';
             skills.forEach(name => {
@@ -311,11 +304,9 @@
                 elements.filterSkill.appendChild(opt);
             });
 
-            // 連動する詳細フィルタの初期化
             updateSkillRelatedDropdowns();
         }
 
-        // スキル名に連動して「対象」と「倍率」のリストを更新する
         function updateSkillRelatedDropdowns() {
             const selectedSkill = elements.filterSkill.value;
             let subset = skillData;
@@ -325,9 +316,7 @@
             }
 
             const currentTarget = elements.filterTarget.value;
-            const currentMult = elements.filterMult.value;
 
-            // 攻撃対象
             const targets = [...new Set(subset.map(s => s['攻撃対象']))].filter(v => v).sort();
             elements.filterTarget.innerHTML = '<option value="">すべて</option>';
             targets.forEach(v => {
@@ -335,18 +324,7 @@
                 opt.value = v; opt.textContent = v;
                 elements.filterTarget.appendChild(opt);
             });
-            // 以前の選択が新しいリストにもあれば維持、なければリセット
             if (targets.includes(currentTarget)) elements.filterTarget.value = currentTarget;
-
-            // ダメージ倍率
-            const multipliers = [...new Set(subset.map(s => s['ダメージ倍率']))].filter(v => v).sort();
-            elements.filterMult.innerHTML = '<option value="">すべて</option>';
-            multipliers.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v; opt.textContent = v;
-                elements.filterMult.appendChild(opt);
-            });
-            if (multipliers.includes(currentMult)) elements.filterMult.value = currentMult;
         }
 
         function toggleFavorite(cardName, event) {
@@ -369,11 +347,10 @@
             const attr = elements.filterAttr.value;
             const skill = elements.filterSkill.value;
             const target = elements.filterTarget.value;
-            const mult = elements.filterMult.value;
             const sortKey = elements.sortKey.value;
             const sortOrder = elements.sortOrder.value;
 
-            const isFiltered = char || attr || skill || target || mult || showOnlyFavorites || sortKey !== 'ソートNo' || sortOrder !== 'desc';
+            const isFiltered = char || attr || skill || target || showOnlyFavorites || sortKey !== 'ソートNo' || sortOrder !== 'desc';
             elements.filterIndicator.classList.toggle('hidden', !isFiltered);
 
             let filtered = cardData.filter(card => {
@@ -381,12 +358,10 @@
                 const matchAttr = !attr || card['属性'] === attr;
                 const matchFav = !showOnlyFavorites || favorites.has(card['カード名']);
                 
-                // スキル条件のチェック (すべて一致するスキルが1つ以上あるか)
                 const matchSkillFilters = card.skills.some(s => {
                     const nMatch = !skill || String(s['スキル名']) === skill;
                     const tMatch = !target || String(s['攻撃対象']) === target;
-                    const mMatch = !mult || String(s['ダメージ倍率']) === mult;
-                    return nMatch && tMatch && mMatch;
+                    return nMatch && tMatch;
                 });
 
                 return matchChar && matchAttr && matchFav && matchSkillFilters;
@@ -420,7 +395,6 @@
             elements.filterChar.addEventListener('change', updateAction);
             elements.filterAttr.addEventListener('change', updateAction);
             elements.filterTarget.addEventListener('change', updateAction);
-            elements.filterMult.addEventListener('change', updateAction);
             elements.sortKey.addEventListener('change', updateAction);
             elements.sortOrder.addEventListener('change', updateAction);
             
@@ -437,13 +411,12 @@
 
             elements.resetBtn.onclick = () => {
                 elements.filterChar.value = ""; elements.filterAttr.value = ""; elements.filterSkill.value = "";
-                elements.filterTarget.value = ""; elements.filterMult.value = "";
+                elements.filterTarget.value = "";
                 elements.sortKey.value = "ソートNo"; elements.sortOrder.value = "desc";
                 showOnlyFavorites = false;
                 elements.filterFav.classList.remove('bg-red-50', 'text-red-500', 'border-red-200');
                 elements.favIconToggle.classList.remove('fill-current');
                 
-                // リセット時にドロップダウンも全件表示に戻す
                 updateSkillRelatedDropdowns();
                 runFilterAndSort();
             };
@@ -497,7 +470,6 @@
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
                         <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
-                        <!-- お気に入りボタン -->
                         <button onclick="toggleFavorite('${card['カード名']}', event)" class="heart-btn absolute top-1.5 right-1.5 z-10 p-1.5 bg-white/80 backdrop-blur shadow rounded-full ${isFav ? 'text-red-500' : 'text-gray-400'}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                         </button>
