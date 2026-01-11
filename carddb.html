@@ -67,7 +67,7 @@
                 </button>
             </div>
 
-            <!-- 折りたたみフィルターエリア -->
+            <!-- 折りたたみフィルターエリア (デフォルトでhidden) -->
             <div id="filter-area" class="hidden mt-3 space-y-2 border-t pt-3">
                 <div class="grid grid-cols-3 gap-2">
                     
@@ -134,7 +134,7 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-2 py-3">
-        <!-- 手動アップロード -->
+        <!-- 手動アップロード（エラー時用） -->
         <div id="setup-area" class="hidden p-6 bg-white rounded-xl border-2 border-dashed border-gray-300 text-center my-4">
             <p class="text-sm font-bold text-gray-600 mb-3">CSVを読み込めませんでした</p>
             <label class="block">
@@ -143,12 +143,12 @@
             </label>
         </div>
 
-        <!-- 読み込み中 -->
+        <!-- 読み込み中表示 -->
         <div id="loading" class="text-center py-20">
             <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
         </div>
 
-        <!-- カードグリッド -->
+        <!-- カード一覧 -->
         <div id="card-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 hidden">
             <!-- JSで注入 -->
         </div>
@@ -228,7 +228,7 @@
             cardData = parseCsv(cardsCsv);
             skillData = parseCsv(skillsCsv);
 
-            // スキルを「カード名」でグループ化
+            // スキルを「カード名」で紐付け
             const skillsMap = {};
             skillData.forEach(s => {
                 const nameKey = s['カード名'];
@@ -237,7 +237,7 @@
                 skillsMap[nameKey].push(s);
             });
 
-            // カードデータにスキルを紐付け（カード名を使用）
+            // カードデータにスキルを割り当て
             cardData.forEach(card => {
                 const nameKey = card['カード名'];
                 card.skills = skillsMap[nameKey] || [];
@@ -291,6 +291,7 @@
             const sortKey = elements.sortKey.value;
             const sortOrder = elements.sortOrder.value;
 
+            // デフォルト設定以外が選択されている場合にインジケーターを表示
             const isFiltered = char || attr || skill || sortKey !== 'ソートNo' || sortOrder !== 'desc';
             elements.filterIndicator.classList.toggle('hidden', !isFiltered);
 
@@ -360,21 +361,21 @@
             });
         }
 
-        // タイプに応じた色を返すヘルパー (一覧画面用: 濃色)
+        // タイプに応じた色を返すヘルパー (一覧画面用: 濃色・不透明度あり)
         function getTypeTagColor(type) {
             if (!type) return 'bg-indigo-600/80';
-            if (type.includes('物理')) return 'bg-orange-600/80';
+            if (type.includes('物理')) return 'bg-teal-600/80';
             if (type.includes('特殊')) return 'bg-fuchsia-600/80';
-            if (type.includes('混合')) return 'bg-teal-600/80';
+            if (type.includes('混合')) return 'bg-orange-600/80';
             return 'bg-indigo-600/80';
         }
 
-        // タイプに応じた色を返すヘルパー (詳細画面用: 淡色)
+        // タイプに応じた色を返すヘルパー (詳細画面用: 淡色・テキスト色強調)
         function getTypeTagLightColor(type) {
             if (!type) return 'bg-indigo-100 text-indigo-700';
-            if (type.includes('物理')) return 'bg-orange-100 text-orange-700';
+            if (type.includes('物理')) return 'bg-teal-100 text-teal-700';
             if (type.includes('特殊')) return 'bg-fuchsia-100 text-fuchsia-700';
-            if (type.includes('混合')) return 'bg-teal-100 text-teal-700';
+            if (type.includes('混合')) return 'bg-orange-100 text-orange-700';
             return 'bg-indigo-100 text-indigo-700';
         }
 
@@ -392,6 +393,7 @@
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
                         <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
+                        <!-- オーバーレイタグ -->
                         <div class="absolute bottom-1 left-1 flex flex-wrap gap-0.5 max-w-[95%]">
                             <span class="bg-black/70 text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['レア度'] || '??'}</span>
                             <span class="${attrColor} text-white px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm">${card['属性'] || '無'}</span>
@@ -434,7 +436,7 @@
 
             elements.modalContent.innerHTML = `
                 <div class="md:flex md:gap-8 items-start">
-                    <!-- 左カラム: メイン画像とステータス -->
+                    <!-- 左カラム: メイン画像と基本ステータス -->
                     <div class="w-full md:w-[40%] flex-shrink-0">
                         <div class="card-image-container mb-4 rounded-xl shadow-md border overflow-hidden">
                             <img src="${card['画像URL']}" class="card-image" onerror="this.src='https://via.placeholder.com/400x400?text=No+Image'">
@@ -448,7 +450,7 @@
                         <h2 class="text-xl font-bold leading-tight mb-1">${card['カード名']}</h2>
                         <p class="text-sm text-gray-500 mb-6">${card['キャラクター名']}</p>
 
-                        <!-- ステータス -->
+                        <!-- 詳細ステータス -->
                         <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                             <div class="flex items-center gap-2 mb-3 text-gray-500">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
