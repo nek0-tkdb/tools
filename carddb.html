@@ -77,7 +77,7 @@
             <div id="filter-area" class="hidden mt-3 space-y-2 border-t pt-3">
                 <div class="grid grid-cols-3 gap-2">
                     
-                    <!-- 1段目: スキル性能に関するフィルタ -->
+                    <!-- 1段目: スキル名、対象、倍率(削除済み) -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">スキル名</label>
                         <select id="filter-skill" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
@@ -92,10 +92,9 @@
                         </select>
                     </div>
 
-                    <!-- 隙間を埋めるための空要素、または別の項目を入れることも可能 -->
                     <div class="invisible"></div>
 
-                    <!-- 2段目: カード基本情報に関するフィルタ -->
+                    <!-- 2段目: キャラクター、属性、お気に入り -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
                         <select id="filter-char" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
@@ -142,7 +141,7 @@
                     </div>
 
                     <div class="flex items-end">
-                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 flex items-center justify-center gap-1">
+                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             リセット
                         </button>
@@ -153,7 +152,6 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-2 py-3">
-        <!-- 手動アップロード -->
         <div id="setup-area" class="hidden p-6 bg-white rounded-xl border-2 border-dashed border-gray-300 text-center my-4">
             <p class="text-sm font-bold text-gray-600 mb-3">CSVを読み込めませんでした</p>
             <label class="block">
@@ -176,18 +174,13 @@
     <!-- 詳細モーダル -->
     <div id="modal" class="fixed inset-0 z-[60] hidden bg-black bg-opacity-60 flex items-end md:items-center justify-center p-0 md:p-4">
         <div class="modal-content-container bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl relative">
-            <!-- PC用閉じるボタン -->
             <button id="close-modal-pc" class="hidden md:block absolute top-4 right-4 z-10 p-2 bg-black/10 hover:bg-black/20 rounded-full text-gray-600 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
-
-            <!-- 閉じるバー（モバイル用） -->
             <div class="md:hidden flex justify-center py-2 cursor-pointer" id="close-bar">
                 <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
             </div>
-            
             <div id="modal-content" class="overflow-y-auto p-4 md:p-8 no-scrollbar"></div>
-            
             <div class="p-4 border-t bg-gray-50 text-center md:hidden">
                 <button id="close-modal-btn" class="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl active:bg-gray-300 transition-colors">閉じる</button>
             </div>
@@ -310,13 +303,10 @@
         function updateSkillRelatedDropdowns() {
             const selectedSkill = elements.filterSkill.value;
             let subset = skillData;
-            
             if (selectedSkill) {
                 subset = skillData.filter(s => String(s['スキル名']) === selectedSkill);
             }
-
             const currentTarget = elements.filterTarget.value;
-
             const targets = [...new Set(subset.map(s => s['攻撃対象']))].filter(v => v).sort();
             elements.filterTarget.innerHTML = '<option value="">すべて</option>';
             targets.forEach(v => {
@@ -357,13 +347,11 @@
                 const matchChar = !char || card['キャラクター名'] === char;
                 const matchAttr = !attr || card['属性'] === attr;
                 const matchFav = !showOnlyFavorites || favorites.has(card['カード名']);
-                
                 const matchSkillFilters = card.skills.some(s => {
                     const nMatch = !skill || String(s['スキル名']) === skill;
                     const tMatch = !target || String(s['攻撃対象']) === target;
                     return nMatch && tMatch;
                 });
-
                 return matchChar && matchAttr && matchFav && matchSkillFilters;
             });
 
@@ -416,7 +404,6 @@
                 showOnlyFavorites = false;
                 elements.filterFav.classList.remove('bg-red-50', 'text-red-500', 'border-red-200');
                 elements.favIconToggle.classList.remove('fill-current');
-                
                 updateSkillRelatedDropdowns();
                 runFilterAndSort();
             };
@@ -458,15 +445,12 @@
         function renderCards(data) {
             elements.grid.innerHTML = '';
             elements.noResults.classList.toggle('hidden', data.length > 0);
-            
             data.forEach(card => {
                 const cardEl = document.createElement('div');
                 cardEl.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden active:scale-95 transition-transform flex flex-col relative';
-                
                 const isFav = favorites.has(card['カード名']);
                 const attrColor = getAttrColor(card['属性']);
                 const typeColor = getTypeTagColor(card['アタッカータイプ']);
-                
                 cardEl.innerHTML = `
                     <div class="card-image-container relative">
                         <img src="${card['画像URL']}" class="card-image" loading="lazy" onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
@@ -499,11 +483,19 @@
             const typeStyle = getTypeTagLightColor(card['アタッカータイプ']);
             const isFav = favorites.has(card['カード名']);
             
+            // 指定された順序でステータスを構成
             const stats = [
-                { label: 'HP', val: card['HP'] }, { label: '攻撃力', val: card['攻撃力'] }, { label: '俊敏性', val: card['俊敏性'] },
-                { label: '物攻', val: card['物攻'] }, { label: '特攻', val: card['特攻'] }, { label: '物防', val: card['物防'] },
-                { label: '特防', val: card['特防'] }, { label: '狂暴性', val: card['狂暴性'] }, { label: '人間性', val: card['人間性'] },
-                { label: '耐久性', val: card['耐久性'] }, { label: '魔性', val: card['魔性'] }
+                { label: '俊敏性', val: card['俊敏性'] },
+                { label: 'HP', val: card['HP'] },
+                { label: '攻撃力', val: card['攻撃力'] },
+                { label: '物攻', val: card['物攻'] },
+                { label: '物防', val: card['物防'] },
+                { label: '特攻', val: card['特攻'] },
+                { label: '特防', val: card['特防'] },
+                { label: '耐久性', val: card['耐久性'] },
+                { label: '魔性', val: card['魔性'] },
+                { label: '狂暴性', val: card['狂暴性'] },
+                { label: '人間性', val: card['人間性'] }
             ];
 
             elements.modalContent.innerHTML = `
