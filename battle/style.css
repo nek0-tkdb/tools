@@ -1,0 +1,475 @@
+:root {
+    --bg-color: #0f1115;
+    --primary-color: #3b82f6;
+    --accent-color: #f59e0b;
+    --danger-color: #ef4444;
+    --success-color: #10b981;
+    --text-color: #e2e8f0;
+    --card-bg: #1e293b;
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    --font-main: 'Outfit', sans-serif;
+    --font-jp: 'Zen Maru Gothic', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-jp);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+#app {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 120%, #1e1b4b 0%, #000000 100%);
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    z-index: 0;
+}
+
+.screen.active {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 10;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Typography & Utils */
+h1, h2, h3 {
+    font-family: var(--font-main);
+    letter-spacing: 0.05em;
+}
+
+/* Button Styles */
+.primary-btn {
+    background: linear-gradient(135deg, var(--primary-color), #2563eb);
+    color: white;
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-family: var(--font-main);
+    margin-top: 2rem;
+}
+
+.primary-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 5px rgba(59, 130, 246, 0.4);
+}
+
+/* Loading Screen */
+#loading-screen .loader-content {
+    text-align: center;
+}
+.loading-bar {
+    width: 200px;
+    height: 4px;
+    background: #334155;
+    margin-top: 1rem;
+    border-radius: 2px;
+    overflow: hidden;
+}
+.loading-progress {
+    width: 0%;
+    height: 100%;
+    background: var(--primary-color);
+    transition: width 0.3s;
+}
+
+/* Title Screen */
+.title-content {
+    text-align: center;
+    z-index: 2;
+}
+.main-title {
+    font-size: 4rem;
+    line-height: 1;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    margin-bottom: 0.5rem;
+}
+.sub-title {
+    font-size: 1rem;
+    color: #94a3b8;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+.version {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    color: #475569;
+    font-size: 0.8rem;
+}
+
+/* Draft Screen */
+#draft-screen {
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(10px);
+}
+.draft-header {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    padding: 1rem;
+    background: var(--glass-bg);
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 20;
+}
+.deck-preview {
+    display: flex;
+    gap: 0.5rem;
+}
+.mini-card {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-size: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+.draft-container {
+    padding-top: 80px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 1200px;
+    overflow-y: auto;
+    height: 100%;
+    padding-bottom: 2rem;
+}
+
+/* Card Style */
+.card {
+    width: 160px;
+    height: 240px;
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    z-index: 5;
+}
+.card-image {
+    width: 100%;
+    height: 60%;
+    background-size: cover;
+    background-position: top center;
+}
+.card-info {
+    padding: 0.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.8));
+}
+.card-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 0.2rem;
+}
+.card-stats {
+    font-size: 0.7rem;
+    color: #cbd5e1;
+    display: flex;
+    justify-content: space-between;
+}
+.card-type {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    /* border: 1px solid white; */
+}
+.type-red { background: var(--danger-color); box-shadow: 0 0 5px var(--danger-color); }
+.type-blue { background: var(--primary-color); box-shadow: 0 0 5px var(--primary-color); }
+.type-green { background: var(--success-color); box-shadow: 0 0 5px var(--success-color); }
+
+
+/* Battle Screen */
+#battle-screen {
+    justify-content: space-between;
+    padding-bottom: 0;
+}
+.battle-header {
+    width: 100%;
+    background: rgba(0,0,0,0.5);
+    padding: 0.5rem;
+}
+.timeline {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 0.5rem;
+    mask-image: linear-gradient(to right, black 80%, transparent);
+}
+.timeline-unit {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background-size: cover;
+    flex-shrink: 0;
+    position: relative;
+}
+.timeline-unit.is-active {
+    border-color: #fbbf24;
+    transform: scale(1.1);
+    box-shadow: 0 0 10px #fbbf24;
+}
+
+.battle-field {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding: 1rem;
+    gap: 2rem;
+}
+
+.enemies-row, .players-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.battle-unit {
+    width: 80px;
+    height: 110px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* 敵は少し小さくてもいいかも */
+.enemies-row .battle-unit {
+    width: 70px;
+    height: 100px;
+}
+
+.battle-unit .unit-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.battle-unit.dead {
+    filter: grayscale(1) brightness(0.5);
+    opacity: 0.5;
+}
+
+.battle-unit.selected-target {
+    box-shadow: 0 0 0 3px var(--danger-color);
+    transform: scale(1.05);
+}
+
+.battle-unit.is-acting {
+    box-shadow: 0 0 0 3px var(--accent-color), 0 0 20px var(--accent-color);
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.hp-bar-container {
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.hp-bar {
+    width: 100%;
+    height: 100%;
+    background: var(--success-color);
+    transition: width 0.3s;
+}
+
+.hp-bar.low { background: var(--danger-color); }
+.hp-bar.mid { background: var(--accent-color); }
+
+/* Damage Popups */
+.center-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 100;
+}
+.damage-number {
+    position: absolute;
+    font-family: var(--font-main);
+    font-weight: 800;
+    font-size: 2rem;
+    color: white;
+    text-shadow: 0 0 5px black;
+    animation: floatUp 0.8s ease-out forwards;
+}
+.damage-number.crit {
+    color: #fbbf24;
+    font-size: 3rem;
+}
+@keyframes floatUp {
+    0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+    20% { transform: translate(-50%, -30px) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -60px) scale(1); opacity: 0; }
+}
+
+/* Battle Footer */
+.battle-footer {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--glass-border);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.active-unit-info {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    min-height: 1.2em;
+}
+
+.action-panel {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.skill-btn {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 0.8rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.skill-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--primary-color);
+}
+.skill-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.skill-name {
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+.skill-cost {
+    font-size: 0.75rem;
+    color:var(--accent-color);
+}
+.skill-desc {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Result Screen */
+#result-screen {
+    background: rgba(0,0,0,0.9);
+}
+#result-title {
+    font-size: 4rem;
+    background: linear-gradient(to bottom, #fbbf24, #d97706);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+    .action-panel {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .card {
+        width: 180px;
+        height: 260px;
+    }
+    .enemies-row .battle-unit, .players-row .battle-unit {
+        width: 100px;
+        height: 140px;
+    }
+}
