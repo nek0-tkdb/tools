@@ -116,17 +116,27 @@
     <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-3 py-3">
             <div class="flex items-center justify-between gap-2">
-                <div>
-                    <h1 class="text-lg font-bold text-blue-600 leading-none">Card Database</h1>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold text-blue-600 leading-none truncate">Card Database</h1>
                     <div id="data-status" class="text-[10px] font-bold text-gray-400 mt-1">準備中...</div>
                 </div>
-                <div class="flex gap-2">
-                    <button id="view-toggle" class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors shadow-sm">
-                        <svg id="grid-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                        <svg id="list-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                <div class="flex gap-2 flex-shrink-0">
+                    <!-- 表示切替ボタン: flex-shrink-0を追加してつぶれを防止 -->
+                    <button id="view-toggle" class="flex items-center justify-center p-2.5 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors shadow-sm">
+                        <!-- グリッドアイコン（リスト時に表示） -->
+                        <svg id="grid-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        <!-- リストアイコン（グリッド時に表示） -->
+                        <svg id="list-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
                     </button>
+                    
                     <button id="toggle-filters" class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
                         <span class="text-sm font-bold">条件</span>
                         <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
                     </button>
@@ -329,7 +339,7 @@
                 const nameKey = s['カード名'];
                 if (!nameKey) return;
                 if (!skillsMap[nameKey]) skillsMap[nameKey] = [];
-                // MP項目の正規化（消費MP/MPどちらも対応）
+                // MP項目の正規化
                 s.MP = (s['MP'] !== undefined && s['MP'] !== null && s['MP'] !== '') ? s['MP'] : s['消費MP'];
                 skillsMap[nameKey].push(s);
             });
@@ -433,11 +443,10 @@
                 });
             }
 
-            // 改良されたソート処理（数値と文字列を適切に判定）
+            // 数値と文字列を適切に判定するソートロジック
             filtered.sort((a, b) => {
                 const toValue = (val) => {
                     if (val === undefined || val === null || val === '') return null;
-                    // 数値として扱えるかチェック（記号類を削除して数値だけ抽出）
                     const cleaned = String(val).replace(/[^0-9.-]/g, '');
                     if (cleaned !== '' && !isNaN(parseFloat(cleaned))) {
                         return parseFloat(cleaned);
@@ -448,17 +457,13 @@
                 const valA = toValue(a[sortKey]);
                 const valB = toValue(b[sortKey]);
 
-                // ヌル値の処理（常に最後へ）
                 if (valA === null && valB === null) return 0;
                 if (valA === null) return 1;
                 if (valB === null) return -1;
 
                 if (typeof valA === 'number' && typeof valB === 'number') {
-                    // 数値比較：マイナス値も正しく比較される
                     return sortOrder === 'asc' ? valA - valB : valB - valA;
                 }
-                
-                // 文字列比較
                 const strA = String(valA);
                 const strB = String(valB);
                 return sortOrder === 'asc' ? strA.localeCompare(strB, 'ja') : strB.localeCompare(strA, 'ja');
@@ -494,8 +499,9 @@
         function setupListeners() {
             elements.viewToggle.onclick = () => {
                 currentView = (currentView === 'grid') ? 'list' : 'grid';
-                elements.gridIcon.classList.toggle('hidden', currentView === 'list');
-                elements.listIcon.classList.toggle('hidden', currentView === 'grid');
+                // アイコンの切り替えロジック
+                elements.gridIcon.classList.toggle('hidden', currentView === 'grid');
+                elements.listIcon.classList.toggle('hidden', currentView === 'list');
                 updateDisplay();
             };
 
@@ -604,8 +610,6 @@
                 tr.className = 'cursor-pointer hover:bg-blue-50/30 transition-colors';
                 const isFav = favorites.has(row['カード名']);
                 const attrColor = getAttrColor(row['属性']);
-                
-                // MP値の表示（マイナス記号の整形）
                 const displayMP = row.MP !== undefined && row.MP !== null ? row.MP : '-';
                 
                 tr.innerHTML = `
@@ -614,7 +618,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                         </button>
                     </td>
-                    <td><img src="${row['画像URL']}" class="w-8 h-8 rounded object-cover border" onerror="this.src='https://via.placeholder.com/400x400?text=Card'"></td>
+                    <td><img src="${row['画像URL']}" class="w-8 h-8 rounded object-cover border" onerror="this.src='https://via.placeholder.com/40x40?text=Card'"></td>
                     <td class="font-bold text-gray-800">${row['カード名']}</td>
                     <td class="text-blue-600 font-semibold">${row['スキル名'] || '-'}</td>
                     <td>${row['攻撃対象'] || '-'}</td>
@@ -681,17 +685,15 @@
                         </div>
                     </div>
                     <div class="w-full md:w-[60%] space-y-6 mt-8 md:mt-0">
-                        ${card['ユニークスキル名'] ? `<div class="animate-in fade-in slide-in-from-right duration-500"><div class="flex items-center gap-2 mb-3 text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg><span class="text-[10px] font-bold uppercase tracking-widest">Unique Ability</span></div><div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-100 shadow-sm"><div class="font-bold text-blue-900 text-sm mb-1">${card['ユニークスキル名']}</div><div class="textxs text-blue-700 leading-relaxed">${card['ユニークスキル効果'] || ''}</div></div></div>` : ''}
+                        ${card['ユニークスキル名'] ? `<div class="animate-in fade-in slide-in-from-right duration-500"><div class="flex items-center gap-2 mb-3 text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg><span class="text-[10px] font-bold uppercase tracking-widest">Unique Ability</span></div><div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-100 shadow-sm"><div class="font-bold text-blue-900 text-sm mb-1">${card['ユニークスキル名']}</div><div class="text-xs text-blue-700 leading-relaxed">${card['ユニークスキル効果'] || ''}</div></div></div>` : ''}
                         <div class="animate-in fade-in slide-in-from-bottom duration-700"><div class="flex items-center gap-2 mb-3 text-gray-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg><span class="text-[10px] font-bold uppercase tracking-widest">Battle Skills</span></div>
                         <div class="space-y-4">
-                            ${card.skills.length > 0 ? card.skills.map(s => {
-                                const currentMP = s.MP !== undefined && s.MP !== null && s.MP !== '' ? s.MP : s['消費MP'];
-                                return `
-                                <div class="bg-white border-l-4 border-gray-200 pl-4 py-1 hover:border-blue-300 transition-colors"><div class="flex items-center gap-2 flex-wrap mb-1"><span class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm ${s['スキル種別'] === 'パッシブ' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${s['スキル種別']}</span><span class="text-sm font-bold text-gray-800">${s['スキル名']}</span><div class="flex gap-1 ml-auto">${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}${currentMP !== undefined && currentMP !== null && currentMP !== '' ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">MP ${currentMP}</span>` : ''}</div></div>
+                            ${card.skills.length > 0 ? card.skills.map(s => `
+                                <div class="bg-white border-l-4 border-gray-200 pl-4 py-1 hover:border-blue-300 transition-colors"><div class="flex items-center gap-2 flex-wrap mb-1"><span class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm ${s['スキル種別'] === 'パッシブ' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${s['スキル種別']}</span><span class="text-sm font-bold text-gray-800">${s['スキル名']}</span><div class="flex gap-1 ml-auto">${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}${s.MP !== undefined && s.MP !== null && s.MP !== '' ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">MP ${s.MP}</span>` : ''}</div></div>
                                 <div class="flex flex-wrap gap-2 mb-1">${s['攻撃対象'] ? `<span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 rounded">対象: ${s['攻撃対象']}</span>` : ''}${s['ダメージ倍率'] ? `<span class="text-[10px] text-rose-600 bg-rose-50 px-1.5 rounded">倍率: ${s['ダメージ倍率']}</span>` : ''}</div>
                                 <div class="text-[11px] text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
                                 ${s['使用条件'] ? `<div class="text-[10px] text-red-400 mt-1 font-medium bg-red-50 inline-block px-1.5 rounded">条件: ${s['使用条件']}</div>` : ''}</div>
-                            `}).join('') : '<p class="text-xs text-gray-400 italic">スキルなし</p>'}
+                            `).join('') : '<p class="text-xs text-gray-400 italic">スキルなし</p>'}
                         </div></div>
                     </div>
                 </div>
