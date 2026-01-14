@@ -73,6 +73,14 @@
             font-weight: 700;
             color: #6b7280;
             border-bottom: 1px solid #e5e7eb;
+            user-select: none;
+        }
+        th.sortable {
+            cursor: pointer;
+        }
+        th.sortable:hover {
+            background-color: #f3f4f6;
+            color: #3b82f6;
         }
         td {
             padding: 0.75rem;
@@ -84,6 +92,21 @@
         }
         tr:hover {
             background-color: #f9fafb;
+        }
+        /* ソートアイコン */
+        .sort-icon {
+            display: inline-block;
+            margin-left: 4px;
+            width: 10px;
+            height: 10px;
+            opacity: 0.3;
+        }
+        th.active-sort {
+            color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        th.active-sort .sort-icon {
+            opacity: 1;
         }
     </style>
 </head>
@@ -108,11 +131,11 @@
                         </svg>
                     </button>
                     
-                    <button id="toggle-filters" class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors">
+                    <button id="toggle-filters" class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                         </svg>
-                        <span class="text-sm font-bold">検索</span>
+                        <span class="text-sm font-bold">検索・ソート</span>
                         <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
                     </button>
                 </div>
@@ -122,6 +145,7 @@
             <div id="filter-area" class="hidden mt-3 space-y-2 border-t pt-3">
                 <div class="grid grid-cols-3 gap-2">
                     
+                    <!-- 1段目: スキル名、対象、倍率 -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">スキル名</label>
                         <select id="filter-skill" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
@@ -138,6 +162,7 @@
 
                     <div class="invisible"></div>
 
+                    <!-- 2段目: キャラクター、属性、お気に入り -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
                         <select id="filter-char" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
@@ -163,6 +188,7 @@
                         </button>
                     </div>
 
+                    <!-- 3段目: ソート設定 -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え</label>
                         <select id="sort-key" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
@@ -171,6 +197,12 @@
                             <option value="HP">HP</option>
                             <option value="攻撃力">攻撃力</option>
                             <option value="俊敏性">俊敏性</option>
+                            <!-- テーブル項目に合わせて追加 -->
+                            <option value="レア度">レア度</option>
+                            <option value="物攻">物攻</option>
+                            <option value="物防">物防</option>
+                            <option value="特攻">特攻</option>
+                            <option value="特防">特防</option>
                         </select>
                     </div>
 
@@ -215,19 +247,19 @@
             <table id="card-table">
                 <thead>
                     <tr>
-                        <th class="w-8">Fav</th>
+                        <th class="w-8 sortable" data-sort="ソートNo">Fav</th>
                         <th class="w-12">画像</th>
-                        <th>カード名</th>
-                        <th>レア</th>
-                        <th>属性</th>
-                        <th>タイプ</th>
-                        <th>俊敏</th>
-                        <th>HP</th>
-                        <th>攻撃</th>
-                        <th>物攻</th>
-                        <th>物防</th>
-                        <th>特攻</th>
-                        <th>特防</th>
+                        <th class="sortable" data-sort="カード名">カード名</th>
+                        <th class="sortable" data-sort="レア度">レア</th>
+                        <th class="sortable" data-sort="属性">属性</th>
+                        <th class="sortable" data-sort="アタッカータイプ">タイプ</th>
+                        <th class="sortable" data-sort="俊敏性">俊敏</th>
+                        <th class="sortable" data-sort="HP">HP</th>
+                        <th class="sortable" data-sort="攻撃力">攻撃</th>
+                        <th class="sortable" data-sort="物攻">物攻</th>
+                        <th class="sortable" data-sort="物防">物防</th>
+                        <th class="sortable" data-sort="特攻">特攻</th>
+                        <th class="sortable" data-sort="特防">特防</th>
                     </tr>
                 </thead>
                 <tbody id="card-table-body"></tbody>
@@ -442,6 +474,9 @@
                 }
             });
 
+            // テーブルヘッダーのソート状態を更新
+            updateTableHeaders(sortKey, sortOrder);
+
             if (currentView === 'grid') {
                 elements.grid.classList.remove('hidden');
                 elements.listContainer.classList.add('hidden');
@@ -456,6 +491,27 @@
             elements.status.innerText = `${filtered.length} 枚表示中`;
         }
 
+        function updateTableHeaders(sortKey, sortOrder) {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                const key = th.dataset.sort;
+                th.classList.toggle('active-sort', key === sortKey);
+                
+                // アイコンのリセット/設定
+                let icon = th.querySelector('.sort-icon');
+                if (!icon) {
+                    icon = document.createElement('span');
+                    icon.className = 'sort-icon';
+                    th.appendChild(icon);
+                }
+                
+                if (key === sortKey) {
+                    icon.innerText = sortOrder === 'asc' ? '▲' : '▼';
+                } else {
+                    icon.innerText = '▼';
+                }
+            });
+        }
+
         function setupListeners() {
             elements.viewToggle.onclick = () => {
                 currentView = (currentView === 'grid') ? 'list' : 'grid';
@@ -463,6 +519,23 @@
                 elements.listIcon.classList.toggle('hidden', currentView === 'grid');
                 updateDisplay();
             };
+
+            // テーブルヘッダーでのソート切り替え
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.onclick = () => {
+                    const key = th.dataset.sort;
+                    const currentKey = elements.sortKey.value;
+                    const currentOrder = elements.sortOrder.value;
+
+                    if (key === currentKey) {
+                        elements.sortOrder.value = (currentOrder === 'asc') ? 'desc' : 'asc';
+                    } else {
+                        elements.sortKey.value = key;
+                        elements.sortOrder.value = 'desc';
+                    }
+                    updateDisplay();
+                };
+            });
 
             elements.filterSkill.addEventListener('change', () => {
                 updateSkillRelatedDropdowns();
