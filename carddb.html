@@ -121,20 +121,13 @@
                     <div id="data-status" class="text-[10px] font-bold text-gray-400 mt-1">準備中...</div>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
-                    <!-- 表示切替ボタン -->
                     <button id="view-toggle" class="flex items-center justify-center p-2.5 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors shadow-sm">
-                        <svg id="grid-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                        </svg>
-                        <svg id="list-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <svg id="grid-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        <svg id="list-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
                     
                     <button id="toggle-filters" class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         <span class="text-sm font-bold">条件</span>
                         <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
                     </button>
@@ -178,9 +171,6 @@
                             <option value="俊敏性">俊敏性</option>
                             <option value="HP">HP</option>
                             <option value="攻撃力">攻撃力</option>
-                            <option value="ダメージ倍率">ダメージ倍率</option>
-                            <option value="消費TU">消費TU</option>
-                            <option value="MP">MP</option>
                         </select>
                     </div>
                     <div class="space-y-1">
@@ -230,8 +220,8 @@
                         <th class="sortable text-center" data-sort="俊敏性">俊敏</th>
                         <th class="sortable text-center" data-sort="HP">HP</th>
                         <th class="sortable text-center" data-sort="攻撃力">攻撃</th>
-                        <th class="sortable text-center" data-sort="開始日">開始日</th>
-                        <th class="sortable text-center" data-sort="終了日">終了日</th>
+                        <th class="sortable text-center" data-sort="開始日">最新開始日</th>
+                        <th class="sortable text-center" data-sort="終了日">最新終了日</th>
                         <th class="sortable text-center" data-sort="復刻回数">復刻</th>
                     </tr>
                 </thead>
@@ -317,7 +307,7 @@
             } catch (error) {
                 elements.loading.classList.add('hidden');
                 elements.setupArea.classList.remove('hidden');
-                elements.status.innerText = 'ファイル読み込みエラー';
+                elements.status.innerText = 'ファイル読み込み待ち';
             }
         }
 
@@ -332,6 +322,7 @@
             skillData = parseCsv(skillsCsv);
             releaseData = releaseCsv ? parseCsv(releaseCsv) : [];
 
+            // スキルデータのマッピング
             const skillsMap = {};
             skillData.forEach(s => {
                 const nameKey = s['カード名'];
@@ -341,20 +332,29 @@
                 skillsMap[nameKey].push(s);
             });
 
+            // リリースデータの全件マッピング
             const releaseMap = {};
             releaseData.forEach(r => {
                 const nameKey = r['カード名'];
-                if (nameKey) releaseMap[nameKey] = r;
+                if (!nameKey) return;
+                if (!releaseMap[nameKey]) releaseMap[nameKey] = [];
+                releaseMap[nameKey].push(r);
             });
 
             cardData.forEach(card => {
                 const nameKey = card['カード名'];
                 card.skills = skillsMap[nameKey] || [];
-                const rInfo = releaseMap[nameKey];
-                // 項目名をソートキーと合わせる
-                card.開始日 = rInfo ? rInfo['開始日'] : '';
-                card.終了日 = rInfo ? rInfo['終了日'] : '';
-                card.復刻回数 = rInfo ? rInfo['復刻回数'] : 0;
+                
+                // 全リリース履歴を取得し、日付降順でソート
+                const history = releaseMap[nameKey] || [];
+                history.sort((a, b) => String(b['開始日']).localeCompare(String(a['開始日'])));
+                card.release_history = history;
+
+                // 最新のリリース情報をプロパティに付与（ソート用）
+                const latest = history[0];
+                card.開始日 = latest ? latest['開始日'] : '';
+                card.終了日 = latest ? latest['終了日'] : '';
+                card.復刻回数 = latest ? latest['復刻回数'] : 0;
             });
 
             populateDropdowns();
@@ -453,17 +453,16 @@
             }
 
             filtered.sort((a, b) => {
-                const toValue = (val) => {
+                const getValue = (obj, key) => {
+                    const val = obj[key];
                     if (val === undefined || val === null || val === '') return null;
                     const cleaned = String(val).replace(/[^0-9.-]/g, '');
-                    if (cleaned !== '' && !isNaN(parseFloat(cleaned))) {
-                        return parseFloat(cleaned);
-                    }
+                    if (cleaned !== '' && !isNaN(parseFloat(cleaned))) return parseFloat(cleaned);
                     return String(val).toLowerCase();
                 };
 
-                const valA = toValue(a[sortKey]);
-                const valB = toValue(b[sortKey]);
+                const valA = getValue(a, sortKey);
+                const valB = getValue(b, sortKey);
 
                 if (valA === null && valB === null) return 0;
                 if (valA === null) return 1;
@@ -472,9 +471,7 @@
                 if (typeof valA === 'number' && typeof valB === 'number') {
                     return sortOrder === 'asc' ? valA - valB : valB - valA;
                 }
-                const strA = String(valA);
-                const strB = String(valB);
-                return sortOrder === 'asc' ? strA.localeCompare(strB, 'ja') : strB.localeCompare(strA, 'ja');
+                return sortOrder === 'asc' ? String(valA).localeCompare(String(valB), 'ja') : String(valB).localeCompare(String(valA), 'ja');
             });
 
             updateTableHeaders(sortKey, sortOrder);
@@ -561,7 +558,7 @@
                 for (const file of files) {
                     const text = await file.text();
                     const fname = file.name.toLowerCase();
-                    if (fname.includes('card')) cCsv = text;
+                    if (fname.includes('card_data')) cCsv = text;
                     else if (fname.includes('skill')) sCsv = text;
                     else if (fname.includes('release')) rCsv = text;
                 }
@@ -620,6 +617,7 @@
                 tr.className = 'cursor-pointer hover:bg-blue-50/30 transition-colors';
                 const isFav = favorites.has(row['カード名']);
                 const attrColor = getAttrColor(row['属性']);
+                
                 tr.innerHTML = `
                     <td class="text-center"><button onclick="toggleFavorite('${row['カード名']}', event)" class="heart-btn ${isFav ? 'text-red-500' : 'text-gray-300'}"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg></button></td>
                     <td><img src="${row['画像URL']}" class="w-8 h-8 rounded object-cover border" onerror="this.src='https://via.placeholder.com/40x40?text=Card'"></td>
@@ -633,9 +631,9 @@
                     <td class="text-center font-black text-blue-600">${row['俊敏性'] ?? '-'}</td>
                     <td class="text-center font-bold">${row['HP'] ?? '-'}</td>
                     <td class="text-center font-bold">${row['攻撃力'] ?? '-'}</td>
-                    <td class="text-center text-[9px] text-gray-400">${row['開始日'] || '-'}</td>
-                    <td class="text-center text-[9px] text-gray-400">${row['終了日'] || '-'}</td>
-                    <td class="text-center font-bold text-indigo-600">${row['復刻回数'] || 0}</td>
+                    <td class="text-center text-[9px] text-gray-500 font-medium">${row.開始日 || '-'}</td>
+                    <td class="text-center text-[9px] text-gray-500 font-medium">${row.終了日 || '-'}</td>
+                    <td class="text-center font-bold text-indigo-600">${row.復刻回数 || 0}</td>
                 `;
                 tr.onclick = () => showDetail(row.originalCard || row);
                 elements.tableBody.appendChild(tr);
@@ -677,22 +675,22 @@
                         <h2 class="text-xl font-bold leading-tight mb-1">${card['カード名']}</h2>
                         <p class="text-sm text-gray-500 mb-6">${card['キャラクター名']}</p>
 
-                        <!-- 実装・復刻情報ブロック -->
-                        ${card.開始日 ? `
+                        <!-- 実装・復刻履歴セクション（全件表示） -->
+                        ${card.release_history && card.release_history.length > 0 ? `
                         <div class="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                            <div class="flex items-center gap-2 mb-2 text-indigo-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                <span class="text-[10px] font-bold uppercase tracking-widest">Release Information</span>
+                            <div class="flex items-center gap-2 mb-3 text-indigo-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">実装・復刻履歴</span>
                             </div>
-                            <div class="space-y-1">
-                                <div class="flex justify-between items-center text-xs">
-                                    <span class="text-indigo-400 font-bold">期間</span>
-                                    <span class="text-indigo-900 font-bold">${card.開始日} 〜 ${card.終了日}</span>
-                                </div>
-                                <div class="flex justify-between items-center text-xs">
-                                    <span class="text-indigo-400 font-bold">復刻回数</span>
-                                    <span class="bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold text-[10px]">${card.復刻回数}回</span>
-                                </div>
+                            <div class="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
+                                ${card.release_history.map(r => `
+                                    <div class="flex justify-between items-center text-xs border-b border-indigo-100/50 pb-1.5 last:border-0 last:pb-0">
+                                        <div class="flex flex-col">
+                                            <span class="text-indigo-900 font-bold">${r['開始日']} 〜 ${r['終了日']}</span>
+                                        </div>
+                                        <span class="bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold text-[9px]">復刻 ${r['復刻回数']}回</span>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
                         ` : ''}
