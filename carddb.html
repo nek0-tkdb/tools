@@ -124,7 +124,7 @@
                     <!-- 表示切替ボタン -->
                     <button id="view-toggle" class="flex items-center justify-center p-2.5 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors shadow-sm">
                         <svg id="grid-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                         </svg>
                         <svg id="list-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -201,7 +201,7 @@
 
     <main class="max-w-7xl mx-auto px-2 py-3">
         <div id="setup-area" class="hidden p-6 bg-white rounded-xl border-2 border-dashed border-gray-300 text-center my-4">
-            <p class="text-sm font-bold text-gray-600 mb-3">CSVファイルを2つ選択してください（カード、スキル）</p>
+            <p class="text-sm font-bold text-gray-600 mb-3">CSVファイルを読み込めませんでした（カード、スキル、リリース）</p>
             <input type="file" id="file-input" multiple accept=".csv" class="hidden">
             <label for="file-input" class="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold cursor-pointer inline-block">ファイルを選択</label>
         </div>
@@ -262,6 +262,7 @@
     <script>
         let cardData = [];
         let skillData = [];
+        let releaseData = [];
         let favorites = new Set();
         let showOnlyFavorites = false;
         let currentView = 'grid';
@@ -310,15 +311,16 @@
             loadFavorites();
             setupListeners();
             try {
-                const [cardsCsv, skillsCsv] = await Promise.all([
+                const [cardsCsv, skillsCsv, releaseCsv] = await Promise.all([
                     fetchCsv('card_data.csv'),
-                    fetchCsv('skill_data.csv')
+                    fetchCsv('skill_data.csv'),
+                    fetchCsv('card_release.csv').catch(() => null) // 取得に失敗しても他は動くように
                 ]);
-                processData(cardsCsv, skillsCsv);
+                processData(cardsCsv, skillsCsv, releaseCsv);
             } catch (error) {
                 elements.loading.classList.add('hidden');
                 elements.setupArea.classList.remove('hidden');
-                elements.status.innerText = '手動読み込み待ち';
+                elements.status.innerText = 'ファイル読み込みエラー';
             }
         }
 
@@ -328,22 +330,38 @@
             return await response.text();
         }
 
-        function processData(cardsCsv, skillsCsv) {
+        function processData(cardsCsv, skillsCsv, releaseCsv) {
             cardData = parseCsv(cardsCsv);
             skillData = parseCsv(skillsCsv);
+            releaseData = releaseCsv ? parseCsv(releaseCsv) : [];
 
+            // スキルデータのマッピング
             const skillsMap = {};
             skillData.forEach(s => {
                 const nameKey = s['カード名'];
                 if (!nameKey) return;
                 if (!skillsMap[nameKey]) skillsMap[nameKey] = [];
-                // MP項目の正規化（消費MP/MPどちらも対応）
                 s.MP = (s['MP'] !== undefined && s['MP'] !== null && s['MP'] !== '') ? s['MP'] : s['消費MP'];
                 skillsMap[nameKey].push(s);
             });
 
+            // リリースデータのマッピング
+            const releaseMap = {};
+            releaseData.forEach(r => {
+                const nameKey = r['カード名'];
+                if (nameKey) releaseMap[nameKey] = r;
+            });
+
             cardData.forEach(card => {
-                card.skills = skillsMap[card['カード名']] || [];
+                const nameKey = card['カード名'];
+                card.skills = skillsMap[nameKey] || [];
+                // リリース情報をカードオブジェクトに付与
+                const rInfo = releaseMap[nameKey];
+                if (rInfo) {
+                    card.release_start = rInfo['開始日'];
+                    card.release_end = rInfo['終了日'];
+                    card.release_count = rInfo['復刻回数'];
+                }
             });
 
             populateDropdowns();
@@ -441,7 +459,6 @@
                 });
             }
 
-            // 改良されたソート処理（数値と文字列を適切に判定）
             filtered.sort((a, b) => {
                 const toValue = (val) => {
                     if (val === undefined || val === null || val === '') return null;
@@ -547,14 +564,15 @@
 
             elements.fileInput.onchange = async (e) => {
                 const files = Array.from(e.target.files);
-                let cCsv, sCsv;
+                let cCsv, sCsv, rCsv;
                 for (const file of files) {
                     const text = await file.text();
                     const fname = file.name.toLowerCase();
                     if (fname.includes('card')) cCsv = text;
                     else if (fname.includes('skill')) sCsv = text;
+                    else if (fname.includes('release')) rCsv = text;
                 }
-                if (cCsv && sCsv) processData(cCsv, sCsv);
+                if (cCsv && sCsv) processData(cCsv, sCsv, rCsv);
             };
         }
 
@@ -608,13 +626,8 @@
                 tr.className = 'cursor-pointer hover:bg-blue-50/30 transition-colors';
                 const isFav = favorites.has(row['カード名']);
                 const attrColor = getAttrColor(row['属性']);
-                
                 tr.innerHTML = `
-                    <td class="text-center">
-                        <button onclick="toggleFavorite('${row['カード名']}', event)" class="heart-btn ${isFav ? 'text-red-500' : 'text-gray-300'}">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                        </button>
-                    </td>
+                    <td class="text-center"><button onclick="toggleFavorite('${row['カード名']}', event)" class="heart-btn ${isFav ? 'text-red-500' : 'text-gray-300'}"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg></button></td>
                     <td><img src="${row['画像URL']}" class="w-8 h-8 rounded object-cover border" onerror="this.src='https://via.placeholder.com/40x40?text=Card'"></td>
                     <td class="font-bold text-gray-800">${row['カード名']}</td>
                     <td class="text-blue-600 font-semibold">${row['スキル名'] || '-'}</td>
@@ -630,10 +643,6 @@
                     <td class="text-center text-gray-400">${row['物防'] ?? '-'}</td>
                     <td class="text-center text-gray-400">${row['特攻'] ?? '-'}</td>
                     <td class="text-center text-gray-400">${row['特防'] ?? '-'}</td>
-                    <td class="text-center text-gray-400">${row['耐久性'] ?? '-'}</td>
-                    <td class="text-center text-gray-400">${row['魔性'] ?? '-'}</td>
-                    <td class="text-center text-gray-400">${row['狂暴性'] ?? '-'}</td>
-                    <td class="text-center text-gray-400">${row['人間性'] ?? '-'}</td>
                 `;
                 tr.onclick = () => showDetail(row.originalCard || row);
                 elements.tableBody.appendChild(tr);
@@ -674,6 +683,27 @@
                         </div>
                         <h2 class="text-xl font-bold leading-tight mb-1">${card['カード名']}</h2>
                         <p class="text-sm text-gray-500 mb-6">${card['キャラクター名']}</p>
+
+                        <!-- 実装・復刻情報ブロック -->
+                        ${card.release_start ? `
+                        <div class="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                            <div class="flex items-center gap-2 mb-2 text-indigo-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Release Information</span>
+                            </div>
+                            <div class="space-y-1">
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="text-indigo-400 font-bold">期間</span>
+                                    <span class="text-indigo-900 font-bold">${card.release_start} 〜 ${card.release_end}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="text-indigo-400 font-bold">復刻回数</span>
+                                    <span class="bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold text-[10px]">${card.release_count}回</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
                         <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                             <div class="flex items-center gap-2 mb-3 text-gray-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg><span class="text-[10px] font-bold uppercase tracking-widest">Performance Stats</span></div>
                             <div class="grid grid-cols-3 gap-2">
