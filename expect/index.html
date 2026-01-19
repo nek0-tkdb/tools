@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カード復刻予測</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    body { font-family: 'Noto Sans JP', sans-serif; }
+    .card-item:hover { transform: translateX(4px); }
+    .prediction-card {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+    }
+    .glow { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
+    .card-img { 
+      width: 60px; 
+      height: 60px; 
+      object-fit: cover; 
+      border-radius: 8px;
+    }
+    .card-img-large {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+    .attr-火 { background-color: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.5); }
+    .attr-水 { background-color: rgba(59, 130, 246, 0.3); border-color: rgba(59, 130, 246, 0.5); }
+    .attr-草 { background-color: rgba(34, 197, 94, 0.3); border-color: rgba(34, 197, 94, 0.5); }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white">
+  <!-- ローディング表示 -->
+  <div id="loading" class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+      <div class="text-4xl mb-4 animate-pulse">🔮</div>
+      <p class="text-slate-400">データを読み込み中...</p>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div id="mainContent" class="hidden">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+      <header class="text-center mb-10">
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent mb-2">
+          🔮 カード復刻予測
+        </h1>
+        <p class="text-slate-400 text-sm">毎週火曜・金曜に2枚ずつ復刻するパターンから予測</p>
+      </header>
+
+      <!-- 次回復刻予測セクション -->
+      <section class="mb-10">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+          <span class="text-2xl">✨</span>
+          次回復刻するカード予測
+        </h2>
+        <div id="nextReprintPrediction" class="grid md:grid-cols-2 gap-4">
+        </div>
+      </section>
+
+      <!-- 今後1か月の予測一覧 -->
+      <section class="mb-10">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+          <span class="text-2xl">📅</span>
+          今後1か月の復刻予測
+        </h2>
+        <div class="text-sm text-slate-400 mb-3">
+          <span id="dateRange"></span>
+        </div>
+        
+        <div class="flex gap-2 mb-4">
+          <button id="viewList" class="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm transition-all">リスト表示</button>
+          <button id="viewCalendar" class="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-all">カレンダー表示</button>
+        </div>
+
+        <div id="monthlyListView" class="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+        </div>
+
+        <div id="monthlyCalendarView" class="hidden">
+          <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+          </div>
+        </div>
+      </section>
+
+      <!-- カード選択セクション -->
+      <section>
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+          <span class="text-2xl">📋</span>
+          カード一覧から選択
+        </h2>
+        
+        <div class="mb-4">
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="カード名・キャラ名で検索..."
+            class="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+          >
+        </div>
+
+        <div id="cardList" class="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+        </div>
+      </section>
+
+      <!-- 詳細モーダル -->
+      <div id="detailModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="prediction-card rounded-2xl p-6 max-w-md w-full glow relative max-h-[90vh] overflow-y-auto">
+          <button id="closeModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl">&times;</button>
+          <div id="modalContent">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let cardMap = null;
+    let today = new Date();
+
+    // 属性の表示設定
+    const attrConfig = {
+      '火': { emoji: '🔥' },
+      '水': { emoji: '💧' },
+      '草': { emoji: '🌿' }
+    };
+
+    async function loadCSV(filename) {
+      try {
+        const response = await fetch(filename);
+        if (!response.ok) throw new Error('CSV読み込み失敗');
+        return await response.text();
+      } catch (error) {
+        console.error('CSVファイルの読み込みエラー:', error);
+        return null;
+      }
+    }
+
+    function parseCSV(csv) {
+      const lines = csv.trim().split('\n');
+      return lines.slice(1).map(line => {
+        const values = line.split(',');
+        return {
+          frameNo: values[0],
+          charName: values[1],
+          cardName: values[2],
+          series: values[3],
+          attr: values[4],
+          startDate: parseDate(values[5]),
+          endDate: parseDate(values[6]),
+          reprintCount: parseInt(values[7]),
+          imageUrl: values[8]
+        };
+      });
+    }
+
+    function parseDate(dateStr) {
+      const [year, month, day] = dateStr.split('/').map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function formatDate(date) {
+      return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function aggregateCards(data) {
+      const map = new Map();
+      
+      data.forEach(entry => {
+        const key = `${entry.charName}_${entry.cardName}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            charName: entry.charName,
+            cardName: entry.cardName,
+            series: entry.series,
+            attr: entry.attr,
+            imageUrl: entry.imageUrl,
+            appearances: [],
+            maxReprintCount: 0
+          });
+        }
+        const card = map.get(key);
+        card.appearances.push({
+          startDate: entry.startDate,
+          endDate: entry.endDate,
+          reprintCount: entry.reprintCount
+        });
+        card.maxReprintCount = Math.max(card.maxReprintCount, entry.reprintCount);
+      });
+
+      map.forEach(card => {
+        card.appearances.sort((a, b) => a.startDate - b.startDate);
+      });
+
+      return map;
+    }
+
+    function calculateIntervals(appearances) {
+      const intervals = [];
+      for (let i = 1; i < appearances.length; i++) {
+        const daysDiff = Math.round((appearances[i].startDate - appearances[i-1].startDate) / (1000 * 60 * 60 * 24));
+        intervals.push(daysDiff);
+      }
+      return intervals;
+    }
+
+    function getNextReprintDates(fromDate, count = 10) {
+      const dates = [];
+      const current = new Date(fromDate);
+      
+      while (dates.length < count) {
+        const dayOfWeek = current.getDay();
+        if (dayOfWeek === 2 || dayOfWeek === 5) {
+          dates.push(new Date(current));
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    }
+
+    function calculateReprintScore(card, today) {
+      const appearances = card.appearances;
+      const lastAppearance = appearances[appearances.length - 1].startDate;
+      const daysSinceLast = Math.round((today - lastAppearance) / (1000 * 60 * 60 * 24));
+      
+      let avgInterval = 60;
+      if (appearances.length >= 2) {
+        const intervals = calculateIntervals(appearances);
+        avgInterval = Math.round(intervals.reduce((a, b) => a + b, 0) / intervals.length);
+      }
+      
+      const score = daysSinceLast / avgInterval;
+      
+      return { score, daysSinceLast, avgInterval, lastAppearance, reprintCount: card.maxReprintCount };
+    }
+
+    function predictNextReprintCandidates() {
+      const scoredCards = [];
+      cardMap.forEach((card, key) => {
+        const scoreInfo = calculateReprintScore(card, today);
+        scoredCards.push({ key, ...card, ...scoreInfo });
+      });
+
+      scoredCards.sort((a, b) => b.score - a.score);
+
+      const nextDates = getNextReprintDates(today, 1);
+      const nextReprintDate = nextDates[0];
+
+      return scoredCards.slice(0, 2).map(card => ({
+        key: card.key,
+        charName: card.charName,
+        cardName: card.cardName,
+        imageUrl: card.imageUrl,
+        attr: card.attr,
+        series: card.series,
+        prediction: {
+          predictedDate: nextReprintDate,
+          confidence: card.score > 1.2 ? 'high' : card.score > 0.8 ? 'medium' : 'low',
+          averageInterval: card.avgInterval,
+          lastAppearance: card.lastAppearance
+        },
+        daysUntil: Math.round((nextReprintDate - today) / (1000 * 60 * 60 * 24)),
+        daysSinceLast: card.daysSinceLast,
+        score: card.score,
+        reprintCount: card.reprintCount
+      }));
+    }
+
+    function getMonthlyPredictions() {
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 30);
+      
+      const reprintDates = getNextReprintDates(today, 20).filter(d => d <= endDate);
+      
+      const scoredCards = [];
+      cardMap.forEach((card, key) => {
+        const scoreInfo = calculateReprintScore(card, today);
+        scoredCards.push({ key, ...card, ...scoreInfo });
+      });
+
+      scoredCards.sort((a, b) => b.score - a.score);
+
+      const predictions = [];
+      const usedCards = new Set();
+      
+      reprintDates.forEach(date => {
+        let assigned = 0;
+        for (const cardInfo of scoredCards) {
+          if (assigned >= 2) break;
+          if (usedCards.has(cardInfo.key)) continue;
+          
+          predictions.push({
+            key: cardInfo.key,
+            charName: cardInfo.charName,
+            cardName: cardInfo.cardName,
+            imageUrl: cardInfo.imageUrl,
+            attr: cardInfo.attr,
+            series: cardInfo.series,
+            date: date,
+            confidence: cardInfo.score > 1.2 ? 'high' : cardInfo.score > 0.8 ? 'medium' : 'low',
+            averageInterval: cardInfo.avgInterval,
+            reprintCount: cardInfo.reprintCount,
+            daysSinceLast: cardInfo.daysSinceLast,
+            score: cardInfo.score
+          });
+          usedCards.add(cardInfo.key);
+          assigned++;
+        }
+      });
+      
+      predictions.sort((a, b) => a.date - b.date);
+      return predictions;
+    }
+
+    function getAttrBadge(attr) {
+      const config = attrConfig[attr] || { emoji: '' };
+      return `<span class="text-xs px-2 py-0.5 rounded border attr-${attr}">${config.emoji} ${attr}</span>`;
+    }
+
+    function renderCardList(filter = '') {
+      const cardList = document.getElementById('cardList');
+      const cards = Array.from(cardMap.entries())
+        .filter(([key, card]) => 
+          card.cardName.includes(filter) || card.charName.includes(filter)
+        )
+        .sort((a, b) => a[1].charName.localeCompare(b[1].charName, 'ja'));
+
+      cardList.innerHTML = cards.map(([key, card]) => {
+        const lastDate = card.appearances[card.appearances.length - 1].startDate;
+        return `
+          <div class="card-item bg-slate-800/40 hover:bg-slate-700/50 rounded-xl p-3 cursor-pointer transition-all border border-slate-700/50" data-card="${key}">
+            <div class="flex items-center gap-3">
+              <img src="${card.imageUrl}" alt="${card.cardName}" class="card-img" loading="lazy" onerror="this.style.display='none'">
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm truncate">${card.cardName}</div>
+                <div class="text-xs text-slate-400">${card.charName}</div>
+                <div class="flex items-center gap-2 mt-1">
+                  ${getAttrBadge(card.attr)}
+                  <span class="text-xs text-slate-500">${card.series}</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-violet-400 text-sm">${card.maxReprintCount}回</div>
+                <div class="text-xs text-slate-500">${formatDate(lastDate)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      cardList.querySelectorAll('.card-item').forEach(item => {
+        item.addEventListener('click', () => showCardDetail(item.dataset.card));
+      });
+    }
+
+    function showCardDetail(cardKey) {
+      const card = cardMap.get(cardKey);
+      const scoreInfo = calculateReprintScore(card, today);
+      
+      const nextDates = getNextReprintDates(today, 10);
+      
+      const allScores = [];
+      cardMap.forEach((c, key) => {
+        allScores.push({ key, score: calculateReprintScore(c, today).score });
+      });
+      allScores.sort((a, b) => b.score - a.score);
+      const rank = allScores.findIndex(c => c.key === cardKey) + 1;
+      
+      const dateIndex = Math.floor((rank - 1) / 2);
+      const predictedDate = nextDates[Math.min(dateIndex, nextDates.length - 1)];
+      
+      const modalContent = document.getElementById('modalContent');
+      const confidenceColors = { high: 'text-green-400', medium: 'text-yellow-400', low: 'text-red-400' };
+      const confidenceLabels = { high: '高', medium: '中', low: '低' };
+      
+      const confidence = scoreInfo.score > 1.2 ? 'high' : scoreInfo.score > 0.8 ? 'medium' : 'low';
+      const intervals = card.appearances.length >= 2 ? calculateIntervals(card.appearances) : [];
+
+      const daysUntil = Math.round((predictedDate - today) / (1000 * 60 * 60 * 24));
+      const weekday = ['日', '月', '火', '水', '木', '金', '土'][predictedDate.getDay()];
+      const status = daysUntil === 0 ? '(今日!)' : daysUntil === 1 ? '(明日!)' : `(あと${daysUntil}日)`;
+      
+      modalContent.innerHTML = `
+        <div class="flex items-start gap-4 mb-4">
+          <img src="${card.imageUrl}" alt="${card.cardName}" class="card-img-large" onerror="this.style.display='none'">
+          <div class="flex-1 min-w-0 pr-8">
+            <h3 class="text-lg font-bold mb-1">${card.cardName}</h3>
+            <div class="text-slate-300 mb-2">${card.charName}</div>
+            <div class="flex items-center gap-2">
+              ${getAttrBadge(card.attr)}
+              <span class="text-xs text-slate-400">${card.series}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-slate-800/50 rounded-xl p-4 mb-4">
+          <div class="text-sm text-slate-400 mb-1">次回復刻予測</div>
+          <div class="text-2xl font-bold text-violet-300">${formatDate(predictedDate)} (${weekday})</div>
+          <div class="text-sm ${daysUntil <= 3 ? 'text-yellow-400' : 'text-slate-400'}">${status}</div>
+          <div class="text-xs text-slate-500 mt-2">復刻優先順位: ${rank}位 / ${allScores.length}枚中</div>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="bg-slate-800/30 rounded-lg p-3">
+            <div class="text-xs text-slate-400">最終復刻から</div>
+            <div class="text-lg font-bold">${scoreInfo.daysSinceLast}日</div>
+          </div>
+          <div class="bg-slate-800/30 rounded-lg p-3">
+            <div class="text-xs text-slate-400">平均間隔</div>
+            <div class="text-lg font-bold">${scoreInfo.avgInterval}日</div>
+          </div>
+          <div class="bg-slate-800/30 rounded-lg p-3">
+            <div class="text-xs text-slate-400">予測信頼度</div>
+            <div class="text-lg font-bold ${confidenceColors[confidence]}">${confidenceLabels[confidence]}</div>
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <div class="text-sm text-slate-400 mb-2">復刻履歴 (${card.maxReprintCount}回)</div>
+          <div class="space-y-1 max-h-32 overflow-y-auto">
+            ${card.appearances.map((app, i) => `
+              <div class="text-sm flex justify-between bg-slate-800/30 rounded px-3 py-1">
+                <span>${i + 1}回目</span>
+                <span class="text-slate-300">${formatDate(app.startDate)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ${intervals.length > 0 ? `
+          <div class="text-xs text-slate-500">
+            復刻間隔: ${intervals.join('日, ')}日
+          </div>
+        ` : ''}
+      `;
+
+      document.getElementById('detailModal').classList.remove('hidden');
+      document.getElementById('detailModal').classList.add('flex');
+    }
+
+    function renderNextReprintPrediction() {
+      const candidates = predictNextReprintCandidates();
+      const container = document.getElementById('nextReprintPrediction');
+
+      if (candidates.length === 0) {
+        container.innerHTML = '<div class="text-slate-400">予測データがありません</div>';
+        return;
+      }
+
+      const nextDate = candidates[0].prediction.predictedDate;
+      const weekday = ['日', '月', '火', '水', '木', '金', '土'][nextDate.getDay()];
+      const daysUntil = candidates[0].daysUntil;
+      const dayLabel = daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`;
+
+      container.innerHTML = `
+        <div class="md:col-span-2 bg-slate-800/40 rounded-xl p-4 mb-2 border border-violet-500/30">
+          <div class="text-sm text-slate-400 mb-1">次回復刻日</div>
+          <div class="text-xl font-bold text-violet-300">
+            ${formatDate(nextDate)} (${weekday}) 
+            <span class="text-sm ${daysUntil <= 1 ? 'text-yellow-400' : 'text-slate-400'}">${dayLabel}</span>
+          </div>
+        </div>
+        ${candidates.map((candidate, index) => `
+          <div class="prediction-card rounded-xl p-4 glow border border-violet-500/30 cursor-pointer hover:scale-[1.02] transition-transform" data-card="${candidate.key}">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-2xl">${index === 0 ? '🥇' : '🥈'}</span>
+              <span class="text-xs bg-violet-500/30 px-2 py-0.5 rounded-full">予測${index + 1}枚目</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <img src="${candidate.imageUrl}" alt="${candidate.cardName}" class="card-img" loading="lazy" onerror="this.style.display='none'">
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-sm truncate">${candidate.cardName}</h3>
+                <div class="text-xs text-slate-300 mb-1">${candidate.charName}</div>
+                <div class="flex items-center gap-2">
+                  ${getAttrBadge(candidate.attr)}
+                </div>
+              </div>
+            </div>
+            <div class="text-xs text-slate-400 mt-3 space-y-0.5">
+              <div>最終復刻: ${candidate.daysSinceLast}日前</div>
+              <div>平均間隔: ${candidate.prediction.averageInterval}日 | ${candidate.reprintCount}回目</div>
+            </div>
+          </div>
+        `).join('')}
+      `;
+
+      container.querySelectorAll('.prediction-card').forEach(item => {
+        item.addEventListener('click', () => showCardDetail(item.dataset.card));
+      });
+    }
+
+    function renderMonthlyList(predictions) {
+      const container = document.getElementById('monthlyListView');
+      const confidenceColors = {
+        high: 'bg-green-500/20 text-green-400 border-green-500/30',
+        medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+        low: 'bg-red-500/20 text-red-400 border-red-500/30'
+      };
+      const confidenceLabels = { high: '高', medium: '中', low: '低' };
+
+      if (predictions.length === 0) {
+        container.innerHTML = '<div class="text-slate-400 p-4">今後1か月間の予測データがありません</div>';
+        return;
+      }
+
+      const grouped = {};
+      predictions.forEach(p => {
+        const dateKey = formatDate(p.date);
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(p);
+      });
+
+      let html = '';
+      Object.entries(grouped).forEach(([date, cards]) => {
+        const dateObj = new Date(date.replace(/\//g, '-'));
+        const daysUntil = Math.round((dateObj - today) / (1000 * 60 * 60 * 24));
+        const dayLabel = daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`;
+        const weekday = ['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()];
+        
+        html += `
+          <div class="bg-slate-800/40 rounded-xl overflow-hidden border border-slate-700/50">
+            <div class="bg-slate-700/50 px-4 py-2 flex justify-between items-center">
+              <div class="font-medium">
+                <span class="text-violet-300">${date}</span>
+                <span class="text-slate-400 text-sm ml-2">(${weekday})</span>
+              </div>
+              <span class="text-xs ${daysUntil <= 3 ? 'text-yellow-400' : 'text-slate-400'}">${dayLabel}</span>
+            </div>
+            <div class="p-2 space-y-1">
+              ${cards.map(card => `
+                <div class="flex items-center gap-3 bg-slate-800/50 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-700/50 transition-all" data-card="${card.key}">
+                  <img src="${card.imageUrl}" alt="${card.cardName}" class="w-10 h-10 rounded object-cover" loading="lazy" onerror="this.style.display='none'">
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium text-sm truncate">${card.cardName}</div>
+                    <div class="text-xs text-slate-400">${card.charName}</div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs px-2 py-0.5 rounded border ${confidenceColors[card.confidence]}">${confidenceLabels[card.confidence]}</span>
+                    <span class="text-xs text-slate-400">${card.reprintCount}回目</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+
+      container.querySelectorAll('[data-card]').forEach(item => {
+        item.addEventListener('click', () => showCardDetail(item.dataset.card));
+      });
+    }
+
+    function renderMonthlyCalendar(predictions) {
+      const container = document.getElementById('calendarGrid');
+      
+      const predictionMap = {};
+      predictions.forEach(p => {
+        const dateKey = formatDate(p.date);
+        if (!predictionMap[dateKey]) predictionMap[dateKey] = [];
+        predictionMap[dateKey].push(p);
+      });
+
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - startDate.getDay());
+      
+      const days = 35;
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      
+      let html = weekdays.map((w, i) => `
+        <div class="text-center text-xs py-2 ${i === 2 || i === 5 ? 'text-violet-400 font-bold' : 'text-slate-400'}">${w}</div>
+      `).join('');
+
+      for (let i = 0; i < days; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        const dateKey = formatDate(currentDate);
+        const isToday = formatDate(today) === dateKey;
+        const isPast = currentDate < today && !isToday;
+        const dayOfWeek = currentDate.getDay();
+        const isReprintDay = dayOfWeek === 2 || dayOfWeek === 5;
+        const cards = predictionMap[dateKey] || [];
+        
+        let bgClass;
+        if (isToday) {
+          bgClass = 'bg-violet-600/30 border-violet-500';
+        } else if (cards.length > 0) {
+          bgClass = 'bg-fuchsia-900/40 border-fuchsia-500/50 hover:bg-fuchsia-800/50 cursor-pointer';
+        } else if (isReprintDay && !isPast) {
+          bgClass = 'bg-slate-700/30 border-slate-600/50';
+        } else {
+          bgClass = 'bg-slate-800/30 border-slate-700/30';
+        }
+        
+        const opacityClass = isPast ? 'opacity-40' : '';
+        
+        html += `
+          <div class="min-h-[80px] p-1 rounded-lg border ${bgClass} ${opacityClass} transition-all" data-date="${dateKey}">
+            <div class="text-xs ${isToday ? 'text-violet-300 font-bold' : isReprintDay ? 'text-violet-400' : 'text-slate-400'} mb-1">
+              ${currentDate.getDate()}${isReprintDay && !isPast && cards.length === 0 ? ' 📅' : ''}
+            </div>
+            ${cards.length > 0 ? `
+              <div class="space-y-0.5">
+                ${cards.slice(0, 2).map(card => `
+                  <div class="text-[10px] bg-violet-500/30 text-violet-200 rounded px-1 py-0.5 truncate" title="${card.charName}: ${card.cardName}">
+                    ${card.charName.length > 6 ? card.charName.substring(0, 6) + '..' : card.charName}
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+
+      container.querySelectorAll('[data-date]').forEach(cell => {
+        const dateKey = cell.dataset.date;
+        const cards = predictionMap[dateKey];
+        if (cards && cards.length > 0) {
+          cell.addEventListener('click', () => {
+            if (cards.length === 1) {
+              showCardDetail(cards[0].key);
+            } else {
+              showDateDetail(dateKey, cards);
+            }
+          });
+        }
+      });
+    }
+
+    function showDateDetail(dateKey, cards) {
+      const modalContent = document.getElementById('modalContent');
+      const dateObj = new Date(dateKey.replace(/\//g, '-'));
+      const weekday = ['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()];
+      const confidenceLabels = { high: '高', medium: '中', low: '低' };
+      const confidenceColors = { high: 'text-green-400', medium: 'text-yellow-400', low: 'text-red-400' };
+
+      modalContent.innerHTML = `
+        <h3 class="text-xl font-bold mb-4 pr-8">${dateKey} (${weekday})</h3>
+        <div class="text-sm text-slate-400 mb-3">${cards.length}枚のカードが復刻予測</div>
+        <div class="space-y-2 max-h-80 overflow-y-auto">
+          ${cards.map(card => `
+            <div class="flex items-center gap-3 bg-slate-800/50 rounded-lg p-3 cursor-pointer hover:bg-slate-700/50 transition-all" data-card="${card.key}">
+              <img src="${card.imageUrl}" alt="${card.cardName}" class="w-12 h-12 rounded object-cover" onerror="this.style.display='none'">
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm">${card.cardName}</div>
+                <div class="text-xs text-slate-400">${card.charName}</div>
+                <div class="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                  <span>復刻${card.reprintCount}回目</span>
+                  <span class="${confidenceColors[card.confidence]}">信頼度: ${confidenceLabels[card.confidence]}</span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      modalContent.querySelectorAll('[data-card]').forEach(item => {
+        item.addEventListener('click', () => showCardDetail(item.dataset.card));
+      });
+
+      document.getElementById('detailModal').classList.remove('hidden');
+      document.getElementById('detailModal').classList.add('flex');
+    }
+
+    function renderMonthlyPredictions() {
+      const predictions = getMonthlyPredictions();
+      
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + 30);
+      document.getElementById('dateRange').textContent = 
+        `${formatDate(today)} 〜 ${formatDate(endDate)} （${predictions.length}枚予測）`;
+      
+      renderMonthlyList(predictions);
+      renderMonthlyCalendar(predictions);
+    }
+
+    function setupEventListeners() {
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        renderCardList(e.target.value);
+      });
+
+      document.getElementById('closeModal').addEventListener('click', () => {
+        document.getElementById('detailModal').classList.add('hidden');
+        document.getElementById('detailModal').classList.remove('flex');
+      });
+
+      document.getElementById('detailModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) {
+          document.getElementById('detailModal').classList.add('hidden');
+          document.getElementById('detailModal').classList.remove('flex');
+        }
+      });
+
+      document.getElementById('viewList').addEventListener('click', () => {
+        document.getElementById('viewList').className = 'px-4 py-2 rounded-lg bg-violet-600 text-white text-sm transition-all';
+        document.getElementById('viewCalendar').className = 'px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-all';
+        document.getElementById('monthlyListView').classList.remove('hidden');
+        document.getElementById('monthlyCalendarView').classList.add('hidden');
+      });
+
+      document.getElementById('viewCalendar').addEventListener('click', () => {
+        document.getElementById('viewCalendar').className = 'px-4 py-2 rounded-lg bg-violet-600 text-white text-sm transition-all';
+        document.getElementById('viewList').className = 'px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-all';
+        document.getElementById('monthlyCalendarView').classList.remove('hidden');
+        document.getElementById('monthlyListView').classList.add('hidden');
+      });
+    }
+
+    async function initApp() {
+      const csvData = await loadCSV('card_release.csv');
+      
+      if (!csvData) {
+        document.getElementById('loading').innerHTML = `
+          <div class="text-center p-8">
+            <div class="text-4xl mb-4">⚠️</div>
+            <h1 class="text-xl font-bold mb-2">CSVファイルが見つかりません</h1>
+            <p class="text-slate-400 mb-4">card_release.csv をHTMLと同じフォルダに配置してください</p>
+          </div>
+        `;
+        return;
+      }
+
+      const data = parseCSV(csvData);
+      cardMap = aggregateCards(data);
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+
+      renderCardList();
+      renderNextReprintPrediction();
+      renderMonthlyPredictions();
+      setupEventListeners();
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
