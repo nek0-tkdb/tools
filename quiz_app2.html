@@ -6,464 +6,186 @@
     <title>画像属性3択クイズ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .quiz-button {
-            transition: all 0.3s ease;
-        }
-        .quiz-button:hover {
-            transform: scale(1.05);
-        }
-        .correct {
-            background-color: #10b981 !important;
-            color: white !important;
-        }
-        .incorrect {
-            background-color: #ef4444 !important;
-            color: white !important;
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .bg-fire { background-color: #ef4444; }
+        .bg-water { background-color: #3b82f6; }
+        .bg-grass { background-color: #22c55e; }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div id="app" class="container mx-auto px-4 py-8 max-w-4xl">
-        <!-- ホーム画面 -->
-        <div id="homeScreen" class="fade-in">
-            <h1 class="text-4xl font-bold text-center mb-8 text-gray-800">画像属性3択クイズ</h1>
-            
-            <!-- お知らせエリア -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">📢 お知らせ（新着カード）</h2>
-                <div id="newsArea" class="space-y-2 text-gray-600">
-                    <!-- JavaScriptで動的に生成 -->
-                </div>
-            </div>
+<body class="bg-gray-100 min-h-screen font-sans text-gray-900">
 
-            <!-- 出題数設定 -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700">出題設定</h2>
-                <div class="flex items-center gap-4">
-                    <label for="questionCount" class="text-gray-700">出題数:</label>
-                    <input 
-                        type="number" 
-                        id="questionCount" 
-                        min="1" 
-                        value="10"
-                        class="border border-gray-300 rounded px-4 py-2 w-24"
-                    >
-                    <span id="maxQuestions" class="text-gray-600"></span>
-                </div>
-            </div>
+    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col">
+        <header class="bg-slate-800 text-white p-4 text-center font-bold text-xl shadow-md">
+            属性3択クイズ
+        </header>
 
-            <!-- スタートボタン -->
-            <button 
-                onclick="startQuiz()" 
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl quiz-button"
-            >
-                クイズスタート
-            </button>
-        </div>
-
-        <!-- クイズ画面 -->
-        <div id="quizScreen" class="hidden fade-in">
-            <div class="text-center mb-6">
-                <span id="questionNumber" class="text-xl font-semibold text-gray-700"></span>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <!-- カード画像 -->
-                <div class="mb-6">
-                    <img 
-                        id="cardImage" 
-                        src="" 
-                        alt="カード画像" 
-                        class="w-full max-w-md mx-auto rounded-lg shadow-md"
-                    >
+        <main class="flex-grow p-6">
+            <section id="screen-home">
+                <div class="mb-8">
+                    <h2 class="text-lg font-bold border-b-2 border-slate-800 mb-4">お知らせ（新着カード）</h2>
+                    <div id="latest-cards" class="space-y-2 text-sm text-gray-600">
+                        </div>
                 </div>
 
-                <!-- カード情報 -->
-                <div class="text-center mb-6">
-                    <p class="text-lg font-semibold text-gray-800" id="cardInfo"></p>
-                </div>
-
-                <!-- 選択肢ボタン -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <button 
-                        onclick="selectAnswer('fire')" 
-                        id="btn-fire"
-                        class="quiz-button bg-red-500 hover:bg-red-600 text-white font-bold py-6 px-4 rounded-lg text-xl"
-                    >
-                        🔥 赤/火
-                    </button>
-                    <button 
-                        onclick="selectAnswer('water')" 
-                        id="btn-water"
-                        class="quiz-button bg-blue-500 hover:bg-blue-600 text-white font-bold py-6 px-4 rounded-lg text-xl"
-                    >
-                        💧 青/水
-                    </button>
-                    <button 
-                        onclick="selectAnswer('grass')" 
-                        id="btn-grass"
-                        class="quiz-button bg-green-500 hover:bg-green-600 text-white font-bold py-6 px-4 rounded-lg text-xl"
-                    >
-                        🌿 緑/草
-                    </button>
-                </div>
-
-                <!-- フィードバックエリア -->
-                <div id="feedback" class="text-center text-xl font-bold mb-4 min-h-8"></div>
-            </div>
-
-            <!-- 中断ボタン -->
-            <button 
-                onclick="abortQuiz()" 
-                class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg"
-            >
-                クイズを中断
-            </button>
-        </div>
-
-        <!-- 結果画面 -->
-        <div id="resultScreen" class="hidden fade-in">
-            <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">クイズ結果</h1>
-            
-            <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
-                <div class="text-center mb-6">
-                    <p class="text-6xl font-bold mb-4" id="scoreDisplay"></p>
-                    <p class="text-2xl text-gray-700" id="accuracyDisplay"></p>
-                </div>
-
-                <!-- 回答履歴 -->
-                <div class="mt-8">
-                    <h2 class="text-xl font-semibold mb-4 text-gray-700">回答履歴</h2>
-                    <div id="answerHistory" class="space-y-2 max-h-96 overflow-y-auto">
-                        <!-- JavaScriptで動的に生成 -->
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-gray-700">出題数を選択</label>
+                        <input type="range" id="quiz-count-range" min="1" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="text-center mt-2 font-bold text-slate-700"><span id="quiz-count-display">5</span>問</div>
                     </div>
+                    <button onclick="startQuiz()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl shadow-lg transition duration-200 transform hover:scale-105">
+                        クイズスタート
+                    </button>
                 </div>
-            </div>
+            </section>
 
-            <!-- ボタンエリア -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button 
-                    onclick="shareToX()" 
-                    class="bg-blue-400 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-lg quiz-button"
-                >
-                    𝕏 でシェア
-                </button>
-                <button 
-                    onclick="backToHome()" 
-                    class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-6 rounded-lg quiz-button"
-                >
-                    ホームに戻る
-                </button>
-            </div>
-        </div>
+            <section id="screen-quiz" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <span id="quiz-progress" class="text-sm font-bold text-slate-500">Q 1/5</span>
+                    <button onclick="showHome()" class="text-xs text-red-500 underline">中断する</button>
+                </div>
+                <div class="bg-gray-200 aspect-square rounded-xl mb-6 overflow-hidden flex items-center justify-center border-4 border-white shadow-inner">
+                    <img id="quiz-image" src="" alt="Quiz Image" class="w-full h-full object-cover">
+                </div>
+                <div id="quiz-info" class="text-center mb-6">
+                    <h3 id="card-name" class="font-bold text-xl mb-1">カード名</h3>
+                    <p id="card-series" class="text-sm text-gray-500">シリーズ名</p>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="handleAnswer('赤')" class="bg-fire text-white py-4 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-95 transition">赤（火）</button>
+                    <button onclick="handleAnswer('青')" class="bg-water text-white py-4 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-95 transition">青（水）</button>
+                    <button onclick="handleAnswer('緑')" class="bg-grass text-white py-4 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-95 transition">緑（草）</button>
+                </div>
+            </section>
+
+            <section id="screen-result" class="hidden text-center">
+                <h2 class="text-3xl font-black mb-2 text-slate-800">RESULT</h2>
+                <div class="text-5xl font-bold text-slate-800 mb-6">
+                    <span id="score-correct">0</span> / <span id="score-total">0</span>
+                </div>
+                <div id="history-list" class="text-left bg-gray-50 p-4 rounded-lg mb-6 max-h-60 overflow-y-auto space-y-2 border"></div>
+                <div class="space-y-4">
+                    <button onclick="shareOnX()" class="w-full bg-black text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2">Xで結果をシェア</button>
+                    <button onclick="showHome()" class="w-full border-2 border-slate-800 text-slate-800 py-3 rounded-lg font-bold">ホームに戻る</button>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script>
-        // グローバル変数
-        let quizData = [];
-        let currentQuestions = [];
-        let currentQuestionIndex = 0;
-        let correctCount = 0;
-        let answerHistory = [];
+        let allCards = [];
+        let currentQuizSet = [];
+        let currentIndex = 0;
+        let score = 0;
+        let resultsHistory = [];
 
-        // 属性ラベル変換
-        const attributeLabels = {
-            'fire': '🔥 赤/火',
-            'water': '💧 青/水',
-            'grass': '🌿 緑/草'
+        window.onload = async () => {
+            await loadCSV();
+            setupRange();
         };
 
-        // CSVファイルのパス（同じ階層）
-        const CSV_FILE_PATH = './quiz_data.csv';
-
-        // 初期化処理
-        async function init() {
-            await loadCSVData();
-            updateNews();
-            updateMaxQuestions();
-            showScreen('homeScreen');
-        }
-
-        // CSVデータ読み込み
-        async function loadCSVData() {
+        async function loadCSV() {
             try {
-                const response = await fetch(CSV_FILE_PATH);
-                if (!response.ok) {
-                    throw new Error('CSVファイルの読み込みに失敗しました');
-                }
-                const csvText = await response.text();
-                quizData = parseCSV(csvText);
-                console.log(`${quizData.length}件のデータを読み込みました`);
-            } catch (error) {
-                console.error('CSVデータ読み込みエラー:', error);
-                alert('データの読み込みに失敗しました。quiz_data.csvファイルが同じ階層にあるか確認してください。');
-                quizData = [];
-            }
-        }
-
-        // CSV解析
-        function parseCSV(csvText) {
-            const lines = csvText.trim().split('\n');
-            const data = [];
-            
-            // ヘッダー行をスキップ（存在する場合）
-            const startIndex = lines[0].includes('キャラ名') || lines[0].includes('charName') ? 1 : 0;
-            
-            for (let i = startIndex; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
+                // ファイル名を quiz_data.csv に変更
+                const response = await fetch('./quiz_data.csv');
+                if (!response.ok) throw new Error('CSV file not found');
+                const text = await response.text();
                 
-                // CSV行を解析（カンマ区切り、ダブルクォートを考慮）
-                const columns = parseCSVLine(line);
-                
-                if (columns.length >= 5) {
-                    const attribute = normalizeAttribute(columns[3]);
-                    if (attribute) {
-                        data.push({
-                            id: i,
-                            charName: columns[0].trim(),
-                            cardName: columns[1].trim(),
-                            series: columns[2].trim(),
-                            correctAttribute: attribute,
-                            imageUrl: columns[4].trim(),
-                            createdAt: columns[5] ? columns[5].trim() : new Date().toISOString().split('T')[0].replace(/-/g, '/')
-                        });
-                    }
-                }
+                // ヘッダー（キャラ名,カード名,シリーズ,属性,画像URL,登録日）を考慮
+                const rows = text.trim().split('\n').slice(1); 
+                allCards = rows.map((row, index) => {
+                    const [charName, cardName, series, attribute, imageUrl, createdAt] = row.split(',');
+                    return { 
+                        id: index, 
+                        charName: charName?.trim(), 
+                        cardName: cardName?.trim(), 
+                        series: series?.trim(), 
+                        attribute: attribute?.trim(), 
+                        imageUrl: imageUrl?.trim(), 
+                        createdAt: createdAt?.trim() 
+                    };
+                });
+
+                updateLatestInfo();
+            } catch (err) {
+                console.error('CSV Load Error:', err);
+                document.getElementById('latest-cards').innerText = "データの読み込みに失敗しました。";
             }
-            
-            return data;
         }
 
-        // CSV行を解析（ダブルクォート対応）
-        function parseCSVLine(line) {
-            const columns = [];
-            let current = '';
-            let inQuotes = false;
-            
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    columns.push(current);
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            columns.push(current);
-            
-            return columns.map(col => col.replace(/^"|"$/g, ''));
-        }
-
-        // 属性を正規化
-        function normalizeAttribute(attr) {
-            const normalized = attr.toLowerCase().trim();
-            if (normalized === '赤' || normalized === '火' || normalized === 'fire' || normalized === 'red') {
-                return 'fire';
-            } else if (normalized === '青' || normalized === '水' || normalized === 'water' || normalized === 'blue') {
-                return 'water';
-            } else if (normalized === '緑' || normalized === '草' || normalized === 'grass' || normalized === 'green') {
-                return 'grass';
-            }
-            return null;
-        }
-
-        // お知らせ更新
-        function updateNews() {
-            const newsArea = document.getElementById('newsArea');
-            if (quizData.length === 0) {
-                newsArea.innerHTML = '<p class="text-gray-500">データがありません</p>';
-                return;
-            }
-
-            // 登録日でソート（新しい順）
-            const sorted = [...quizData].sort((a, b) => {
-                return new Date(b.createdAt) - new Date(a.createdAt);
-            });
-
-            const latest = sorted.slice(0, 3);
-            newsArea.innerHTML = latest.map(card => 
-                `<p>・${card.createdAt} - ${card.charName}「${card.cardName}」（${card.series}）が追加されました</p>`
+        function updateLatestInfo() {
+            const latestContainer = document.getElementById('latest-cards');
+            const latest = [...allCards].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
+            latestContainer.innerHTML = latest.map(c => 
+                `<div class="flex justify-between border-b border-gray-100 py-1">
+                    <span>${c.charName} / ${c.cardName}</span>
+                    <span class="text-[10px] text-gray-400">${c.createdAt}</span>
+                </div>`
             ).join('');
         }
 
-        // 最大出題数表示
-        function updateMaxQuestions() {
-            const maxQuestions = document.getElementById('maxQuestions');
-            const questionCount = document.getElementById('questionCount');
-            maxQuestions.textContent = `（最大: ${quizData.length}問）`;
-            questionCount.max = quizData.length;
-            questionCount.value = Math.min(10, quizData.length);
+        function setupRange() {
+            const range = document.getElementById('quiz-count-range');
+            const display = document.getElementById('quiz-count-display');
+            range.max = Math.max(allCards.length, 1);
+            range.value = Math.min(5, allCards.length);
+            display.innerText = range.value;
+            range.addEventListener('input', (e) => { display.innerText = e.target.value; });
         }
 
-        // クイズ開始
         function startQuiz() {
-            if (quizData.length === 0) {
-                alert('クイズデータがありません。CSVファイルを確認してください。');
-                return;
-            }
-
-            const questionCount = parseInt(document.getElementById('questionCount').value);
-            if (questionCount < 1 || questionCount > quizData.length) {
-                alert(`出題数は1〜${quizData.length}の範囲で指定してください。`);
-                return;
-            }
-
-            // 初期化
-            currentQuestionIndex = 0;
-            correctCount = 0;
-            answerHistory = [];
-
-            // ランダムに問題を選択
-            currentQuestions = shuffleArray([...quizData]).slice(0, questionCount);
-
-            showScreen('quizScreen');
-            showQuestion();
+            const count = parseInt(document.getElementById('quiz-count-range').value);
+            currentQuizSet = [...allCards].sort(() => 0.5 - Math.random()).slice(0, count);
+            currentIndex = 0; score = 0; resultsHistory = [];
+            showScreen('screen-quiz');
+            showNextQuestion();
         }
 
-        // 問題表示
-        function showQuestion() {
-            const question = currentQuestions[currentQuestionIndex];
-            
-            document.getElementById('questionNumber').textContent = 
-                `第${currentQuestionIndex + 1}問 / ${currentQuestions.length}問`;
-            document.getElementById('cardImage').src = question.imageUrl;
-            document.getElementById('cardInfo').textContent = 
-                `${question.charName} -「${question.cardName}」- ${question.series}`;
-            document.getElementById('feedback').textContent = '';
-
-            // ボタンを有効化
-            ['fire', 'water', 'grass'].forEach(attr => {
-                const btn = document.getElementById(`btn-${attr}`);
-                btn.disabled = false;
-                btn.className = btn.className.replace(/ (correct|incorrect)/g, '');
-            });
+        function showNextQuestion() {
+            if (currentIndex >= currentQuizSet.length) { showResult(); return; }
+            const card = currentQuizSet[currentIndex];
+            document.getElementById('quiz-progress').innerText = `Q ${currentIndex + 1} / ${currentQuizSet.length}`;
+            document.getElementById('quiz-image').src = card.imageUrl;
+            document.getElementById('card-name').innerText = card.cardName;
+            document.getElementById('card-series').innerText = card.series;
         }
 
-        // 回答選択
-        function selectAnswer(selectedAttribute) {
-            const question = currentQuestions[currentQuestionIndex];
-            const isCorrect = selectedAttribute === question.correctAttribute;
-
-            // ボタンの色を変更
-            const selectedBtn = document.getElementById(`btn-${selectedAttribute}`);
-            const correctBtn = document.getElementById(`btn-${question.correctAttribute}`);
-
-            selectedBtn.classList.add(isCorrect ? 'correct' : 'incorrect');
-            if (!isCorrect) {
-                correctBtn.classList.add('correct');
-            }
-
-            // フィードバック表示
-            const feedback = document.getElementById('feedback');
-            feedback.textContent = isCorrect ? '⭕ 正解！' : '❌ 不正解';
-            feedback.className = `text-center text-2xl font-bold mb-4 ${isCorrect ? 'text-green-600' : 'text-red-600'}`;
-
-            // 履歴に記録
-            if (isCorrect) correctCount++;
-            answerHistory.push({
-                question: question,
-                isCorrect: isCorrect,
-                selectedAttribute: selectedAttribute
-            });
-
-            // ボタンを無効化
-            ['fire', 'water', 'grass'].forEach(attr => {
-                document.getElementById(`btn-${attr}`).disabled = true;
-            });
-
-            // 次の問題へ
-            setTimeout(() => {
-                currentQuestionIndex++;
-                if (currentQuestionIndex < currentQuestions.length) {
-                    showQuestion();
-                } else {
-                    showResult();
-                }
-            }, 1500);
+        function handleAnswer(choice) {
+            const card = currentQuizSet[currentIndex];
+            const isCorrect = card.attribute === choice;
+            if (isCorrect) score++;
+            resultsHistory.push({ name: card.cardName, correctAttr: card.attribute, userChoice: choice, isCorrect: isCorrect });
+            currentIndex++;
+            showNextQuestion();
         }
 
-        // 結果表示
         function showResult() {
-            const totalQuestions = currentQuestions.length;
-            const accuracy = Math.round((correctCount / totalQuestions) * 100);
-
-            document.getElementById('scoreDisplay').textContent = 
-                `${correctCount} / ${totalQuestions} 問正解`;
-            document.getElementById('accuracyDisplay').textContent = 
-                `正答率: ${accuracy}%`;
-
-            // 回答履歴表示
-            const historyArea = document.getElementById('answerHistory');
-            historyArea.innerHTML = answerHistory.map((item, index) => {
-                const icon = item.isCorrect ? '⭕' : '❌';
-                const colorClass = item.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
-                return `
-                    <div class="p-3 border rounded ${colorClass}">
-                        <span class="font-semibold">${icon} 第${index + 1}問:</span>
-                        ${item.question.charName} -「${item.question.cardName}」-
-                        <span class="text-sm text-gray-600">
-                            （正解: ${attributeLabels[item.question.correctAttribute]}）
-                        </span>
-                    </div>
-                `;
-            }).join('');
-
-            showScreen('resultScreen');
+            showScreen('screen-result');
+            document.getElementById('score-correct').innerText = score;
+            document.getElementById('score-total').innerText = currentQuizSet.length;
+            const historyContainer = document.getElementById('history-list');
+            historyContainer.innerHTML = resultsHistory.map(h => `
+                <div class="flex justify-between text-sm items-center border-b pb-1">
+                    <span class="${h.isCorrect ? 'text-green-600 font-bold' : 'text-red-500'}">
+                        ${h.isCorrect ? '○' : '×'} ${h.name}
+                    </span>
+                    <span class="text-xs text-gray-500">正解: ${h.correctAttr}</span>
+                </div>
+            `).join('');
         }
 
-        // X (Twitter) にシェア
-        function shareToX() {
-            const totalQuestions = currentQuestions.length;
-            const accuracy = Math.round((correctCount / totalQuestions) * 100);
-            const text = `画像属性3択クイズで${totalQuestions}問中${correctCount}問正解！（正答率${accuracy}%）`;
-            const url = window.location.href;
-            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-            window.open(twitterUrl, '_blank');
+        function shareOnX() {
+            const text = `属性3択クイズに挑戦しました！\n正解数: ${score}/${currentQuizSet.length}\n#属性クイズ`;
+            const url = encodeURIComponent(window.location.href);
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`, '_blank');
         }
 
-        // クイズ中断
-        function abortQuiz() {
-            if (confirm('クイズを中断してホームに戻りますか？')) {
-                backToHome();
-            }
-        }
-
-        // ホームに戻る
-        function backToHome() {
-            showScreen('homeScreen');
-        }
-
-        // 画面切り替え
-        function showScreen(screenId) {
-            ['homeScreen', 'quizScreen', 'resultScreen'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
+        function showScreen(id) {
+            ['screen-home', 'screen-quiz', 'screen-result'].forEach(s => {
+                document.getElementById(s).classList.toggle('hidden', s !== id);
             });
-            document.getElementById(screenId).classList.remove('hidden');
         }
 
-        // 配列シャッフル
-        function shuffleArray(array) {
-            const shuffled = [...array];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            return shuffled;
-        }
-
-        // ページ読み込み時に初期化
-        window.addEventListener('DOMContentLoaded', init);
+        function showHome() { showScreen('screen-home'); updateLatestInfo(); }
     </script>
 </body>
 </html>
