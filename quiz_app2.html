@@ -6,186 +6,336 @@
     <title>画像属性3択クイズ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .bg-fire { background-color: #ef4444; }
-        .bg-water { background-color: #3b82f6; }
-        .bg-grass { background-color: #22c55e; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            padding-bottom: 30px;
+            min-height: 100vh;
+        }
+        .app-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            padding: 5px;
+            font-size: 10px;
+            color: #6b7280;
+            background-color: #e5e7eb;
+            z-index: 999;
+        }
+        img {
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
     </style>
-</head>
-<body class="bg-gray-100 min-h-screen font-sans text-gray-900">
-
-    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg flex flex-col">
-        <header class="bg-slate-800 text-white p-4 text-center font-bold text-xl shadow-md">
-            属性3択クイズ
-        </header>
-
-        <main class="flex-grow p-6">
-            <section id="screen-home">
-                <div class="mb-8">
-                    <h2 class="text-lg font-bold border-b-2 border-slate-800 mb-4">お知らせ（新着カード）</h2>
-                    <div id="latest-cards" class="space-y-2 text-sm text-gray-600">
-                        </div>
-                </div>
-
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-sm font-medium mb-2 text-gray-700">出題数を選択</label>
-                        <input type="range" id="quiz-count-range" min="1" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        <div class="text-center mt-2 font-bold text-slate-700"><span id="quiz-count-display">5</span>問</div>
-                    </div>
-                    <button onclick="startQuiz()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl shadow-lg transition duration-200 transform hover:scale-105">
-                        クイズスタート
-                    </button>
-                </div>
-            </section>
-
-            <section id="screen-quiz" class="hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <span id="quiz-progress" class="text-sm font-bold text-slate-500">Q 1/5</span>
-                    <button onclick="showHome()" class="text-xs text-red-500 underline">中断する</button>
-                </div>
-                <div class="bg-gray-200 aspect-square rounded-xl mb-6 overflow-hidden flex items-center justify-center border-4 border-white shadow-inner">
-                    <img id="quiz-image" src="" alt="Quiz Image" class="w-full h-full object-cover">
-                </div>
-                <div id="quiz-info" class="text-center mb-6">
-                    <h3 id="card-name" class="font-bold text-xl mb-1">カード名</h3>
-                    <p id="card-series" class="text-sm text-gray-500">シリーズ名</p>
-                </div>
-                <div class="grid grid-cols-1 gap-3">
-                    <button onclick="handleAnswer('赤')" class="bg-fire text-white py-4 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-95 transition">赤（火）</button>
-                    <button onclick="handleAnswer('青')" class="bg-water text-white py-4 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-95 transition">青（水）</button>
-                    <button onclick="handleAnswer('緑')" class="bg-grass text-white py-4 rounded-lg font-bold shadow-md hover:opacity-90 active:scale-95 transition">緑（草）</button>
-                </div>
-            </section>
-
-            <section id="screen-result" class="hidden text-center">
-                <h2 class="text-3xl font-black mb-2 text-slate-800">RESULT</h2>
-                <div class="text-5xl font-bold text-slate-800 mb-6">
-                    <span id="score-correct">0</span> / <span id="score-total">0</span>
-                </div>
-                <div id="history-list" class="text-left bg-gray-50 p-4 rounded-lg mb-6 max-h-60 overflow-y-auto space-y-2 border"></div>
-                <div class="space-y-4">
-                    <button onclick="shareOnX()" class="w-full bg-black text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2">Xで結果をシェア</button>
-                    <button onclick="showHome()" class="w-full border-2 border-slate-800 text-slate-800 py-3 rounded-lg font-bold">ホームに戻る</button>
-                </div>
-            </section>
-        </main>
-    </div>
-
     <script>
-        let allCards = [];
-        let currentQuizSet = [];
-        let currentIndex = 0;
-        let score = 0;
-        let resultsHistory = [];
+        // 右クリック・ドラッグ禁止
+        document.addEventListener('contextmenu', e => e.target.tagName === 'IMG' && e.preventDefault());
+        document.addEventListener('dragstart', e => e.target.tagName === 'IMG' && e.preventDefault());
 
-        window.onload = async () => {
-            await loadCSV();
-            setupRange();
-        };
+        const CSV_FILE = 'quiz_data.csv';
+        const SHARE_URL = window.location.href;
 
-        async function loadCSV() {
-            try {
-                // ファイル名を quiz_data.csv に変更
-                const response = await fetch('./quiz_data.csv');
-                if (!response.ok) throw new Error('CSV file not found');
-                const text = await response.text();
+        window.QuizApp = {
+            questions: [],
+            recentQuestions: [],
+            selectedCharacters: [],
+            currentScreen: 'home',
+            quizSettings: { totalQuestions: 3 },
+            currentQuiz: { active: false, currentQuestionIndex: 0, score: 0, quizQuestions: [], answerHistory: [] },
+            
+            ATTRIBUTES: {
+                fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700' },
+                water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700' },
+                grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700' }
+            },
+            
+            ATTRIBUTE_MAP: { '赤': 'fire', '青': 'water', '緑': 'grass' },
+
+            async init() {
+                this.loadSettings();
+                await this.loadCsvData();
+                this.renderApp();
+            },
+
+            loadSettings() {
+                const stored = localStorage.getItem('quizSettings');
+                if (stored) this.quizSettings = JSON.parse(stored);
+            },
+
+            saveSettings() {
+                localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
+            },
+
+            async loadCsvData() {
+                try {
+                    const response = await fetch(CSV_FILE);
+                    if (!response.ok) throw new Error('CSV file not found');
+                    const text = await response.text();
+                    const lines = text.trim().split('\n').slice(1); // ヘッダーを除外
+
+                    this.questions = lines.map((line, index) => {
+                        const [charName, cardName, series, attrName, imageUrl, regDate] = line.split(',').map(s => s.trim());
+                        return {
+                            id: index,
+                            charName,
+                            cardName,
+                            series,
+                            correctAttribute: this.ATTRIBUTE_MAP[attrName] || 'fire',
+                            imageUrl,
+                            createdAt: regDate ? new Date(regDate) : new Date()
+                        };
+                    });
+
+                    this.updateRecentQuestions();
+                } catch (e) {
+                    console.error("Error loading CSV:", e);
+                    alert("クイズデータの読み込みに失敗しました。quiz_data.csvを確認してください。");
+                }
+            },
+
+            updateRecentQuestions() {
+                this.recentQuestions = [...this.questions]
+                    .sort((a, b) => b.createdAt - a.createdAt)
+                    .slice(0, 3);
+            },
+
+            setScreen(screen) {
+                this.currentScreen = screen;
+                this.renderApp();
+            },
+
+            renderSelectedCharactersInfo() {
+                if (this.selectedCharacters.length === 0) return '';
+                const charList = this.selectedCharacters.map(char => 
+                    `<span class="inline-block px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full mr-1 mb-1">${char}</span>`
+                ).join('');
+                return `<div class="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            <p class="text-xs font-medium text-gray-600 mb-2">出題対象キャラ:</p>
+                            <div class="flex flex-wrap">${charList}</div>
+                        </div>`;
+            },
+
+            startQuiz() {
+                let available = [...this.questions];
+                if (this.selectedCharacters.length > 0) {
+                    available = available.filter(q => this.selectedCharacters.includes(q.charName));
+                }
                 
-                // ヘッダー（キャラ名,カード名,シリーズ,属性,画像URL,登録日）を考慮
-                const rows = text.trim().split('\n').slice(1); 
-                allCards = rows.map((row, index) => {
-                    const [charName, cardName, series, attribute, imageUrl, createdAt] = row.split(',');
-                    return { 
-                        id: index, 
-                        charName: charName?.trim(), 
-                        cardName: cardName?.trim(), 
-                        series: series?.trim(), 
-                        attribute: attribute?.trim(), 
-                        imageUrl: imageUrl?.trim(), 
-                        createdAt: createdAt?.trim() 
-                    };
+                if (available.length === 0) {
+                    alert("対象の問題が見つかりません。");
+                    return;
+                }
+
+                available.sort(() => Math.random() - 0.5);
+                const count = Math.min(this.quizSettings.totalQuestions, available.length);
+
+                this.currentQuiz = {
+                    active: true,
+                    currentQuestionIndex: 0,
+                    score: 0,
+                    quizQuestions: available.slice(0, count),
+                    answerHistory: []
+                };
+                this.setScreen('quiz');
+            },
+
+            submitAnswer(attr) {
+                const quiz = this.currentQuiz;
+                const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
+                const isCorrect = currentQ.correctAttribute === attr;
+                
+                quiz.answerHistory.push({ question: currentQ, selected: attr, correct: isCorrect });
+                if (isCorrect) quiz.score++;
+
+                setTimeout(() => {
+                    quiz.currentQuestionIndex++;
+                    if (quiz.currentQuestionIndex >= quiz.quizQuestions.length) {
+                        quiz.active = false;
+                        this.setScreen('results');
+                    } else {
+                        this.renderApp();
+                    }
+                }, 800);
+            },
+
+            renderApp() {
+                const container = document.getElementById('app-container');
+                let html = '';
+                
+                switch (this.currentScreen) {
+                    case 'home': html = this.renderHome(); break;
+                    case 'quiz': html = this.renderQuiz(); break;
+                    case 'cardList': html = this.renderCardList(); break;
+                    case 'charSelect': html = this.renderCharSelect(); break;
+                    case 'results': html = this.renderResults(); break;
+                }
+                container.innerHTML = `<div class="max-w-4xl mx-auto w-full p-4 sm:p-8">${html}</div>`;
+                this.attachEventListeners();
+            },
+
+            renderHome() {
+                let recentHtml = '';
+                if (this.recentQuestions.length > 0) {
+                    const items = this.recentQuestions.map(q => `<div class="text-sm text-gray-700 py-1">${q.cardName}（${q.charName || '不明'}）</div>`).join('');
+                    recentHtml = `<div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-gray-200"><h3 class="text-base font-bold mb-2">📢 新着情報</h3>${items}</div>`;
+                }
+
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <h1 class="text-3xl font-extrabold mb-6">属性当てクイズ</h1>
+                        <div class="mb-6 border-b pb-4">
+                            <label class="block text-sm font-medium mb-2">出題数 (現在: ${this.quizSettings.totalQuestions}問)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" class="flex-grow p-3 border rounded-xl" />
+                                <button id="save-settings-btn" class="bg-indigo-500 text-white px-6 rounded-xl font-bold">設定</button>
+                            </div>
+                        </div>
+                        <div class="mb-6 border-b pb-4">
+                            <button id="nav-char-select-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">🎯 出題キャラを選択</button>
+                            ${this.renderSelectedCharactersInfo()}
+                        </div>
+                        <div class="space-y-4">
+                            <button id="start-quiz-btn" class="w-full text-xl py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition">クイズスタート</button>
+                            ${recentHtml}
+                            <button id="nav-card-list-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">登録済みカード一覧 (${this.questions.length}枚)</button>
+                            <button onclick="history.back();" class="w-full bg-gray-200 py-3 rounded-xl font-semibold">← ツール集トップへ</button>
+                        </div>
+                    </div>`;
+            },
+
+            renderQuiz() {
+                const quiz = this.currentQuiz;
+                const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
+                const choices = ['fire', 'water', 'grass'].sort(() => Math.random() - 0.5);
+
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-4 border-b pb-3">
+                            <h2 class="text-xl font-bold">問題 ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
+                            <p class="text-indigo-600 font-bold">スコア: ${quiz.score}</p>
+                        </div>
+                        <div class="text-center mb-4 text-sm text-gray-600">
+                             <p class="font-bold text-lg text-black">${currentQ.cardName}</p>
+                             <p>${currentQ.charName || '---'} / ${currentQ.series || '---'}</p>
+                        </div>
+                        <div class="relative aspect-square bg-gray-200 rounded-xl overflow-hidden mb-6">
+                            <img src="${currentQ.imageUrl}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x600?text=No+Image'">
+                        </div>
+                        <div class="space-y-4">
+                            ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn w-full py-4 rounded-xl text-white font-bold uppercase shadow-lg border-b-4 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
+                        </div>
+                    </div>`;
+            },
+
+            renderResults() {
+                const quiz = this.currentQuiz;
+                const percent = Math.round((quiz.score / quiz.quizQuestions.length) * 100);
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <h2 class="text-3xl font-extrabold text-indigo-600 mb-4">結果発表</h2>
+                        <div class="mb-8">
+                            <p class="text-6xl font-black">${quiz.score} / ${quiz.quizQuestions.length}</p>
+                            <p class="text-xl text-gray-600 mt-2">正答率: ${percent}%</p>
+                        </div>
+                        <button id="back-home-btn" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg">ホームに戻る</button>
+                    </div>`;
+            },
+
+            renderCardList() {
+                const charNames = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-2xl font-bold mb-6 border-b pb-2">カード一覧 (${this.questions.length}枚)</h2>
+                        <select id="char-filter" class="w-full p-2 border rounded-lg mb-4">
+                            <option value="">すべてのキャラを表示</option>
+                            ${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}
+                        </select>
+                        <ul id="card-list-container" class="divide-y border rounded-xl overflow-hidden">
+                            ${this.questions.map(q => `
+                                <li class="card-list-item p-4 flex items-center gap-3" data-char="${q.charName}">
+                                    <img src="${q.imageUrl}" class="w-16 h-16 object-cover rounded-lg">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium truncate">${q.cardName}</p>
+                                        <p class="text-xs text-gray-500">${q.charName || '---'}</p>
+                                    </div>
+                                    <span class="px-3 py-1 text-xs font-bold rounded-full text-white ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span>
+                                </li>`).join('')}
+                        </ul>
+                        <button id="back-home-btn" class="w-full mt-6 py-3 border-2 border-gray-300 rounded-xl">ホームに戻る</button>
+                    </div>`;
+            },
+
+            renderCharSelect() {
+                const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
+                return `
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h2 class="text-2xl font-bold mb-6 border-b pb-2">出題キャラ選択</h2>
+                        <div class="flex gap-2 mb-4">
+                            <button id="select-all-btn" class="flex-1 py-2 border-2 border-indigo-600 text-indigo-600 rounded-lg text-sm font-bold">全選択</button>
+                            <button id="deselect-all-btn" class="flex-1 py-2 border-2 border-gray-300 text-gray-600 rounded-lg text-sm font-bold">全解除</button>
+                        </div>
+                        <div class="space-y-2 max-h-96 overflow-y-auto mb-6">
+                            ${allChars.map(name => `
+                                <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" value="${name}" class="char-checkbox w-5 h-5 mr-3" ${this.selectedCharacters.includes(name) || this.selectedCharacters.length === 0 ? 'checked' : ''}>
+                                    <span>${name}</span>
+                                </label>`).join('')}
+                        </div>
+                        <button id="apply-char-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md">選択を確定</button>
+                    </div>`;
+            },
+
+            attachEventListeners() {
+                document.getElementById('start-quiz-btn')?.addEventListener('click', () => this.startQuiz());
+                document.getElementById('nav-card-list-btn')?.addEventListener('click', () => this.setScreen('cardList'));
+                document.getElementById('nav-char-select-btn')?.addEventListener('click', () => this.setScreen('charSelect'));
+                document.querySelectorAll('#back-home-btn').forEach(b => b.addEventListener('click', () => this.setScreen('home')));
+
+                document.getElementById('save-settings-btn')?.addEventListener('click', () => {
+                    const val = parseInt(document.getElementById('total-questions-home').value);
+                    if (val > 0) {
+                        this.quizSettings.totalQuestions = val;
+                        this.saveSettings();
+                        alert("設定を保存しました。");
+                    }
                 });
 
-                updateLatestInfo();
-            } catch (err) {
-                console.error('CSV Load Error:', err);
-                document.getElementById('latest-cards').innerText = "データの読み込みに失敗しました。";
+                document.querySelectorAll('.quiz-choice-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.submitAnswer(e.currentTarget.dataset.attribute));
+                });
+
+                document.getElementById('char-filter')?.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    document.querySelectorAll('.card-list-item').forEach(item => {
+                        item.style.display = (val === '' || item.dataset.char === val) ? 'flex' : 'none';
+                    });
+                });
+
+                document.getElementById('select-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = true));
+                document.getElementById('deselect-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = false));
+                document.getElementById('apply-char-btn')?.addEventListener('click', () => {
+                    const selected = Array.from(document.querySelectorAll('.char-checkbox:checked')).map(c => c.value);
+                    this.selectedCharacters = selected;
+                    this.setScreen('home');
+                });
             }
-        }
+        };
 
-        function updateLatestInfo() {
-            const latestContainer = document.getElementById('latest-cards');
-            const latest = [...allCards].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 3);
-            latestContainer.innerHTML = latest.map(c => 
-                `<div class="flex justify-between border-b border-gray-100 py-1">
-                    <span>${c.charName} / ${c.cardName}</span>
-                    <span class="text-[10px] text-gray-400">${c.createdAt}</span>
-                </div>`
-            ).join('');
-        }
-
-        function setupRange() {
-            const range = document.getElementById('quiz-count-range');
-            const display = document.getElementById('quiz-count-display');
-            range.max = Math.max(allCards.length, 1);
-            range.value = Math.min(5, allCards.length);
-            display.innerText = range.value;
-            range.addEventListener('input', (e) => { display.innerText = e.target.value; });
-        }
-
-        function startQuiz() {
-            const count = parseInt(document.getElementById('quiz-count-range').value);
-            currentQuizSet = [...allCards].sort(() => 0.5 - Math.random()).slice(0, count);
-            currentIndex = 0; score = 0; resultsHistory = [];
-            showScreen('screen-quiz');
-            showNextQuestion();
-        }
-
-        function showNextQuestion() {
-            if (currentIndex >= currentQuizSet.length) { showResult(); return; }
-            const card = currentQuizSet[currentIndex];
-            document.getElementById('quiz-progress').innerText = `Q ${currentIndex + 1} / ${currentQuizSet.length}`;
-            document.getElementById('quiz-image').src = card.imageUrl;
-            document.getElementById('card-name').innerText = card.cardName;
-            document.getElementById('card-series').innerText = card.series;
-        }
-
-        function handleAnswer(choice) {
-            const card = currentQuizSet[currentIndex];
-            const isCorrect = card.attribute === choice;
-            if (isCorrect) score++;
-            resultsHistory.push({ name: card.cardName, correctAttr: card.attribute, userChoice: choice, isCorrect: isCorrect });
-            currentIndex++;
-            showNextQuestion();
-        }
-
-        function showResult() {
-            showScreen('screen-result');
-            document.getElementById('score-correct').innerText = score;
-            document.getElementById('score-total').innerText = currentQuizSet.length;
-            const historyContainer = document.getElementById('history-list');
-            historyContainer.innerHTML = resultsHistory.map(h => `
-                <div class="flex justify-between text-sm items-center border-b pb-1">
-                    <span class="${h.isCorrect ? 'text-green-600 font-bold' : 'text-red-500'}">
-                        ${h.isCorrect ? '○' : '×'} ${h.name}
-                    </span>
-                    <span class="text-xs text-gray-500">正解: ${h.correctAttr}</span>
-                </div>
-            `).join('');
-        }
-
-        function shareOnX() {
-            const text = `属性3択クイズに挑戦しました！\n正解数: ${score}/${currentQuizSet.length}\n#属性クイズ`;
-            const url = encodeURIComponent(window.location.href);
-            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`, '_blank');
-        }
-
-        function showScreen(id) {
-            ['screen-home', 'screen-quiz', 'screen-result'].forEach(s => {
-                document.getElementById(s).classList.toggle('hidden', s !== id);
-            });
-        }
-
-        function showHome() { showScreen('screen-home'); updateLatestInfo(); }
+        document.addEventListener('DOMContentLoaded', () => window.QuizApp.init());
     </script>
+</head>
+<body>
+    <div id="app-container" class="min-h-screen flex items-center justify-center">
+        <div class="text-center">
+            <div class="animate-spin h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto"></div>
+            <p class="mt-4 text-gray-600">CSVデータを読み込み中...</p>
+        </div>
+    </div>
+    <div class="app-footer">X: nek0n0tem0</div>
 </body>
 </html>
