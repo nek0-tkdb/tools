@@ -38,7 +38,6 @@
         document.addEventListener('dragstart', e => e.target.tagName === 'IMG' && e.preventDefault());
 
         const CSV_FILE = 'quiz_data.csv';
-        const SHARE_URL = window.location.href;
 
         window.QuizApp = {
             questions: [],
@@ -76,17 +75,31 @@
                     const response = await fetch(CSV_FILE);
                     if (!response.ok) throw new Error('CSV file not found');
                     const text = await response.text();
-                    const lines = text.trim().split('\n').slice(1); // ヘッダーを除外
+                    
+                    // 改行で分割（Windows/Mac両対応）
+                    const lines = text.trim().split(/\r?\n/).slice(1); 
 
                     this.questions = lines.map((line, index) => {
-                        const [charName, cardName, series, attrName, imageUrl, regDate] = line.split(',').map(s => s.trim());
+                        // カンマで分割し、前後の空白およびダブルクォーテーションを徹底削除
+                        const parts = line.split(',').map(s => {
+                            let val = s.trim();
+                            // 最初と最後が " なら削除
+                            if (val.startsWith('"') && val.endsWith('"')) {
+                                val = val.substring(1, val.length - 1);
+                            }
+                            // CSV内でのエスケープされたダブルクォーテーション "" を " に戻す
+                            return val.replace(/""/g, '"');
+                        });
+
+                        const [charName, cardName, series, attrName, imageUrl, regDate] = parts;
+                        
                         return {
                             id: index,
-                            charName,
-                            cardName,
-                            series,
+                            charName: charName || '',
+                            cardName: cardName || '無題のカード',
+                            series: series || '',
                             correctAttribute: this.ATTRIBUTE_MAP[attrName] || 'fire',
-                            imageUrl,
+                            imageUrl: imageUrl || '',
                             createdAt: regDate ? new Date(regDate) : new Date()
                         };
                     });
@@ -94,7 +107,7 @@
                     this.updateRecentQuestions();
                 } catch (e) {
                     console.error("Error loading CSV:", e);
-                    alert("クイズデータの読み込みに失敗しました。quiz_data.csvを確認してください。");
+                    alert("データの読み取りに失敗しました。ファイル名が quiz_data.csv であること、HTMLと同じ場所にあることを確認してください。");
                 }
             },
 
@@ -115,7 +128,7 @@
                     `<span class="inline-block px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full mr-1 mb-1">${char}</span>`
                 ).join('');
                 return `<div class="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                            <p class="text-xs font-medium text-gray-600 mb-2">出題対象キャラ:</p>
+                            <p class="text-xs font-medium text-gray-600 mb-2">出題対象:</p>
                             <div class="flex flex-wrap">${charList}</div>
                         </div>`;
             },
@@ -127,7 +140,7 @@
                 }
                 
                 if (available.length === 0) {
-                    alert("対象の問題が見つかりません。");
+                    alert("対象のカードがありません。");
                     return;
                 }
 
@@ -166,7 +179,6 @@
             renderApp() {
                 const container = document.getElementById('app-container');
                 let html = '';
-                
                 switch (this.currentScreen) {
                     case 'home': html = this.renderHome(); break;
                     case 'quiz': html = this.renderQuiz(); break;
@@ -182,28 +194,28 @@
                 let recentHtml = '';
                 if (this.recentQuestions.length > 0) {
                     const items = this.recentQuestions.map(q => `<div class="text-sm text-gray-700 py-1">${q.cardName}（${q.charName || '不明'}）</div>`).join('');
-                    recentHtml = `<div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-gray-200"><h3 class="text-base font-bold mb-2">📢 新着情報</h3>${items}</div>`;
+                    recentHtml = `<div class="bg-white rounded-xl shadow-md p-4 mb-4 border border-gray-200"><h3 class="text-base font-bold mb-2">📢 新着カード</h3>${items}</div>`;
                 }
 
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6 text-center">
                         <h1 class="text-3xl font-extrabold mb-6">属性当てクイズ</h1>
                         <div class="mb-6 border-b pb-4">
-                            <label class="block text-sm font-medium mb-2">出題数 (現在: ${this.quizSettings.totalQuestions}問)</label>
+                            <label class="block text-sm font-medium mb-2">出題数 (${this.quizSettings.totalQuestions}問)</label>
                             <div class="flex gap-2">
                                 <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" class="flex-grow p-3 border rounded-xl" />
-                                <button id="save-settings-btn" class="bg-indigo-500 text-white px-6 rounded-xl font-bold">設定</button>
+                                <button id="save-settings-btn" class="bg-indigo-500 text-white px-6 rounded-xl font-bold">保存</button>
                             </div>
                         </div>
                         <div class="mb-6 border-b pb-4">
-                            <button id="nav-char-select-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">🎯 出題キャラを選択</button>
+                            <button id="nav-char-select-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">🎯 キャラを選択して絞り込む</button>
                             ${this.renderSelectedCharactersInfo()}
                         </div>
                         <div class="space-y-4">
                             <button id="start-quiz-btn" class="w-full text-xl py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition">クイズスタート</button>
                             ${recentHtml}
-                            <button id="nav-card-list-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">登録済みカード一覧 (${this.questions.length}枚)</button>
-                            <button onclick="history.back();" class="w-full bg-gray-200 py-3 rounded-xl font-semibold">← ツール集トップへ</button>
+                            <button id="nav-card-list-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">全カード一覧 (${this.questions.length}枚)</button>
+                            <button onclick="history.back();" class="w-full bg-gray-200 py-3 rounded-xl font-semibold">← 戻る</button>
                         </div>
                     </div>`;
             },
@@ -223,7 +235,7 @@
                              <p class="font-bold text-lg text-black">${currentQ.cardName}</p>
                              <p>${currentQ.charName || '---'} / ${currentQ.series || '---'}</p>
                         </div>
-                        <div class="relative aspect-square bg-gray-200 rounded-xl overflow-hidden mb-6">
+                        <div class="relative aspect-square bg-gray-200 rounded-xl overflow-hidden mb-6 shadow-inner">
                             <img src="${currentQ.imageUrl}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x600?text=No+Image'">
                         </div>
                         <div class="space-y-4">
@@ -237,12 +249,12 @@
                 const percent = Math.round((quiz.score / quiz.quizQuestions.length) * 100);
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6 text-center">
-                        <h2 class="text-3xl font-extrabold text-indigo-600 mb-4">結果発表</h2>
+                        <h2 class="text-3xl font-extrabold text-indigo-600 mb-4">結果</h2>
                         <div class="mb-8">
                             <p class="text-6xl font-black">${quiz.score} / ${quiz.quizQuestions.length}</p>
                             <p class="text-xl text-gray-600 mt-2">正答率: ${percent}%</p>
                         </div>
-                        <button id="back-home-btn" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg">ホームに戻る</button>
+                        <button id="back-home-btn" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg">ホームへ戻る</button>
                     </div>`;
             },
 
@@ -250,7 +262,7 @@
                 const charNames = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6">
-                        <h2 class="text-2xl font-bold mb-6 border-b pb-2">カード一覧 (${this.questions.length}枚)</h2>
+                        <h2 class="text-2xl font-bold mb-6 border-b pb-2">カード一覧</h2>
                         <select id="char-filter" class="w-full p-2 border rounded-lg mb-4">
                             <option value="">すべてのキャラを表示</option>
                             ${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}
@@ -333,7 +345,7 @@
     <div id="app-container" class="min-h-screen flex items-center justify-center">
         <div class="text-center">
             <div class="animate-spin h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto"></div>
-            <p class="mt-4 text-gray-600">CSVデータを読み込み中...</p>
+            <p class="mt-4 text-gray-600">CSV読み込み中...</p>
         </div>
     </div>
     <div class="app-footer">X: nek0n0tem0</div>
