@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一括画像クロップツール</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        // アイコンコンポーネントの簡易実装（Lucideをグローバルで使用）
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        function App() {
+            const [images, setImages] = useState([]);
+            const [width, setWidth] = useState(800);
+            const [height, setHeight] = useState(800);
+            const [startX, setStartX] = useState(0);
+            const [startY, setStartY] = useState(0);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [progress, setProgress] = useState(0);
+            const [statusMessage, setStatusMessage] = useState('');
+            const [zipBlob, setZipBlob] = useState(null);
+            const fileInputRef = useRef(null);
+
+            const handleFileChange = (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+
+                const newImages = files
+                    .filter(file => file.type.startsWith('image/'))
+                    .map(file => ({
+                        id: Math.random().toString(36).substr(2, 9),
+                        file,
+                        preview: URL.createObjectURL(file),
+                    }));
+
+                setImages(prev => [...prev, ...newImages].slice(0, 500)); // GitHub Pages向けに少し余裕を持たせました
+                setZipBlob(null);
+                setStatusMessage('');
+            };
+
+            const removeImage = (id) => {
+                setImages(prev => {
+                    const removed = prev.find(img => img.id === id);
+                    if (removed) URL.revokeObjectURL(removed.preview);
+                    return prev.filter(img => img.id !== id);
+                });
+                setZipBlob(null);
+            };
+
+            const clearAll = () => {
+                images.forEach(img => URL.revokeObjectURL(img.preview));
+                setImages([]);
+                setZipBlob(null);
+                setProgress(0);
+                setStatusMessage('');
+            };
+
+            const processImages = async () => {
+                if (images.length === 0) return;
+                setIsProcessing(true);
+                setProgress(0);
+                setStatusMessage('画像を処理中...');
+
+                try {
+                    const zip = new JSZip();
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    for (let i = 0; i < images.length; i++) {
+                        const imgObj = images[i];
+                        
+                        const img = await new Promise((resolve, reject) => {
+                            const tempImg = new Image();
+                            tempImg.onload = () => resolve(tempImg);
+                            tempImg.onerror = reject;
+                            tempImg.src = imgObj.preview;
+                        });
+
+                        ctx.clearRect(0, 0, width, height);
+                        ctx.drawImage(
+                            img, 
+                            startX, startY, width, height,
+                            0, 0, width, height
+                        );
+
+                        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+                        const fileName = `${imgObj.file.name.split('.')[0]}_cropped.jpg`;
+                        zip.file(fileName, blob);
+
+                        setProgress(Math.round(((i + 1) / images.length) * 100));
+                    }
+
+                    setStatusMessage('ZIPファイルを生成中...');
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    setZipBlob(content);
+                    setStatusMessage('完了しました！');
+                } catch (error) {
+                    console.error(error);
+                    setStatusMessage('エラーが発生しました。');
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+
+            const downloadAll = () => {
+                if (!zipBlob) return;
+                const url = URL.createObjectURL(zipBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `cropped_images_${new Date().getTime()}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-5xl mx-auto">
+                        <header className="mb-8 text-center">
+                            <h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center justify-center gap-3">
+                                <Icon name="image" size={32} className="text-blue-600" /> 一括画像クロップ
+                            </h1>
+                            <p className="text-slate-500 font-medium">指定したピクセル座標で複数の画像を一括切り抜き</p>
+                        </header>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Settings */}
+                            <div className="lg:col-span-1 space-y-6">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2 text-slate-700">
+                                        <Icon name="settings-2" className="text-slate-400" /> 出力設定
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">幅 (px)</label>
+                                            <input type="number" value={width} onChange={(e) => setWidth(Math.max(1, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">高さ (px)</label>
+                                            <input type="number" value={height} onChange={(e) => setHeight(Math.max(1, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        </div>
+                                    </div>
+
+                                    <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2 text-slate-700">
+                                        <Icon name="crosshair" className="text-slate-400" /> 開始座標
+                                    </h2>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">開始 X</label>
+                                            <input type="number" value={startX} onChange={(e) => setStartX(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">開始 Y</label>
+                                            <input type="number" value={startY} onChange={(e) => setStartY(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                                    <button onClick={processImages} disabled={images.length === 0 || isProcessing} className={`w-full py-3 px-4 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 ${images.length === 0 || isProcessing ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-md active:scale-95'}`}>
+                                        {isProcessing ? <><Icon name="loader-2" className="animate-spin" /> {progress}%</> : <><Icon name="check-circle-2" /> 実行</>}
+                                    </button>
+
+                                    {zipBlob && (
+                                        <button onClick={downloadAll} className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 active:scale-95">
+                                            <Icon name="download" /> ZIPを保存
+                                        </button>
+                                    )}
+
+                                    {images.length > 0 && (
+                                        <button onClick={clearAll} disabled={isProcessing} className="w-full py-3 px-4 text-rose-600 hover:bg-rose-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
+                                            <Icon name="trash-2" size={18} /> 全削除
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                {statusMessage && (
+                                    <div className={`p-4 rounded-xl text-sm font-medium text-center border ${statusMessage.includes('エラー') ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                        {statusMessage}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Main Display */}
+                            <div className="lg:col-span-2">
+                                <div 
+                                    className={`relative bg-white border-2 border-dashed rounded-3xl p-8 text-center min-h-[500px] flex flex-col items-center justify-center transition-all ${images.length === 0 ? 'border-slate-300' : 'border-blue-200 bg-blue-50/20'}`}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        handleFileChange({ target: { files: e.dataTransfer.files } });
+                                    }}
+                                >
+                                    {images.length === 0 ? (
+                                        <div className="space-y-6">
+                                            <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto text-blue-500 border border-blue-100 shadow-sm">
+                                                <Icon name="upload" size={40} />
+                                            </div>
+                                            <div>
+                                                <button onClick={() => fileInputRef.current?.click()} className="text-xl font-bold text-blue-600 hover:underline">画像を選択する</button>
+                                                <p className="text-slate-400 mt-2 font-medium">または、ここにファイルをドロップ</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col">
+                                            <div className="flex items-center justify-between border-b border-blue-100 pb-4 mb-4">
+                                                <span className="font-bold text-slate-700 text-lg">{images.length} 枚の画像</span>
+                                                <button onClick={() => fileInputRef.current?.click()} className="text-sm font-bold bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all">画像を追加</button>
+                                            </div>
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 overflow-y-auto max-h-[600px] p-1 custom-scrollbar">
+                                                {images.map((img) => (
+                                                    <div key={img.id} className="group relative aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm hover:scale-[1.02] transition-transform">
+                                                        <img src={img.preview} className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <button onClick={() => removeImage(img.id)} className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 shadow-lg">
+                                                                <Icon name="trash-2" size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple accept="image/*" className="hidden" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
