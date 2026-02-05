@@ -17,9 +17,21 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        
+        /* カスタムスクロールバー */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        /* 数値入力のスピンボタン（上下矢印）を非表示にする */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield; /* Firefox用 */
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -28,23 +40,37 @@
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
 
-        // アイコンコンポーネントの簡易実装（Lucideをグローバルで使用）
+        /**
+         * アイコンコンポーネント
+         * LucideのDOM操作とReactの競合を避けるためのラッパー
+         */
         const Icon = ({ name, size = 20, className = "" }) => {
-            const iconRef = useRef(null);
+            const containerRef = useRef(null);
+
             useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
+                if (window.lucide && containerRef.current) {
+                    containerRef.current.innerHTML = `<i data-lucide="${name}" style="width: ${size}px; height: ${size}px;"></i>`;
+                    window.lucide.createIcons({
+                        root: containerRef.current,
+                        attrs: {
+                            class: className
+                        }
+                    });
                 }
-            }, [name]);
-            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+            }, [name, size, className]);
+
+            return <span ref={containerRef} className="inline-flex items-center justify-center"></span>;
         };
 
         function App() {
             const [images, setImages] = useState([]);
-            const [width, setWidth] = useState(800);
-            const [height, setHeight] = useState(800);
-            const [startX, setStartX] = useState(0);
-            const [startY, setStartY] = useState(0);
+            
+            // 数値入力の利便性のため、内部状態は文字列で管理します
+            const [width, setWidth] = useState("800");
+            const [height, setHeight] = useState("800");
+            const [startX, setStartX] = useState("0");
+            const [startY, setStartY] = useState("0");
+            
             const [isProcessing, setIsProcessing] = useState(false);
             const [progress, setProgress] = useState(0);
             const [statusMessage, setStatusMessage] = useState('');
@@ -63,7 +89,7 @@
                         preview: URL.createObjectURL(file),
                     }));
 
-                setImages(prev => [...prev, ...newImages].slice(0, 500)); // GitHub Pages向けに少し余裕を持たせました
+                setImages(prev => [...prev, ...newImages].slice(0, 500));
                 setZipBlob(null);
                 setStatusMessage('');
             };
@@ -87,6 +113,19 @@
 
             const processImages = async () => {
                 if (images.length === 0) return;
+                
+                // 数値に変換し、不正な値はデフォルト値にする
+                const finalW = Math.max(1, parseInt(width) || 800);
+                const finalH = Math.max(1, parseInt(height) || 800);
+                const finalX = Math.max(0, parseInt(startX) || 0);
+                const finalY = Math.max(0, parseInt(startY) || 0);
+
+                // 表示用の数値を確定させる
+                setWidth(finalW.toString());
+                setHeight(finalH.toString());
+                setStartX(finalX.toString());
+                setStartY(finalY.toString());
+
                 setIsProcessing(true);
                 setProgress(0);
                 setStatusMessage('画像を処理中...');
@@ -96,8 +135,8 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    canvas.width = width;
-                    canvas.height = height;
+                    canvas.width = finalW;
+                    canvas.height = finalH;
 
                     for (let i = 0; i < images.length; i++) {
                         const imgObj = images[i];
@@ -109,11 +148,11 @@
                             tempImg.src = imgObj.preview;
                         });
 
-                        ctx.clearRect(0, 0, width, height);
+                        ctx.clearRect(0, 0, finalW, finalH);
                         ctx.drawImage(
                             img, 
-                            startX, startY, width, height,
-                            0, 0, width, height
+                            finalX, finalY, finalW, finalH,
+                            0, 0, finalW, finalH
                         );
 
                         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
@@ -154,56 +193,87 @@
                             <h1 className="text-3xl font-bold text-slate-900 mb-2 flex items-center justify-center gap-3">
                                 <Icon name="image" size={32} className="text-blue-600" /> 一括画像クロップ
                             </h1>
-                            <p className="text-slate-500 font-medium">指定したピクセル座標で複数の画像を一括切り抜き</p>
+                            <p className="text-slate-500 font-medium">指定したピクセル座標（直接入力）で複数の画像を一括切り抜き</p>
                         </header>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Settings */}
+                            {/* 設定エリア */}
                             <div className="lg:col-span-1 space-y-6">
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2 text-slate-700">
-                                        <Icon name="settings-2" className="text-slate-400" /> 出力設定
+                                        <Icon name="settings-2" className="text-slate-400" /> 出力サイズ (px)
                                     </h2>
                                     <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">幅 (px)</label>
-                                            <input type="number" value={width} onChange={(e) => setWidth(Math.max(1, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase">幅</label>
+                                            <input 
+                                                type="number" 
+                                                placeholder="800"
+                                                value={width} 
+                                                onChange={(e) => setWidth(e.target.value)} 
+                                                className="w-full px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono transition-all" 
+                                            />
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">高さ (px)</label>
-                                            <input type="number" value={height} onChange={(e) => setHeight(Math.max(1, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase">高さ</label>
+                                            <input 
+                                                type="number" 
+                                                placeholder="800"
+                                                value={height} 
+                                                onChange={(e) => setHeight(e.target.value)} 
+                                                className="w-full px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono transition-all" 
+                                            />
                                         </div>
                                     </div>
 
                                     <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 border-b pb-2 text-slate-700">
-                                        <Icon name="crosshair" className="text-slate-400" /> 開始座標
+                                        <Icon name="crosshair" className="text-slate-400" /> 開始座標 (px)
                                     </h2>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">開始 X</label>
-                                            <input type="number" value={startX} onChange={(e) => setStartX(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase">X 座標</label>
+                                            <input 
+                                                type="number" 
+                                                placeholder="0"
+                                                value={startX} 
+                                                onChange={(e) => setStartX(e.target.value)} 
+                                                className="w-full px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono transition-all" 
+                                            />
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">開始 Y</label>
-                                            <input type="number" value={startY} onChange={(e) => setStartY(Math.max(0, parseInt(e.target.value) || 0))} className="w-full px-3 py-2 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                                        <div className="space-y-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase">Y 座標</label>
+                                            <input 
+                                                type="number" 
+                                                placeholder="0"
+                                                value={startY} 
+                                                onChange={(e) => setStartY(e.target.value)} 
+                                                className="w-full px-4 py-2 bg-slate-50 rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 font-mono transition-all" 
+                                            />
                                         </div>
                                     </div>
+                                    <p className="mt-4 text-xs text-slate-400 leading-relaxed">
+                                        ※数値を消してから入力できます。空欄のまま「実行」するとデフォルト値が適用されます。
+                                    </p>
                                 </div>
 
                                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-                                    <button onClick={processImages} disabled={images.length === 0 || isProcessing} className={`w-full py-3 px-4 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 ${images.length === 0 || isProcessing ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-md active:scale-95'}`}>
-                                        {isProcessing ? <><Icon name="loader-2" className="animate-spin" /> {progress}%</> : <><Icon name="check-circle-2" /> 実行</>}
+                                    <button 
+                                        onClick={processImages} 
+                                        disabled={images.length === 0 || isProcessing} 
+                                        className={`w-full py-3 px-4 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 ${images.length === 0 || isProcessing ? 'bg-slate-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-md active:scale-95'}`}
+                                    >
+                                        {isProcessing ? <><Icon name="loader-2" className="animate-spin" /> {progress}%</> : <><Icon name="check-circle-2" /> 実行する</>}
                                     </button>
 
                                     {zipBlob && (
-                                        <button onClick={downloadAll} className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 active:scale-95">
+                                        <button onClick={downloadAll} className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 active:scale-95 animate-bounce-short">
                                             <Icon name="download" /> ZIPを保存
                                         </button>
                                     )}
 
                                     {images.length > 0 && (
                                         <button onClick={clearAll} disabled={isProcessing} className="w-full py-3 px-4 text-rose-600 hover:bg-rose-50 rounded-xl font-semibold transition-all flex items-center justify-center gap-2">
-                                            <Icon name="trash-2" size={18} /> 全削除
+                                            <Icon name="trash-2" size={18} /> リストを空にする
                                         </button>
                                     )}
                                 </div>
@@ -215,7 +285,7 @@
                                 )}
                             </div>
 
-                            {/* Main Display */}
+                            {/* 画像一覧エリア */}
                             <div className="lg:col-span-2">
                                 <div 
                                     className={`relative bg-white border-2 border-dashed rounded-3xl p-8 text-center min-h-[500px] flex flex-col items-center justify-center transition-all ${images.length === 0 ? 'border-slate-300' : 'border-blue-200 bg-blue-50/20'}`}
@@ -238,15 +308,15 @@
                                     ) : (
                                         <div className="w-full h-full flex flex-col">
                                             <div className="flex items-center justify-between border-b border-blue-100 pb-4 mb-4">
-                                                <span className="font-bold text-slate-700 text-lg">{images.length} 枚の画像</span>
-                                                <button onClick={() => fileInputRef.current?.click()} className="text-sm font-bold bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all">画像を追加</button>
+                                                <span className="font-bold text-slate-700 text-lg">{images.length} 枚の画像が待機中</span>
+                                                <button onClick={() => fileInputRef.current?.click()} className="text-sm font-bold bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all">さらに追加</button>
                                             </div>
                                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 overflow-y-auto max-h-[600px] p-1 custom-scrollbar">
                                                 {images.map((img) => (
                                                     <div key={img.id} className="group relative aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm hover:scale-[1.02] transition-transform">
                                                         <img src={img.preview} className="w-full h-full object-cover" />
                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <button onClick={() => removeImage(img.id)} className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 shadow-lg">
+                                                            <button onClick={() => removeImage(img.id)} className="bg-rose-500 text-white p-2 rounded-full hover:bg-rose-600 shadow-lg transition-transform active:scale-90">
                                                                 <Icon name="trash-2" size={18} />
                                                             </button>
                                                         </div>
