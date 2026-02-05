@@ -1,0 +1,294 @@
+import React, { useState, useMemo } from 'react';
+import { Plus, Minus, Info, Calculator, TrendingUp, Gift } from 'lucide-react';
+
+const PRODUCTS = [
+  { id: '80', name: '有償ダイヤ80個', price: 160, base: 80, bonus: 8 },
+  { id: '325', name: '有償ダイヤ325個', price: 650, base: 325, bonus: 38 },
+  { id: '500', name: '有償ダイヤ500個', price: 1000, base: 500, bonus: 68 },
+  { id: '1100', name: '有償ダイヤ1100個', price: 2200, base: 1100, bonus: 188 },
+  { id: '2100', name: '有償ダイヤ2100個', price: 4200, base: 2100, bonus: 388 },
+  { id: '5000', name: '有償ダイヤ5000個', price: 10000, base: 5000, bonus: 1088 },
+];
+
+const CUMULATIVE_REWARDS = [
+  { threshold: 100, reward: 120, items: [] },
+  { threshold: 500, reward: 480, items: [] },
+  { threshold: 1000, reward: 600, items: [] },
+  { threshold: 2000, reward: 1200, items: [] },
+  { threshold: 10000, reward: 6000, items: [] },
+  { threshold: 15000, reward: 3500, items: ["10時間パスチケット2枚"] },
+  { threshold: 20000, reward: 4500, items: ["10時間パスチケット3枚"] },
+  { threshold: 30000, reward: 9000, items: ["10時間パスチケット3枚"] },
+];
+
+const ITEM_SPECIFIC_REWARDS = [
+  { productId: '80', count: 1, reward: 80, items: ["2時間パスチケット1枚"] },
+  { productId: '325', count: 1, reward: 163, items: ["2時間パスチケット1枚", "鳳凰の羽根(青)2枚"] },
+  { productId: '500', count: 1, reward: 250, items: ["2時間パスチケット1枚", "鳳凰の羽根(青)6枚"] },
+  { productId: '1100', count: 1, reward: 550, items: ["2時間パスチケット1枚", "鳳凰の羽根(青)6枚"] },
+  { productId: '2100', count: 1, reward: 1050, items: ["5時間パスチケット1枚", "鳳凰の羽根(青)12枚"] },
+  { productId: '2100', count: 2, reward: 1050, items: ["5時間パスチケット1枚", "鳳凰の羽根(青)30枚"] },
+  { productId: '5000', count: 1, reward: 2500, items: ["5時間パスチケット1枚", "鳳凰の羽根(青)30枚"] },
+  { productId: '5000', count: 2, reward: 2500, items: ["5時間パスチケット1枚", "鳳凰の羽根(青)80枚"] },
+  { productId: '5000', count: 3, reward: 2500, items: ["5時間パスチケット1枚", "鳳凰の羽根(青)80枚"] },
+];
+
+const App = () => {
+  const [currentGems, setCurrentGems] = useState('');
+  const [cart, setCart] = useState(
+    PRODUCTS.reduce((acc, p) => ({ ...acc, [p.id]: { count: 0, firstBonus: false } }), {})
+  );
+
+  const updateCount = (id, delta) => {
+    setCart(prev => {
+      const newCount = Math.max(0, Math.min(3, prev[id].count + delta));
+      return {
+        ...prev,
+        [id]: { ...prev[id], count: newCount, firstBonus: newCount === 0 ? false : prev[id].firstBonus }
+      };
+    });
+  };
+
+  const toggleFirstBonus = (id) => {
+    setCart(prev => ({
+      ...prev,
+      [id]: { ...prev[id], firstBonus: !prev[id].firstBonus }
+    }));
+  };
+
+  const calculation = useMemo(() => {
+    let totalPaid = 0;
+    let totalBonus = 0;
+    let totalPrice = 0;
+    const breakdown = [];
+
+    // 商品ごとの計算
+    PRODUCTS.forEach(p => {
+      const { count, firstBonus } = cart[p.id];
+      if (count > 0) {
+        const itemPaid = p.base * count;
+        const itemBonus = p.bonus * count;
+        const firstTimeAdd = firstBonus ? p.base : 0;
+
+        totalPaid += itemPaid;
+        totalBonus += itemBonus + firstTimeAdd;
+        totalPrice += p.price * count;
+
+        if (firstTimeAdd > 0) {
+          breakdown.push({ label: `初回購入2倍サービス (${p.name})`, value: firstTimeAdd });
+        }
+        breakdown.push({ label: `おまけ (${p.name} × ${count})`, value: itemBonus });
+      }
+    });
+
+    // 累積特典の計算
+    CUMULATIVE_REWARDS.forEach(reward => {
+      if (totalPaid >= reward.threshold) {
+        totalBonus += reward.reward;
+        breakdown.push({
+          label: `購入特典（有償ダイヤを合計${reward.threshold}個購入）`,
+          value: reward.reward,
+          items: reward.items
+        });
+      }
+    });
+
+    // 商品別特典の計算
+    ITEM_SPECIFIC_REWARDS.forEach(reward => {
+      const currentCount = cart[reward.productId]?.count || 0;
+      if (currentCount >= reward.count) {
+        totalBonus += reward.reward;
+        breakdown.push({
+          label: `購入特典（${PRODUCTS.find(p => p.id === reward.productId).name}を${reward.count}回購入）`,
+          value: reward.reward,
+          items: reward.items
+        });
+      }
+    });
+
+    const nextReward = CUMULATIVE_REWARDS.find(r => r.threshold > totalPaid);
+    const diffToNext = nextReward ? nextReward.threshold - totalPaid : 0;
+
+    const addedGems = totalPaid + totalBonus;
+    const finalTotal = (parseInt(currentGems) || 0) + addedGems;
+
+    return { totalPaid, totalBonus, totalPrice, addedGems, finalTotal, breakdown, nextReward, diffToNext };
+  }, [cart, currentGems]);
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <header className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-indigo-700 flex items-center justify-center gap-2">
+            <Calculator className="w-8 h-8" />
+            獲得ダイヤ計算機
+          </h1>
+          <p className="text-slate-500">購入金額と獲得ダイヤの内訳をシミュレートします</p>
+        </header>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* 左カラム：入力・選択 */}
+          <div className="space-y-6">
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Info className="w-5 h-5 text-indigo-500" />
+                基本情報の入力
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 mb-1">現在のダイヤ数（任意）</label>
+                  <input
+                    type="number"
+                    value={currentGems}
+                    onChange={(e) => setCurrentGems(e.target.value)}
+                    placeholder="例: 20000"
+                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Gift className="w-5 h-5 text-indigo-500" />
+                商品リスト
+              </h2>
+              <div className="space-y-4">
+                {PRODUCTS.map(p => (
+                  <div key={p.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold">{p.name}</h3>
+                        <p className="text-sm text-slate-500 font-medium">¥{p.price.toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg p-1">
+                        <button
+                          onClick={() => updateCount(p.id, -1)}
+                          className="p-1 hover:bg-slate-100 rounded-md transition-colors"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-6 text-center font-bold">{cart[p.id].count}</span>
+                        <button
+                          onClick={() => updateCount(p.id, 1)}
+                          className="p-1 hover:bg-slate-100 rounded-md transition-colors"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {cart[p.id].count > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={cart[p.id].firstBonus}
+                            onChange={() => toggleFirstBonus(p.id)}
+                            className="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500"
+                          />
+                        </div>
+                        <span className="text-xs font-semibold text-indigo-600">
+                          初回2倍ボーナスを適用
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          {/* 右カラム：結果表示 */}
+          <div className="space-y-6">
+            <section className="bg-indigo-700 text-white p-6 rounded-2xl shadow-lg space-y-4 sticky top-6">
+              <h2 className="text-xl font-bold flex items-center gap-2 border-b border-indigo-500 pb-2">
+                <TrendingUp className="w-6 h-6" />
+                計算結果
+              </h2>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <p className="text-xs text-indigo-200">増えたダイヤ</p>
+                  <p className="text-2xl font-black">{calculation.addedGems.toLocaleString()}<span className="text-sm ml-1 font-normal">個</span></p>
+                </div>
+                <div className="bg-white/10 p-3 rounded-lg">
+                  <p className="text-xs text-indigo-200">合計購入金額</p>
+                  <p className="text-2xl font-black">¥{calculation.totalPrice.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="bg-indigo-800/50 p-4 rounded-xl border border-indigo-400/30">
+                <p className="text-sm text-indigo-200 mb-1">合計ダイヤ数（現在＋今回）</p>
+                <p className="text-4xl font-black">{calculation.finalTotal.toLocaleString()}<span className="text-lg ml-1 font-normal text-indigo-300">個</span></p>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <h3 className="text-sm font-bold text-indigo-200">獲得内訳</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                  {calculation.totalPaid > 0 ? (
+                    <>
+                      <div className="flex justify-between text-sm py-1 border-b border-indigo-500/30">
+                        <span>有償分（ベース）</span>
+                        <span className="font-mono">+{calculation.totalPaid.toLocaleString()}</span>
+                      </div>
+                      {calculation.breakdown.map((item, idx) => (
+                        <div key={idx} className="space-y-1 py-1 border-b border-indigo-500/30">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-indigo-100">{item.label}</span>
+                            <span className="font-mono text-white">+{item.value.toLocaleString()}</span>
+                          </div>
+                          {item.items && item.items.length > 0 && (
+                            <div className="pl-2">
+                              {item.items.map((it, i) => (
+                                <p key={i} className="text-[10px] text-yellow-300">★ {it}</p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-sm text-indigo-300 text-center py-4">商品を選択してください</p>
+                  )}
+                </div>
+              </div>
+
+              {calculation.nextReward && (
+                <div className="mt-4 bg-yellow-400 text-yellow-900 p-3 rounded-xl shadow-inner">
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">次の累計特典まで</p>
+                  <p className="text-sm font-bold">
+                    あと <span className="text-lg font-black">{calculation.diffToNext.toLocaleString()}</span> 個有償ダイヤを購入
+                  </p>
+                  <p className="text-[10px] mt-1 italic">
+                    (目標: 累計{calculation.nextReward.threshold.toLocaleString()}個)
+                  </p>
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+
+        <footer className="text-center text-slate-400 text-sm py-8">
+          <p>© 2026 獲得ダイヤ計算シミュレーター</p>
+          <p className="text-[10px]">※特典情報は入力されたデータに基づきます。実際のゲーム内設定をご確認ください。</p>
+        </footer>
+      </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 10px;
+        }
+      `}} />
+    </div>
+  );
+};
+
+export default App;
