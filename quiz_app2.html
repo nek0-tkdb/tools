@@ -11,6 +11,7 @@
             background-color: #f3f4f6;
             padding-bottom: 30px;
             min-height: 100vh;
+            overflow-x: hidden;
         }
         .app-footer {
             position: fixed;
@@ -46,6 +47,17 @@
             border-radius: 0.75rem;
             pointer-events: none;
         }
+        .confetti {
+            position: fixed;
+            top: -20px;
+            z-index: 9999;
+            pointer-events: none;
+            animation: fall linear forwards;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
     </style>
     <script>
         document.addEventListener('contextmenu', e => e.target.tagName === 'IMG' && e.preventDefault());
@@ -62,9 +74,9 @@
             currentQuiz: { active: false, currentQuestionIndex: 0, score: 0, quizQuestions: [], answerHistory: [] },
             
             ATTRIBUTES: {
-                fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700' },
-                water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700' },
-                grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700' }
+                fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700', text: 'text-red-600' },
+                water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700', text: 'text-blue-600' },
+                grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700', text: 'text-green-600' }
             },
             
             ATTRIBUTE_MAP: { '赤': 'fire', '青': 'water', '緑': 'grass' },
@@ -132,23 +144,44 @@
                 this.setScreen('quiz');
             },
 
+            triggerConfetti() {
+                const colors = ['#FFD700', '#FF6347', '#32CD32', '#1E90FF', '#FF69B4', '#00CED1'];
+                const shapes = ['★', '★', '★', '☆']; // 星を多めに
+                const confettiCount = 100;
+                const container = document.body;
+
+                for (let i = 0; i < confettiCount; i++) {
+                    const el = document.createElement('div');
+                    el.className = 'confetti';
+                    el.innerText = shapes[Math.floor(Math.random() * shapes.length)];
+                    el.style.left = Math.random() * 100 + 'vw';
+                    el.style.color = colors[Math.floor(Math.random() * colors.length)];
+                    el.style.fontSize = Math.random() * 20 + 15 + 'px';
+                    el.style.animationDuration = Math.random() * 2 + 1.5 + 's';
+                    el.style.animationDelay = Math.random() * 0.5 + 's';
+                    container.appendChild(el);
+                    setTimeout(() => el.remove(), 3000);
+                }
+            },
+
             submitAnswer(attr) {
                 const quiz = this.currentQuiz;
                 const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
                 const isCorrect = currentQ.correctAttribute === attr;
                 
                 quiz.answerHistory.push({ question: currentQ, selected: attr, correct: isCorrect });
-                if (isCorrect) quiz.score++;
-
+                
                 const overlay = document.getElementById('feedback-overlay');
                 const btns = document.querySelectorAll('.quiz-choice-btn');
                 btns.forEach(b => b.disabled = true);
                 
                 overlay.style.display = 'flex';
                 if (isCorrect) {
+                    quiz.score++;
                     overlay.innerText = '正解！';
                     overlay.style.color = '#10B981';
                     overlay.style.backgroundColor = 'rgba(209, 250, 229, 0.8)';
+                    this.triggerConfetti();
                 } else {
                     overlay.innerText = '不正解...';
                     overlay.style.color = '#EF4444';
@@ -163,7 +196,7 @@
                     } else {
                         this.renderApp();
                     }
-                }, 1000);
+                }, 1200);
             },
 
             renderApp() {
@@ -189,9 +222,9 @@
                             <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" class="p-3 border rounded-xl w-32 text-center">
                         </div>
                         <div class="space-y-4">
-                            <button id="start-quiz-btn" class="w-full text-xl py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg">クイズスタート</button>
-                            <button id="nav-char-select-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl">🎯 キャラを選択 (${this.selectedCharacters.length === 0 ? '全キャラ' : this.selectedCharacters.length + '名'})</button>
-                            <button id="nav-card-list-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl">カード一覧 (${this.questions.length}枚)</button>
+                            <button id="start-quiz-btn" class="w-full text-xl py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition">クイズスタート</button>
+                            <button id="nav-char-select-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">🎯 キャラを選択 (${this.selectedCharacters.length === 0 ? '全キャラ' : this.selectedCharacters.length + '名'})</button>
+                            <button id="nav-card-list-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">カード一覧 (${this.questions.length}枚)</button>
                         </div>
                     </div>`;
             },
@@ -202,7 +235,7 @@
                 const choices = ['fire', 'water', 'grass'].sort(() => Math.random() - 0.5);
 
                 return `
-                    <div class="bg-white rounded-xl shadow-lg p-6 relative">
+                    <div class="bg-white rounded-xl shadow-lg p-6 relative overflow-hidden">
                         <div id="feedback-overlay"></div>
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
                             <h2 class="text-xl font-bold">問題 ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
@@ -212,11 +245,11 @@
                              <p class="font-bold text-lg">${currentQ.cardName}</p>
                              <p class="text-xs text-gray-500">${currentQ.charName}</p>
                         </div>
-                        <div class="relative aspect-square bg-gray-200 rounded-xl overflow-hidden mb-6">
+                        <div class="relative aspect-square bg-gray-200 rounded-xl overflow-hidden mb-6 shadow-inner">
                             <img src="${currentQ.imageUrl}" class="w-full h-full object-cover">
                         </div>
                         <div class="grid grid-cols-1 gap-4">
-                            ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-4 rounded-xl text-white font-bold shadow-md border-b-4 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
+                            ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-4 rounded-xl text-white font-bold shadow-md border-b-4 transition hover:scale-[1.02] ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
                         </div>
                     </div>`;
             },
@@ -227,17 +260,17 @@
                     <div class="bg-white rounded-xl shadow-lg p-6">
                         <h2 class="text-2xl font-bold mb-6 border-b pb-2">出題キャラ選択</h2>
                         <div class="flex gap-2 mb-4">
-                            <button id="select-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold">全選択</button>
-                            <button id="deselect-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold">全解除</button>
+                            <button id="select-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200">全選択</button>
+                            <button id="deselect-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200">全解除</button>
                         </div>
                         <div class="space-y-2 max-h-96 overflow-y-auto mb-6">
                             ${allChars.map(name => `
-                                <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                                <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition">
                                     <input type="checkbox" value="${name}" class="char-checkbox w-5 h-5 mr-3" ${this.selectedCharacters.includes(name) || this.selectedCharacters.length === 0 ? 'checked' : ''}>
                                     <span>${name}</span>
                                 </label>`).join('')}
                         </div>
-                        <button id="apply-char-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md">選択を確定</button>
+                        <button id="apply-char-btn" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700">選択を確定</button>
                     </div>`;
             },
 
@@ -246,20 +279,27 @@
                 const shareText = encodeURIComponent(`属性当てクイズの結果：${quiz.quizQuestions.length}問中${quiz.score}点でした！\n#画像属性クイズ\n${APP_URL}`);
                 const xShareUrl = `https://twitter.com/intent/tweet?text=${shareText}`;
 
-                const historyHtml = quiz.answerHistory.map((h, i) => `
+                const historyHtml = quiz.answerHistory.map((h, i) => {
+                    const selAttr = this.ATTRIBUTES[h.selected];
+                    const corAttr = this.ATTRIBUTES[h.question.correctAttribute];
+                    
+                    return `
                     <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border ${h.correct ? 'border-green-200' : 'border-red-200'}">
                         <img src="${h.question.imageUrl}" class="w-16 h-16 object-cover rounded shadow-sm">
                         <div class="flex-1 text-left min-w-0">
                             <p class="font-bold text-sm truncate">${h.question.cardName}</p>
                             <p class="text-xs text-gray-500">${h.question.charName}</p>
                             <div class="text-xs mt-1">
-                                <span class="mr-2">選んだ: <b class="${h.correct ? 'text-green-600' : 'text-red-600'}">${this.ATTRIBUTES[h.selected].name}</b></span>
-                                <span>正解: <b>${this.ATTRIBUTES[h.question.correctAttribute].name}</b></span>
+                                <span class="mr-3">選んだ: <b class="${selAttr.text}">${selAttr.name}</b></span>
+                                <span>正解: <b class="${corAttr.text}">${corAttr.name}</b></span>
                             </div>
                         </div>
-                        <div class="text-xl">${h.correct ? '✅' : '❌'}</div>
+                        <div class="flex flex-col items-center min-w-[60px]">
+                            <div class="text-xl">${h.correct ? '✅' : '❌'}</div>
+                            <div class="text-[10px] font-bold ${h.correct ? 'text-green-600' : 'text-red-600'}">${h.correct ? '正解' : '不正解'}</div>
+                        </div>
                     </div>
-                `).join('');
+                `}).join('');
 
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6 text-center">
@@ -267,8 +307,8 @@
                         <p class="text-5xl font-black mb-6 text-indigo-600">${quiz.score} / ${quiz.quizQuestions.length}</p>
                         
                         <div class="flex gap-2 mb-8">
-                            <button id="back-home-btn" class="flex-1 py-3 border-2 border-gray-300 rounded-xl font-bold">ホームへ</button>
-                            <a href="${xShareUrl}" target="_blank" class="flex-1 py-3 bg-black text-white rounded-xl font-bold flex items-center justify-center">Xでシェア</a>
+                            <button id="back-home-btn" class="flex-1 py-3 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-100">ホームへ</button>
+                            <a href="${xShareUrl}" target="_blank" class="flex-1 py-3 bg-black text-white rounded-xl font-bold flex items-center justify-center hover:bg-gray-800 transition">Xでシェア</a>
                         </div>
 
                         <div class="text-left">
@@ -287,10 +327,10 @@
                         <h2 class="text-2xl font-bold mb-2">カード一覧</h2>
                         <p class="text-sm text-gray-600 mb-6">表示中: <span id="filtered-count" class="font-bold text-indigo-600">${this.questions.length}</span> / 全${this.questions.length}件</p>
                         <select id="char-filter" class="w-full p-3 border rounded-lg mb-6"><option value="">すべてのキャラを表示</option>${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}</select>
-                        <ul class="divide-y border rounded-xl overflow-hidden">
-                            ${this.questions.map(q => `<li class="card-list-item p-4 flex items-center gap-3" data-char="${q.charName}"><img src="${q.imageUrl}" class="w-16 h-16 object-cover rounded-lg"><div class="flex-1 min-w-0"><p class="font-medium truncate">${q.cardName}</p><p class="text-xs text-gray-500">${q.charName}</p></div><span class="px-3 py-1 text-xs font-bold rounded-full text-white ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span></li>`).join('')}
+                        <ul class="divide-y border rounded-xl overflow-hidden h-96 overflow-y-auto">
+                            ${this.questions.map(q => `<li class="card-list-item p-4 flex items-center gap-3 hover:bg-gray-50" data-char="${q.charName}"><img src="${q.imageUrl}" class="w-16 h-16 object-cover rounded-lg"><div class="flex-1 min-w-0"><p class="font-medium truncate">${q.cardName}</p><p class="text-xs text-gray-500">${q.charName}</p></div><span class="px-3 py-1 text-xs font-bold rounded-full text-white ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span></li>`).join('')}
                         </ul>
-                        <button id="back-home-btn" class="w-full mt-6 py-3 border-2 border-gray-300 rounded-xl">戻る</button>
+                        <button id="back-home-btn" class="w-full mt-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">戻る</button>
                     </div>`;
             },
 
