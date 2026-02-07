@@ -39,7 +39,6 @@
             background-color: #e5e7eb;
             border-radius: 0.5rem;
         }
-        /* オーバーレイの調整：複数行テキストに対応 */
         #feedback-overlay {
             display: none;
             position: absolute;
@@ -54,7 +53,7 @@
             text-align: center;
             border-radius: 0.75rem;
             pointer-events: none;
-            padding: 1rem;
+            padding: 1.5rem;
         }
         .confetti {
             position: fixed;
@@ -185,22 +184,24 @@
                 const btns = document.querySelectorAll('.quiz-choice-btn');
                 btns.forEach(b => b.disabled = true);
                 
-                // 正誤判定メッセージ、カード名、正解属性を表示
                 overlay.innerHTML = `
-                    <div class="text-4xl font-black mb-2">${isCorrect ? '正解！' : '不正解...'}</div>
-                    <div class="text-sm text-gray-800 font-bold mb-1">${currentQ.cardName}</div>
-                    <div class="text-lg font-bold">正解: <span class="${corAttrData.text}">${corAttrData.name}</span></div>
+                    <div class="text-4xl font-black mb-3">${isCorrect ? '正解！' : '不正解...'}</div>
+                    <div class="bg-white/80 p-3 rounded-lg shadow-sm border border-gray-200 min-w-[200px]">
+                        <div class="text-[10px] text-gray-500 uppercase tracking-wider">${currentQ.series}</div>
+                        <div class="text-sm text-gray-800 font-bold mb-1">${currentQ.cardName}</div>
+                        <div class="text-base font-bold pt-1 border-t border-gray-300">正解: <span class="${corAttrData.text}">${corAttrData.name}</span></div>
+                    </div>
                 `;
 
                 overlay.style.display = 'flex';
                 if (isCorrect) {
                     quiz.score++;
                     overlay.style.color = '#10B981';
-                    overlay.style.backgroundColor = 'rgba(209, 250, 229, 0.9)';
+                    overlay.style.backgroundColor = 'rgba(209, 250, 229, 0.95)';
                     this.triggerConfetti();
                 } else {
                     overlay.style.color = '#EF4444';
-                    overlay.style.backgroundColor = 'rgba(254, 226, 226, 0.9)';
+                    overlay.style.backgroundColor = 'rgba(254, 226, 226, 0.95)';
                 }
 
                 setTimeout(() => {
@@ -211,7 +212,7 @@
                     } else {
                         this.renderApp();
                     }
-                }, 2000); // 情報量が増えたので、確認時間を少し長め（2秒）に設定
+                }, 2200); 
             },
 
             renderApp() {
@@ -230,16 +231,16 @@
 
             renderHome() {
                 return `
-                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
-                        <h1 class="text-3xl font-extrabold mb-6">属性当てクイズ</h1>
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center border border-gray-200">
+                        <h1 class="text-3xl font-extrabold mb-6 text-gray-800">属性当てクイズ</h1>
                         <div class="mb-6 border-b pb-4">
-                            <label class="block text-sm font-medium mb-2">出題数 (${this.quizSettings.totalQuestions}問)</label>
-                            <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" class="p-3 border rounded-xl w-32 text-center">
+                            <label class="block text-sm font-medium mb-2 text-gray-600">出題数 (${this.quizSettings.totalQuestions}問)</label>
+                            <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" class="p-3 border rounded-xl w-32 text-center focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div class="space-y-4">
-                            <button id="start-quiz-btn" class="w-full text-xl py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition">クイズスタート</button>
-                            <button id="nav-char-select-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">🎯 キャラを選択 (${this.selectedCharacters.length === 0 ? '全キャラ' : this.selectedCharacters.length + '名'})</button>
-                            <button id="nav-card-list-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">カード一覧 (${this.questions.length}枚)</button>
+                            <button id="start-quiz-btn" class="w-full text-xl py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition transform hover:scale-[1.01]">クイズスタート</button>
+                            <button id="nav-char-select-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100 font-semibold text-gray-700">🎯 キャラを選択 (${this.selectedCharacters.length === 0 ? '全キャラ' : this.selectedCharacters.length + '名'})</button>
+                            <button id="nav-card-list-btn" class="w-full py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100 font-semibold text-gray-700">カード一覧 (${this.questions.length}枚)</button>
                         </div>
                     </div>`;
             },
@@ -250,23 +251,23 @@
                 const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
 
                 return `
-                    <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
+                    <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center border border-gray-200">
                         <div class="w-full relative overflow-hidden">
                             <div id="feedback-overlay"></div>
                             <div class="flex justify-between items-center mb-4 border-b pb-3">
-                                <h2 class="text-xl font-bold">問題 ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
-                                <button id="abort-quiz-btn" class="text-sm text-gray-500 hover:underline">中断して戻る</button>
+                                <h2 class="text-xl font-bold text-gray-800">問題 ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
+                                <button id="abort-quiz-btn" class="text-sm text-gray-400 hover:text-red-500 hover:underline">中断して戻る</button>
                             </div>
                             <div class="text-center mb-6">
-                                 <p class="text-gray-500 text-sm italic">画像から属性を推測してください</p>
+                                 <p class="text-gray-400 text-xs italic tracking-widest uppercase">Guess the Attribute from Image</p>
                             </div>
                             
                             <div class="flex justify-center mb-6">
-                                <img src="${currentQ.imageUrl}" class="fixed-card-img shadow-md">
+                                <img src="${currentQ.imageUrl}" class="fixed-card-img shadow-md border border-gray-300">
                             </div>
 
                             <div class="grid grid-cols-1 gap-4 w-full">
-                                ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-4 rounded-xl text-white font-bold shadow-md border-b-4 transition hover:scale-[1.02] ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
+                                ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-4 rounded-xl text-white font-bold shadow-md border-b-4 transition active:translate-y-1 active:border-b-0 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
                             </div>
                         </div>
                     </div>`;
@@ -283,14 +284,15 @@
                     
                     return `
                     <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border ${h.correct ? 'border-green-200' : 'border-red-200'}">
-                        <div class="w-20 h-16 flex-shrink-0 bg-gray-200 rounded overflow-hidden">
+                        <div class="w-20 h-16 flex-shrink-0 bg-gray-200 rounded overflow-hidden border border-gray-300">
                             <img src="${h.question.imageUrl}" class="w-full h-full object-contain">
                         </div>
                         <div class="flex-1 text-left min-w-0">
-                            <p class="font-bold text-sm truncate">${h.question.cardName}</p>
-                            <p class="text-[10px] text-gray-500 truncate">${h.question.charName} / ${h.question.series}</p>
-                            <div class="text-xs mt-1">
-                                <span class="mr-3">選んだ: <b class="${selAttr.text}">${selAttr.name}</b></span>
+                            <div class="text-[9px] text-gray-400 truncate uppercase tracking-tighter">${h.question.series}</div>
+                            <p class="font-bold text-sm truncate text-gray-800">${h.question.cardName}</p>
+                            <p class="text-[10px] text-gray-500 truncate">${h.question.charName}</p>
+                            <div class="text-xs mt-1 flex gap-3">
+                                <span>選んだ: <b class="${selAttr.text}">${selAttr.name}</b></span>
                                 <span>正解: <b class="${corAttr.text}">${corAttr.name}</b></span>
                             </div>
                         </div>
@@ -302,17 +304,17 @@
                 `}).join('');
 
                 return `
-                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
-                        <h2 class="text-2xl font-bold mb-4">結果発表</h2>
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center border border-gray-200">
+                        <h2 class="text-2xl font-bold mb-4 text-gray-800">結果発表</h2>
                         <p class="text-5xl font-black mb-6 text-indigo-600">${quiz.score} / ${quiz.quizQuestions.length}</p>
                         
-                        <div class="flex gap-2 mb-8">
-                            <button id="back-home-btn" class="flex-1 py-3 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-100">ホームへ</button>
-                            <a href="${xShareUrl}" target="_blank" class="flex-1 py-3 bg-black text-white rounded-xl font-bold flex items-center justify-center hover:bg-gray-800 transition">Xでシェア</a>
+                        <div class="flex gap-3 mb-8">
+                            <button id="back-home-btn" class="flex-1 py-3 border-2 border-gray-300 rounded-xl font-bold hover:bg-gray-100 text-gray-700">ホームへ</button>
+                            <a href="${xShareUrl}" target="_blank" class="flex-1 py-3 bg-black text-white rounded-xl font-bold flex items-center justify-center hover:bg-gray-800 transition shadow-md">Xでシェア</a>
                         </div>
 
                         <div class="text-left">
-                            <h3 class="font-bold mb-4 border-l-4 border-indigo-500 pl-2">回答履歴</h3>
+                            <h3 class="font-bold mb-4 border-l-4 border-indigo-500 pl-2 text-gray-700">回答履歴 (詳細)</h3>
                             <div class="space-y-3">
                                 ${historyHtml}
                             </div>
@@ -323,24 +325,28 @@
             renderCardList() {
                 const charNames = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
                 return `
-                    <div class="bg-white rounded-xl shadow-lg p-6">
-                        <h2 class="text-2xl font-bold mb-2">カード一覧</h2>
-                        <p class="text-sm text-gray-600 mb-6">表示中: <span id="filtered-count" class="font-bold text-indigo-600">${this.questions.length}</span> / 全${this.questions.length}件</p>
-                        <select id="char-filter" class="w-full p-3 border rounded-lg mb-6"><option value="">すべてのキャラを表示</option>${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}</select>
-                        <ul class="divide-y border rounded-xl overflow-hidden h-96 overflow-y-auto">
+                    <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <h2 class="text-2xl font-bold mb-1 text-gray-800">カード一覧</h2>
+                        <p class="text-sm text-gray-500 mb-6">表示中: <span id="filtered-count" class="font-bold text-indigo-600">${this.questions.length}</span> / 全${this.questions.length}件</p>
+                        <select id="char-filter" class="w-full p-3 border rounded-lg mb-6 outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">すべてのキャラを表示</option>
+                            ${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}
+                        </select>
+                        <ul class="divide-y border rounded-xl overflow-hidden h-[450px] overflow-y-auto bg-gray-50">
                             ${this.questions.map(q => `
-                                <li class="card-list-item p-4 flex items-center gap-3 hover:bg-gray-50" data-char="${q.charName}">
-                                    <div class="w-16 h-12 flex-shrink-0 bg-gray-200 rounded overflow-hidden">
+                                <li class="card-list-item p-4 flex items-center gap-3 hover:bg-white transition" data-char="${q.charName}">
+                                    <div class="w-16 h-12 flex-shrink-0 bg-gray-200 rounded overflow-hidden border border-gray-300">
                                         <img src="${q.imageUrl}" class="w-full h-full object-contain">
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-medium truncate">${q.cardName}</p>
+                                        <div class="text-[8px] text-gray-400 truncate uppercase">${q.series}</div>
+                                        <p class="font-bold text-sm truncate text-gray-800">${q.cardName}</p>
                                         <p class="text-xs text-gray-500">${q.charName}</p>
                                     </div>
                                     <span class="px-3 py-1 text-xs font-bold rounded-full text-white ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span>
                                 </li>`).join('')}
                         </ul>
-                        <button id="back-home-btn" class="w-full mt-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100">戻る</button>
+                        <button id="back-home-btn" class="w-full mt-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-100 font-bold text-gray-700">ホームに戻る</button>
                     </div>`;
             },
 
@@ -387,7 +393,7 @@
     <div id="app-container" class="min-h-screen flex items-center justify-center">
         <div class="text-center">
             <div class="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto"></div>
-            <p class="mt-4 text-gray-500">読み込み中...</p>
+            <p class="mt-4 text-gray-500">Initializing App...</p>
         </div>
     </div>
     <div class="app-footer">X: nek0n0tem0</div>
