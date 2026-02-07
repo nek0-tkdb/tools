@@ -32,12 +32,11 @@
             -moz-user-select: none;
             -ms-user-select: none;
         }
-        /* 画像サイズ固定ルール */
         .fixed-card-img {
             width: 270px;
             height: 200px;
-            object-fit: contain; /* アスペクト比を維持して収める */
-            background-color: #e5e7eb; /* 余白をグレーで埋める */
+            object-fit: contain;
+            background-color: #e5e7eb;
             border-radius: 0.5rem;
         }
         #feedback-overlay {
@@ -239,8 +238,8 @@
 
             renderQuiz() {
                 const quiz = this.currentQuiz;
-                const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
                 const choices = ['fire', 'water', 'grass'].sort(() => Math.random() - 0.5);
+                const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
 
                 return `
                     <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
@@ -250,9 +249,8 @@
                                 <h2 class="text-xl font-bold">問題 ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
                                 <button id="abort-quiz-btn" class="text-sm text-gray-500 hover:underline">中断して戻る</button>
                             </div>
-                            <div class="text-center mb-4">
-                                 <p class="font-bold text-lg">${currentQ.cardName}</p>
-                                 <p class="text-xs text-gray-500">${currentQ.charName}</p>
+                            <div class="text-center mb-6">
+                                 <p class="text-gray-500 text-sm italic">画像から属性を推測してください</p>
                             </div>
                             
                             <div class="flex justify-center mb-6">
@@ -282,7 +280,7 @@
                         </div>
                         <div class="flex-1 text-left min-w-0">
                             <p class="font-bold text-sm truncate">${h.question.cardName}</p>
-                            <p class="text-xs text-gray-500">${h.question.charName}</p>
+                            <p class="text-[10px] text-gray-500 truncate">${h.question.charName} / ${h.question.series}</p>
                             <div class="text-xs mt-1">
                                 <span class="mr-3">選んだ: <b class="${selAttr.text}">${selAttr.name}</b></span>
                                 <span>正解: <b class="${corAttr.text}">${corAttr.name}</b></span>
