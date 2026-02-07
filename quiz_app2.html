@@ -39,6 +39,7 @@
             background-color: #e5e7eb;
             border-radius: 0.5rem;
         }
+        /* オーバーレイの調整：複数行テキストに対応 */
         #feedback-overlay {
             display: none;
             position: absolute;
@@ -47,12 +48,13 @@
             width: 100%;
             height: 100%;
             z-index: 10;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 3rem;
-            font-weight: 900;
+            text-align: center;
             border-radius: 0.75rem;
             pointer-events: none;
+            padding: 1rem;
         }
         .confetti {
             position: fixed;
@@ -70,8 +72,8 @@
         document.addEventListener('contextmenu', e => e.target.tagName === 'IMG' && e.preventDefault());
         document.addEventListener('dragstart', e => e.target.tagName === 'IMG' && e.preventDefault());
 
-        const CSV_FILE = 'quiz_data2.csv';
-        const APP_URL = 'https://nek0-tkdb.github.io/tools/quiz_app2.html';
+        const CSV_FILE = 'quiz_data.csv';
+        const APP_URL = 'https://nek0-tkdb.github.io/tools/quiz_app.html';
 
         window.QuizApp = {
             questions: [],
@@ -175,6 +177,7 @@
                 const quiz = this.currentQuiz;
                 const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
                 const isCorrect = currentQ.correctAttribute === attr;
+                const corAttrData = this.ATTRIBUTES[currentQ.correctAttribute];
                 
                 quiz.answerHistory.push({ question: currentQ, selected: attr, correct: isCorrect });
                 
@@ -182,17 +185,22 @@
                 const btns = document.querySelectorAll('.quiz-choice-btn');
                 btns.forEach(b => b.disabled = true);
                 
+                // 正誤判定メッセージ、カード名、正解属性を表示
+                overlay.innerHTML = `
+                    <div class="text-4xl font-black mb-2">${isCorrect ? '正解！' : '不正解...'}</div>
+                    <div class="text-sm text-gray-800 font-bold mb-1">${currentQ.cardName}</div>
+                    <div class="text-lg font-bold">正解: <span class="${corAttrData.text}">${corAttrData.name}</span></div>
+                `;
+
                 overlay.style.display = 'flex';
                 if (isCorrect) {
                     quiz.score++;
-                    overlay.innerText = '正解！';
                     overlay.style.color = '#10B981';
-                    overlay.style.backgroundColor = 'rgba(209, 250, 229, 0.8)';
+                    overlay.style.backgroundColor = 'rgba(209, 250, 229, 0.9)';
                     this.triggerConfetti();
                 } else {
-                    overlay.innerText = '不正解...';
                     overlay.style.color = '#EF4444';
-                    overlay.style.backgroundColor = 'rgba(254, 226, 226, 0.8)';
+                    overlay.style.backgroundColor = 'rgba(254, 226, 226, 0.9)';
                 }
 
                 setTimeout(() => {
@@ -203,7 +211,7 @@
                     } else {
                         this.renderApp();
                     }
-                }, 1200);
+                }, 2000); // 情報量が増えたので、確認時間を少し長め（2秒）に設定
             },
 
             renderApp() {
