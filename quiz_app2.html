@@ -25,11 +25,10 @@
             background-color: #e5e7eb;
             z-index: 999;
         }
-        /* 画像保護（タップは有効にするため pointer-events は削除） */
         img {
             user-select: none;
             -webkit-user-select: none;
-            -webkit-touch-callout: none; /* 長押し保存を抑制 */
+            -webkit-touch-callout: none;
         }
         .fixed-card-img {
             width: 270px;
@@ -59,11 +58,12 @@
             display: none;
             position: fixed;
             inset: 0;
-            background-color: rgba(0,0,0,0.7);
-            backdrop-filter: blur(4px);
+            background-color: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
             z-index: 2000;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
         .confetti {
             position: fixed;
@@ -141,11 +141,11 @@
                 this.renderApp();
             },
 
-            // プレビュー表示
-            openPreview(url) {
+            openPreview(url, name, series) {
                 const modal = document.getElementById('image-modal');
-                const modalImg = document.getElementById('modal-img');
-                modalImg.src = url;
+                document.getElementById('modal-img').src = url;
+                document.getElementById('modal-card-name').innerText = name;
+                document.getElementById('modal-series-name').innerText = series;
                 modal.style.display = 'flex';
             },
 
@@ -175,8 +175,8 @@
 
             triggerConfetti() {
                 const colors = ['#FFD700', '#FF6347', '#32CD32', '#1E90FF', '#FF69B4', '#00CED1'];
-                const shapes = ['★', '★', '★', '☆'];
-                const confettiCount = 100;
+                const shapes = ['★', '★', '☆'];
+                const confettiCount = 80;
                 const container = document.body;
 
                 for (let i = 0; i < confettiCount; i++) {
@@ -207,9 +207,9 @@
                 
                 overlay.innerHTML = `
                     <div class="text-4xl font-black mb-3">${isCorrect ? '正解！' : '不正解...'}</div>
-                    <div class="bg-white/90 p-4 rounded-xl shadow-lg border border-gray-200 min-w-[240px]">
+                    <div class="bg-white/95 p-4 rounded-xl shadow-lg border border-gray-200 min-w-[240px]">
                         <div class="text-[10px] text-gray-500 uppercase tracking-widest">${currentQ.series}</div>
-                        <div class="text-sm text-gray-800 font-bold mb-1">${currentQ.cardName}</div>
+                        <div class="text-sm text-gray-800 font-bold mb-1 break-words">${currentQ.cardName}</div>
                         <div class="text-base font-bold pt-1 border-t border-gray-300">正解: <span class="${corAttrData.text}">${corAttrData.name}</span></div>
                     </div>
                 `;
@@ -279,15 +279,33 @@
                                 <h2 class="text-xl font-black text-gray-800">Q. ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
                                 <button id="abort-quiz-btn" class="text-xs font-bold text-gray-300 hover:text-red-400 uppercase tracking-widest">Quit</button>
                             </div>
-                            
                             <div class="flex justify-center mb-8">
                                 <img src="${currentQ.imageUrl}" class="fixed-card-img shadow-xl border-4 border-white">
                             </div>
-
                             <div class="grid grid-cols-1 gap-4 w-full">
                                 ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-5 rounded-2xl text-white font-black text-xl shadow-lg border-b-8 transition active:translate-y-2 active:border-b-0 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
                             </div>
                         </div>
+                    </div>`;
+            },
+
+            renderCharSelect() {
+                const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
+                return `
+                    <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
+                        <h2 class="text-2xl font-black mb-6 border-b pb-2">出題キャラ選択</h2>
+                        <div class="flex gap-2 mb-4">
+                            <button id="select-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200 transition">全選択</button>
+                            <button id="deselect-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200 transition">全解除</button>
+                        </div>
+                        <div class="space-y-2 max-h-96 overflow-y-auto mb-6 overscroll-contain">
+                            ${allChars.map(name => `
+                                <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition">
+                                    <input type="checkbox" value="${name}" class="char-checkbox w-5 h-5 mr-3" ${this.selectedCharacters.includes(name) || this.selectedCharacters.length === 0 ? 'checked' : ''}>
+                                    <span class="font-bold text-gray-700">${name}</span>
+                                </label>`).join('')}
+                        </div>
+                        <button id="apply-char-btn" class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-md hover:bg-indigo-700 transition">選択を確定</button>
                     </div>`;
             },
 
@@ -302,12 +320,13 @@
                     
                     return `
                     <div class="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 ${h.correct ? 'border-green-100' : 'border-red-100'} shadow-sm">
-                        <div class="w-20 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer result-img-trigger" data-url="${h.question.imageUrl}">
+                        <div class="w-20 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer result-img-trigger" 
+                             data-url="${h.question.imageUrl}" data-name="${h.question.cardName}" data-series="${h.question.series}">
                             <img src="${h.question.imageUrl}" class="w-full h-full object-contain">
                         </div>
                         <div class="flex-1 text-left min-w-0">
-                            <div class="text-[9px] text-gray-400 truncate font-bold uppercase">${h.question.series}</div>
-                            <p class="font-black text-sm truncate text-gray-800">${h.question.cardName}</p>
+                            <div class="text-[9px] text-gray-400 font-bold uppercase">${h.question.series}</div>
+                            <p class="font-black text-sm text-gray-800 break-words leading-tight">${h.question.cardName}</p>
                             <div class="text-xs mt-1 flex gap-3">
                                 <span><b class="${selAttr.text}">${selAttr.name}</b></span>
                                 <span class="text-gray-300">▶</span>
@@ -320,7 +339,7 @@
 
                 return `
                     <div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-200">
-                        <h2 class="text-2xl font-black mb-2 text-gray-800">RESULT</h2>
+                        <h2 class="text-2xl font-black mb-2 text-gray-800 uppercase tracking-widest">Result</h2>
                         <p class="text-6xl font-black mb-8 text-indigo-600 tracking-tighter">${quiz.score} / ${quiz.quizQuestions.length}</p>
                         
                         <div class="flex gap-4 mb-10">
@@ -347,15 +366,16 @@
                             <option value="">すべてのキャラを表示</option>
                             ${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}
                         </select>
-                        <ul class="divide-y divide-gray-100 border-2 border-gray-50 rounded-2xl overflow-hidden sm:h-[500px] overflow-y-auto overscroll-contain bg-white">
+                        <ul class="divide-y divide-gray-100 border-2 border-gray-50 rounded-2xl sm:h-[500px] overflow-y-auto overscroll-contain bg-white">
                             ${this.questions.map(q => `
                                 <li class="card-list-item p-5 flex items-center gap-4 hover:bg-indigo-50/30 transition cursor-default" data-char="${q.charName}">
-                                    <div class="w-16 h-12 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 cursor-pointer list-img-trigger" data-url="${q.imageUrl}">
+                                    <div class="w-16 h-12 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 cursor-pointer list-img-trigger" 
+                                         data-url="${q.imageUrl}" data-name="${q.cardName}" data-series="${q.series}">
                                         <img src="${q.imageUrl}" class="w-full h-full object-contain">
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="text-[8px] text-gray-300 font-bold uppercase">${q.series}</div>
-                                        <p class="font-black text-sm truncate text-gray-700">${q.cardName}</p>
+                                        <p class="font-black text-sm text-gray-700 break-words leading-tight">${q.cardName}</p>
                                         <p class="text-xs text-gray-400 font-bold">${q.charName}</p>
                                     </div>
                                     <span class="px-4 py-1.5 text-xs font-black rounded-full text-white shadow-sm ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span>
@@ -366,6 +386,7 @@
             },
 
             attachEventListeners() {
+                // ホーム画面のボタン
                 document.getElementById('start-quiz-btn')?.addEventListener('click', () => this.startQuiz());
                 document.getElementById('nav-card-list-btn')?.addEventListener('click', () => this.setScreen('cardList'));
                 document.getElementById('nav-char-select-btn')?.addEventListener('click', () => this.setScreen('charSelect'));
@@ -389,7 +410,6 @@
                         item.style.display = isVisible ? 'flex' : 'none';
                         if (isVisible) count++;
                     });
-                    document.getElementById('filtered-count') && (document.getElementById('filtered-count').innerText = count);
                 });
 
                 // モーダルイベント
@@ -397,14 +417,19 @@
                 document.querySelectorAll('.list-img-trigger, .result-img-trigger').forEach(trigger => {
                     trigger.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        this.openPreview(e.currentTarget.dataset.url);
+                        const d = e.currentTarget.dataset;
+                        this.openPreview(d.url, d.name, d.series);
                     });
                 });
 
+                // キャラ選択画面のボタン
                 document.getElementById('select-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = true));
                 document.getElementById('deselect-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = false));
                 document.getElementById('apply-char-btn')?.addEventListener('click', () => {
-                    this.selectedCharacters = Array.from(document.querySelectorAll('.char-checkbox:checked')).map(c => c.value);
+                    const selected = Array.from(document.querySelectorAll('.char-checkbox:checked')).map(c => c.value);
+                    const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))];
+                    // 全選択時は空（全対象）として扱う
+                    this.selectedCharacters = selected.length === allChars.length ? [] : selected;
                     this.setScreen('home');
                 });
             }
@@ -415,9 +440,13 @@
 </head>
 <body class="bg-gray-50">
     <div id="image-modal">
-        <div class="bg-white p-2 rounded-2xl shadow-2xl">
-            <img id="modal-img" class="fixed-card-img" src="">
-            <p class="text-[10px] text-gray-400 text-center mt-2 font-bold">TAP TO CLOSE</p>
+        <div class="bg-white p-4 rounded-2xl shadow-2xl max-w-[310px] w-full flex flex-col items-center">
+            <img id="modal-img" class="fixed-card-img mb-4" src="">
+            <div class="w-full text-center px-2 mb-4">
+                <p id="modal-series-name" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1"></p>
+                <p id="modal-card-name" class="text-sm font-black text-gray-800 break-words leading-tight"></p>
+            </div>
+            <p class="text-[10px] text-indigo-500 font-black tracking-widest border-t border-indigo-50 w-full pt-3">TAP TO CLOSE</p>
         </div>
     </div>
 
