@@ -53,7 +53,6 @@
             pointer-events: none;
             padding: 1.5rem;
         }
-        /* プレビューモーダル */
         #image-modal {
             display: none;
             position: fixed;
@@ -80,8 +79,8 @@
     <script>
         document.addEventListener('contextmenu', e => e.target.tagName === 'IMG' && e.preventDefault());
 
-        const CSV_FILE = 'quiz_data2.csv';
-        const APP_URL = 'https://nek0-tkdb.github.io/tools/quiz_app2.html';
+        const CSV_FILE = 'quiz_data.csv';
+        const APP_URL = 'https://nek0-tkdb.github.io/tools/quiz_app.html';
 
         window.QuizApp = {
             questions: [],
@@ -233,7 +232,7 @@
                     } else {
                         this.renderApp();
                     }
-                }, 2200); 
+                }, 1200); // 2.2秒から1.2秒に短縮
             },
 
             renderApp() {
@@ -360,8 +359,14 @@
                 const charNames = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
                 return `
                     <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200">
-                        <h2 class="text-2xl font-black mb-1 text-gray-800">CARD LIST</h2>
-                        <p class="text-sm text-gray-400 mb-6 font-bold uppercase tracking-widest">Found: <span class="text-indigo-500">${this.questions.length}</span></p>
+                        <div class="flex justify-between items-end mb-6">
+                            <div>
+                                <h2 class="text-2xl font-black text-gray-800">CARD LIST</h2>
+                                <p class="text-sm text-gray-400 font-bold uppercase tracking-widest">
+                                    Display: <span id="filtered-count" class="text-indigo-500 font-black">${this.questions.length}</span> / Total: ${this.questions.length}
+                                </p>
+                            </div>
+                        </div>
                         <select id="char-filter" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-6 outline-none focus:border-indigo-300 bg-gray-50 font-bold text-gray-600 appearance-none">
                             <option value="">すべてのキャラを表示</option>
                             ${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}
@@ -386,7 +391,6 @@
             },
 
             attachEventListeners() {
-                // ホーム画面のボタン
                 document.getElementById('start-quiz-btn')?.addEventListener('click', () => this.startQuiz());
                 document.getElementById('nav-card-list-btn')?.addEventListener('click', () => this.setScreen('cardList'));
                 document.getElementById('nav-char-select-btn')?.addEventListener('click', () => this.setScreen('charSelect'));
@@ -404,15 +408,16 @@
 
                 document.getElementById('char-filter')?.addEventListener('change', (e) => {
                     const val = e.target.value;
-                    let count = 0;
+                    let visibleCount = 0;
                     document.querySelectorAll('.card-list-item').forEach(item => {
                         const isVisible = (val === '' || item.dataset.char === val);
                         item.style.display = isVisible ? 'flex' : 'none';
-                        if (isVisible) count++;
+                        if (isVisible) visibleCount++;
                     });
+                    const countEl = document.getElementById('filtered-count');
+                    if (countEl) countEl.innerText = visibleCount;
                 });
 
-                // モーダルイベント
                 document.getElementById('image-modal')?.addEventListener('click', () => this.closePreview());
                 document.querySelectorAll('.list-img-trigger, .result-img-trigger').forEach(trigger => {
                     trigger.addEventListener('click', (e) => {
@@ -422,13 +427,11 @@
                     });
                 });
 
-                // キャラ選択画面のボタン
                 document.getElementById('select-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = true));
                 document.getElementById('deselect-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = false));
                 document.getElementById('apply-char-btn')?.addEventListener('click', () => {
                     const selected = Array.from(document.querySelectorAll('.char-checkbox:checked')).map(c => c.value);
                     const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))];
-                    // 全選択時は空（全対象）として扱う
                     this.selectedCharacters = selected.length === allChars.length ? [] : selected;
                     this.setScreen('home');
                 });
@@ -453,7 +456,7 @@
     <div id="app-container" class="min-h-screen flex items-center justify-center py-10">
         <div class="text-center">
             <div class="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto"></div>
-            <p class="mt-4 text-gray-400 font-bold uppercase tracking-widest text-xs">Loading</p>
+            <p class="mt-4 text-gray-400 font-bold uppercase tracking-widest text-xs text-center">Loading</p>
         </div>
     </div>
     <div class="app-footer">X: nek0n0tem0</div>
