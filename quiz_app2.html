@@ -37,7 +37,6 @@
             background-color: #e5e7eb;
             border-radius: 0.5rem;
         }
-        /* フィードバック：タップで次へ進むため pointer-events を auto に */
         #feedback-overlay {
             display: none;
             position: absolute;
@@ -148,18 +147,51 @@
                 const gain = this.audioCtx.createGain();
                 osc.connect(gain);
                 gain.connect(this.audioCtx.destination);
+
+                const now = this.audioCtx.currentTime;
+
                 if (type === 'correct') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(880, this.audioCtx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(1320, this.audioCtx.currentTime + 0.1);
-                    gain.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.3);
-                    osc.start(); osc.stop(this.audioCtx.currentTime + 0.3);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.exponentialRampToValueAtTime(1320, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start();
+                    osc.stop(now + 0.3);
                 } else if (type === 'incorrect') {
-                    osc.type = 'triangle'; osc.frequency.setValueAtTime(440, this.audioCtx.currentTime);
-                    osc.frequency.linearRampToValueAtTime(220, this.audioCtx.currentTime + 0.2);
-                    gain.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.4);
-                    osc.start(); osc.stop(this.audioCtx.currentTime + 0.4);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.linearRampToValueAtTime(220, now + 0.2);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start();
+                    osc.stop(now + 0.4);
+                } else if (type === 'perfect') {
+                    // ファンファーレ音 (和音風)
+                    const osc2 = this.audioCtx.createOscillator();
+                    const gain2 = this.audioCtx.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(this.audioCtx.destination);
+
+                    osc.type = 'square';
+                    osc2.type = 'square';
+                    
+                    // ド・ミ・ソの和音の動き
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, i) => {
+                        osc.frequency.setValueAtTime(freq, now + (i * 0.1));
+                        osc2.frequency.setValueAtTime(freq * 0.5, now + (i * 0.1));
+                    });
+
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                    gain2.gain.setValueAtTime(0.05, now);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+
+                    osc.start();
+                    osc2.start();
+                    osc.stop(now + 0.8);
+                    osc2.stop(now + 0.8);
                 }
             },
 
@@ -235,7 +267,8 @@
 
                 overlay.style.display = 'flex';
                 if (isCorrect) {
-                    quiz.score++; this.playSound('correct');
+                    quiz.score++; 
+                    this.playSound('correct');
                     overlay.style.color = '#10B981';
                     overlay.style.backgroundColor = 'rgba(209, 250, 229, 0.95)';
                     this.triggerConfetti();
@@ -244,7 +277,6 @@
                     overlay.style.color = '#EF4444';
                     overlay.style.backgroundColor = 'rgba(254, 226, 226, 0.95)';
                 }
-                // 自動遷移はせず、タップイベントを待つ
             },
 
             nextStep() {
@@ -253,7 +285,10 @@
                 if (quiz.currentQuestionIndex >= quiz.quizQuestions.length) {
                     quiz.active = false;
                     this.setScreen('results');
-                    if (quiz.score === quiz.quizQuestions.length) this.triggerConfetti(true);
+                    if (quiz.score === quiz.quizQuestions.length) {
+                        this.triggerConfetti(true);
+                        this.playSound('perfect');
+                    }
                 } else {
                     this.renderApp();
                 }
@@ -299,13 +334,11 @@
                     <div class="bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center border border-gray-200 max-w-md mx-auto">
                         <div class="w-full relative overflow-hidden">
                             <div id="feedback-overlay"></div>
-                            
                             <div class="flex justify-between items-center mb-6 border-b pb-4">
                                 <h2 class="text-xl font-black text-gray-800">Q. ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
                                 <button id="abort-quiz-btn" class="text-xs font-bold text-gray-300 hover:text-red-400 tracking-widest uppercase">Quit</button>
                             </div>
                             <div class="flex justify-center mb-8"><img src="${currentQ.imageUrl}" class="fixed-card-img shadow-xl border-4 border-white"></div>
-                            
                             <div class="grid grid-cols-3 gap-2 w-full">
                                 ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-6 rounded-2xl text-white font-black text-xl shadow-lg border-b-8 transition active:translate-y-2 active:border-b-0 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
                             </div>
@@ -316,6 +349,8 @@
             renderResults() {
                 const quiz = this.currentQuiz;
                 const shareText = encodeURIComponent(`属性当てクイズの結果：${quiz.quizQuestions.length}問中${quiz.score}点でした！\n#画像属性クイズ\n${APP_URL}`);
+                const isPerfect = quiz.score === quiz.quizQuestions.length;
+                
                 const historyHtml = quiz.answerHistory.map(h => `
                     <div class="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 ${h.correct ? 'border-green-100' : 'border-red-100'} shadow-sm">
                         <div class="w-20 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer result-img-trigger" 
@@ -330,7 +365,17 @@
                         </div>
                         <div class="text-2xl">${h.correct ? '✅' : '❌'}</div>
                     </div>`).join('');
-                return `<div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-200"><h2 class="text-2xl font-black mb-2 text-gray-800 uppercase tracking-widest">Result</h2><p class="text-6xl font-black mb-8 text-indigo-600 tracking-tighter">${quiz.score} / ${quiz.quizQuestions.length}</p><div class="flex gap-4 mb-10"><button id="back-home-btn" class="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-gray-600 hover:bg-gray-200">HOME</button><a href="https://twitter.com/intent/tweet?text=${shareText}" target="_blank" class="flex-1 py-4 bg-black text-white rounded-2xl font-black flex items-center justify-center shadow-lg">SHARE</a></div><div class="text-left"><h3 class="font-black mb-6 text-gray-400 uppercase tracking-widest text-sm">Review</h3><div class="space-y-3">${historyHtml}</div></div></div>`;
+
+                return `
+                    <div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-200">
+                        <h2 class="text-2xl font-black mb-2 text-gray-800 uppercase tracking-widest">Result</h2>
+                        <div class="${isPerfect ? 'animate-bounce' : ''}">
+                            <p class="text-6xl font-black mb-2 text-indigo-600 tracking-tighter">${quiz.score} / ${quiz.quizQuestions.length}</p>
+                            ${isPerfect ? '<p class="text-xl font-black text-yellow-500 mb-6 uppercase italic tracking-widest">✨ Perfect! ✨</p>' : '<p class="mb-8"></p>'}
+                        </div>
+                        <div class="flex gap-4 mb-10"><button id="back-home-btn" class="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-gray-600 hover:bg-gray-200">HOME</button><a href="https://twitter.com/intent/tweet?text=${shareText}" target="_blank" class="flex-1 py-4 bg-black text-white rounded-2xl font-black flex items-center justify-center shadow-lg">SHARE</a></div>
+                        <div class="text-left"><h3 class="font-black mb-6 text-gray-400 uppercase tracking-widest text-sm">Review</h3><div class="space-y-3">${historyHtml}</div></div>
+                    </div>`;
             },
 
             renderCardList() {
@@ -355,10 +400,7 @@
                     localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
                 });
 
-                // クイズ選択
                 document.querySelectorAll('.quiz-choice-btn').forEach(btn => btn.addEventListener('click', e => this.submitAnswer(e.currentTarget.dataset.attribute)));
-
-                // フィードバックタップで次へ
                 document.getElementById('feedback-overlay')?.addEventListener('click', () => this.nextStep());
 
                 document.getElementById('char-filter')?.addEventListener('change', e => {
