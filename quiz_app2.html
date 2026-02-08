@@ -86,8 +86,8 @@
     <script>
         document.addEventListener('contextmenu', e => e.target.tagName === 'IMG' && e.preventDefault());
 
-        const CSV_FILE = 'quiz_data2.csv';
-        const APP_URL = 'https://nek0-tkdb.github.io/tools/quiz_app2.html';
+        const CSV_FILE = 'quiz_data.csv';
+        const APP_URL = 'https://nek0-tkdb.github.io/tools/quiz_app.html';
 
         window.QuizApp = {
             questions: [],
@@ -145,7 +145,8 @@
                 if (!this.quizSettings.soundEnabled || !this.audioCtx) return;
                 const osc = this.audioCtx.createOscillator();
                 const gain = this.audioCtx.createGain();
-                osc.connect(gain); gain.connect(this.audioCtx.destination);
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
                 const now = this.audioCtx.currentTime;
 
                 if (type === 'correct') {
@@ -174,6 +175,7 @@
                 }
             },
 
+            // 現在選択されているキャラクターに基づいて、出題可能な最大枚数を取得
             getAvailableCount() {
                 if (this.selectedCharacters.length === 0) return this.questions.length;
                 return this.questions.filter(q => this.selectedCharacters.includes(q.charName)).length;
@@ -202,27 +204,31 @@
 
             startQuiz() {
                 const max = this.getAvailableCount();
-                if (this.quizSettings.totalQuestions > max || this.quizSettings.totalQuestions <= 0) {
-                    alert(`エラー：有効な出題数（1～${max}）を指定してください。`);
+                if (this.quizSettings.totalQuestions > max) {
+                    alert(`エラー：指定された出題数（${this.quizSettings.totalQuestions}）が最大数（${max}）を超えています。`);
                     return;
                 }
+
                 this.initAudio();
                 let available = [...this.questions];
                 if (this.selectedCharacters.length > 0) available = available.filter(q => this.selectedCharacters.includes(q.charName));
+                if (available.length === 0) return alert("データがありません");
                 available.sort(() => Math.random() - 0.5);
-                const count = this.quizSettings.totalQuestions;
+                const count = Math.min(this.quizSettings.totalQuestions, available.length);
                 this.currentQuiz = { active: true, currentQuestionIndex: 0, score: 0, quizQuestions: available.slice(0, count), answerHistory: [] };
                 this.setScreen('quiz');
             },
 
             triggerConfetti(special = false) {
-                const colors = special ? ['#FFD700', '#FFFFFF', '#FF4500'] : ['#FFD700', '#FF6347', '#32CD32', '#1E90FF'];
+                const colors = special ? ['#FFD700', '#FFFFFF', '#FF4500', '#DA70D6'] : ['#FFD700', '#FF6347', '#32CD32', '#1E90FF'];
                 const shapes = ['★', '☆'];
                 const confettiCount = special ? 200 : 80;
                 for (let i = 0; i < confettiCount; i++) {
                     const el = document.createElement('div');
-                    el.className = 'confetti'; el.innerText = shapes[Math.floor(Math.random() * shapes.length)];
-                    el.style.left = Math.random() * 100 + 'vw'; el.style.color = colors[Math.floor(Math.random() * colors.length)];
+                    el.className = 'confetti';
+                    el.innerText = shapes[Math.floor(Math.random() * shapes.length)];
+                    el.style.left = Math.random() * 100 + 'vw';
+                    el.style.color = colors[Math.floor(Math.random() * colors.length)];
                     el.style.fontSize = Math.random() * (special ? 30 : 20) + 15 + 'px';
                     el.style.animationDuration = Math.random() * (special ? 3 : 2) + 1.5 + 's';
                     document.body.appendChild(el);
@@ -238,7 +244,8 @@
                 quiz.answerHistory.push({ question: currentQ, selected: attr, correct: isCorrect });
                 
                 const overlay = document.getElementById('feedback-overlay');
-                document.querySelectorAll('.quiz-choice-btn').forEach(b => b.disabled = true);
+                const btns = document.querySelectorAll('.quiz-choice-btn');
+                btns.forEach(b => b.disabled = true);
                 
                 overlay.innerHTML = `
                     <div class="text-4xl font-black mb-3 scale-110">${isCorrect ? '正解！' : '不正解...'}</div>
@@ -249,6 +256,7 @@
                     </div>
                     <div class="text-xs font-bold bg-black/10 px-4 py-2 rounded-full animate-pulse">タップして次へ</div>
                 `;
+
                 overlay.style.display = 'flex';
                 if (isCorrect) {
                     quiz.score++; this.playSound('correct');
@@ -285,128 +293,144 @@
 
             renderHome() {
                 const max = this.getAvailableCount();
-                const isInvalid = this.quizSettings.totalQuestions > max || this.quizSettings.totalQuestions <= 0;
+                const isInvalid = this.quizSettings.totalQuestions > max;
+                
                 return `
                     <div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-100">
-                        <h1 class="text-4xl font-black mb-8 text-gray-800 tracking-tight tracking-tighter">属性当てクイズ</h1>
+                        <h1 class="text-4xl font-black mb-8 text-gray-800 tracking-tight">属性当てクイズ</h1>
                         <div class="flex flex-col items-center gap-6 mb-8 border-b pb-8">
-                            <div><label class="block text-sm font-bold mb-1 text-gray-500 tracking-widest uppercase">出題数 (最大 ${max}問)</label>
-                            <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" max="${max}" 
-                                   class="p-4 border-2 ${isInvalid ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-2xl w-32 text-center text-xl font-bold outline-none transition">
-                            ${isInvalid ? `<p class="text-red-500 text-[10px] mt-2 font-bold animate-bounce">最大数を確認してください</p>` : ''}</div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1 text-gray-500 tracking-widest uppercase">出題数 (最大 ${max}問)</label>
+                                <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" max="${max}" 
+                                       class="p-4 border-2 ${isInvalid ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-2xl w-32 text-center text-xl font-bold outline-none transition">
+                                ${isInvalid ? `<p class="text-red-500 text-[10px] mt-2 font-bold animate-bounce">最大数を超えています！</p>` : ''}
+                            </div>
+                            
                             <div class="flex items-center gap-3"><span class="text-sm font-bold text-gray-600">効果音</span>
                             <div class="relative inline-block w-12 align-middle select-none"><input type="checkbox" id="sound-toggle" ${this.quizSettings.soundEnabled ? 'checked' : ''} class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/><label for="sound-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label></div></div>
                         </div>
                         <div class="space-y-4">
                             <button id="start-quiz-btn" class="w-full text-2xl py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition transform hover:scale-[1.02] ${isInvalid ? 'opacity-50 cursor-not-allowed' : ''}">START</button>
-                            <button id="nav-char-select-btn" class="w-full py-4 border-2 border-gray-200 rounded-2xl hover:bg-gray-50 font-bold text-gray-600 transition">🎯 キャラ選択 (${this.selectedCharacters.length === 0 ? '全キャラ' : this.selectedCharacters.length + '名'})</button>
-                            <button id="nav-card-list-btn" class="w-full py-4 border-2 border-gray-200 rounded-2xl hover:bg-gray-50 font-bold text-gray-600 transition">カード一覧 (${this.questions.length}枚)</button>
+                            <button id="nav-char-select-btn" class="w-full py-4 border-2 border-gray-200 rounded-2xl hover:bg-gray-50 font-bold text-gray-600">🎯 キャラ選択 (${this.selectedCharacters.length === 0 ? '全キャラ' : this.selectedCharacters.length + '名'})</button>
+                            <button id="nav-card-list-btn" class="w-full py-4 border-2 border-gray-200 rounded-2xl hover:bg-gray-50 font-bold text-gray-600">カード一覧 (${this.questions.length}枚)</button>
                         </div>
                     </div>`;
             },
 
             renderQuiz() {
-                const quiz = this.currentQuiz; const choices = ['fire', 'water', 'grass'].sort(() => Math.random() - 0.5);
+                const quiz = this.currentQuiz;
+                const choices = ['fire', 'water', 'grass'].sort(() => Math.random() - 0.5);
                 const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
-                return `<div class="bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center border border-gray-200 max-w-md mx-auto relative overflow-hidden"><div id="feedback-overlay"></div><div class="w-full"><div class="flex justify-between items-center mb-6 border-b pb-4"><h2 class="text-xl font-black text-gray-800 text-center flex-1">Q. ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2><button id="abort-quiz-btn" class="text-xs font-bold text-gray-300 hover:text-red-400 absolute right-6">Quit</button></div><div class="flex justify-center mb-8"><img src="${currentQ.imageUrl}" class="fixed-card-img shadow-xl border-4 border-white"></div><div class="grid grid-cols-3 gap-2 w-full">${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-6 rounded-2xl text-white font-black text-xl shadow-lg border-b-8 transition active:translate-y-2 active:border-b-0 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}</div></div></div>`;
-            },
-
-            renderCharSelect() {
-                const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
-                return `<div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200"><h2 class="text-2xl font-black mb-6 border-b pb-2 text-gray-800">出題キャラ選択</h2><div class="flex gap-2 mb-4"><button id="select-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200 transition">全選択</button><button id="deselect-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200 transition">全解除</button></div><div class="space-y-2 max-h-96 overflow-y-auto mb-6 overscroll-contain">${allChars.map(name => `<label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition"><input type="checkbox" value="${name}" class="char-checkbox w-5 h-5 mr-3" ${this.selectedCharacters.includes(name) || this.selectedCharacters.length === 0 ? 'checked' : ''}><span class="font-bold text-gray-700">${name}</span></label>`).join('')}</div><button id="apply-char-btn" class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-md hover:bg-indigo-700 transition">選択を確定</button></div>`;
+                return `
+                    <div class="bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center border border-gray-200 max-w-md mx-auto">
+                        <div class="w-full relative overflow-hidden">
+                            <div id="feedback-overlay"></div>
+                            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                                <h2 class="text-xl font-black text-gray-800">Q. ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2>
+                                <button id="abort-quiz-btn" class="text-xs font-bold text-gray-300 hover:text-red-400 tracking-widest uppercase">Quit</button>
+                            </div>
+                            <div class="flex justify-center mb-8"><img src="${currentQ.imageUrl}" class="fixed-card-img shadow-xl border-4 border-white"></div>
+                            <div class="grid grid-cols-3 gap-2 w-full">
+                                ${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-6 rounded-2xl text-white font-black text-xl shadow-lg border-b-8 transition active:translate-y-2 active:border-b-0 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}
+                            </div>
+                        </div>
+                    </div>`;
             },
 
             renderResults() {
-                const quiz = this.currentQuiz; const isPerfect = quiz.score === quiz.quizQuestions.length;
-                const historyHtml = quiz.answerHistory.map(h => `<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 ${h.correct ? 'border-green-100' : 'border-red-100'} shadow-sm"><div class="w-20 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer result-img-trigger" data-url="${h.question.imageUrl}" data-name="${h.question.cardName}" data-series="${h.question.series}" data-attr="${h.question.correctAttribute}"><img src="${h.question.imageUrl}" class="w-full h-full object-contain"></div><div class="flex-1 text-left min-w-0"><div class="text-[9px] text-gray-400 font-bold uppercase">${h.question.series}</div><p class="font-black text-sm text-gray-800 break-words leading-tight">${h.question.cardName}</p><div class="text-xs mt-1 flex gap-3"><span><b class="${this.ATTRIBUTES[h.selected].text}">${this.ATTRIBUTES[h.selected].name}</b></span><span class="text-gray-300">▶</span><span>正解: <b class="${this.ATTRIBUTES[h.question.correctAttribute].text}">${this.ATTRIBUTES[h.question.correctAttribute].name}</b></span></div></div><div class="text-2xl">${h.correct ? '✅' : '❌'}</div></div>`).join('');
-                return `<div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-200"><h2 class="text-2xl font-black mb-2 text-gray-800 uppercase tracking-widest text-sm">Result</h2><div class="${isPerfect ? 'animate-bounce' : ''}"><p class="text-6xl font-black mb-2 text-indigo-600 tracking-tighter">${quiz.score} / ${quiz.quizQuestions.length}</p>${isPerfect ? '<p class="text-xl font-black text-yellow-500 mb-6 uppercase italic tracking-widest">✨ Perfect! ✨</p>' : '<p class="mb-8"></p>'}</div><div class="flex gap-4 mb-10"><button id="back-home-btn" class="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-gray-600 hover:bg-gray-200">HOME</button><a href="https://twitter.com/intent/tweet?text=${encodeURIComponent('属性当てクイズ結果：' + quiz.score + '/' + quiz.quizQuestions.length + ' #画像属性クイズ ' + APP_URL)}" target="_blank" class="flex-1 py-4 bg-black text-white rounded-2xl font-black flex items-center justify-center shadow-lg">SHARE</a></div><div class="text-left"><h3 class="font-black mb-6 text-gray-400 uppercase tracking-widest text-sm text-center">Review</h3><div class="space-y-3">${historyHtml}</div></div></div>`;
+                const quiz = this.currentQuiz;
+                const shareText = encodeURIComponent(`属性当てクイズの結果：${quiz.quizQuestions.length}問中${quiz.score}点でした！\n#画像属性クイズ\n${APP_URL}`);
+                const isPerfect = quiz.score === quiz.quizQuestions.length;
+                const historyHtml = quiz.answerHistory.map(h => `
+                    <div class="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 ${h.correct ? 'border-green-100' : 'border-red-100'} shadow-sm">
+                        <div class="w-20 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer result-img-trigger" 
+                             data-url="${h.question.imageUrl}" data-name="${h.question.cardName}" data-series="${h.question.series}" data-attr="${h.question.correctAttribute}">
+                            <img src="${h.question.imageUrl}" class="w-full h-full object-contain">
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                            <div class="text-[9px] text-gray-400 font-bold uppercase">${h.question.series}</div>
+                            <p class="font-black text-sm text-gray-800 break-words leading-tight">${h.question.cardName}</p>
+                            <div class="text-xs mt-1 flex gap-3"><span><b class="${this.ATTRIBUTES[h.selected].text}">${this.ATTRIBUTES[h.selected].name}</b></span>
+                            <span class="text-gray-300">▶</span><span>正解: <b class="${this.ATTRIBUTES[h.question.correctAttribute].text}">${this.ATTRIBUTES[h.question.correctAttribute].name}</b></span></div>
+                        </div>
+                        <div class="text-2xl">${h.correct ? '✅' : '❌'}</div>
+                    </div>`).join('');
+                return `
+                    <div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-200">
+                        <h2 class="text-2xl font-black mb-2 text-gray-800 uppercase tracking-widest">Result</h2>
+                        <div class="${isPerfect ? 'animate-bounce' : ''}">
+                            <p class="text-6xl font-black mb-2 text-indigo-600 tracking-tighter">${quiz.score} / ${quiz.quizQuestions.length}</p>
+                            ${isPerfect ? '<p class="text-xl font-black text-yellow-500 mb-6 uppercase italic tracking-widest">✨ Perfect! ✨</p>' : '<p class="mb-8"></p>'}
+                        </div>
+                        <div class="flex gap-4 mb-10"><button id="back-home-btn" class="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-gray-600 hover:bg-gray-200">HOME</button><a href="https://twitter.com/intent/tweet?text=${shareText}" target="_blank" class="flex-1 py-4 bg-black text-white rounded-2xl font-black flex items-center justify-center shadow-lg">SHARE</a></div>
+                        <div class="text-left"><h3 class="font-black mb-6 text-gray-400 uppercase tracking-widest text-sm">Review</h3><div class="space-y-3">${historyHtml}</div></div>
+                    </div>`;
             },
 
             renderCardList() {
                 const charNames = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
-                return `<div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200"><div class="flex justify-between items-end mb-6"><div><h2 class="text-2xl font-black text-gray-800">CARD LIST</h2><p class="text-sm text-gray-400 font-bold uppercase tracking-widest">Display: <span id="filtered-count" class="text-indigo-500 font-black">${this.questions.length}</span> / Total: ${this.questions.length}</p></div></div><select id="char-filter" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-6 outline-none bg-gray-50 font-bold text-gray-600 appearance-none"><option value="">すべてのキャラを表示</option>${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}</select><ul class="divide-y divide-gray-100 border-2 border-gray-50 rounded-2xl sm:h-[500px] overflow-y-auto overscroll-contain bg-white">${this.questions.map(q => `<li class="card-list-item p-5 flex items-center gap-4 hover:bg-indigo-50/30 transition" data-char="${q.charName}"><div class="w-16 h-12 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 cursor-pointer list-img-trigger" data-url="${q.imageUrl}" data-name="${q.cardName}" data-series="${q.series}" data-attr="${q.correctAttribute}"><img src="${q.imageUrl}" class="w-full h-full object-contain"></div><div class="flex-1 min-w-0"><div class="text-[8px] text-gray-300 font-bold uppercase">${q.series}</div><p class="font-black text-sm text-gray-700 break-words leading-tight">${q.cardName}</p><p class="text-xs text-gray-400 font-bold">${q.charName}</p></div><span class="px-4 py-1.5 text-xs font-black rounded-full text-white shadow-sm ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span></li>`).join('')}</ul><button id="back-home-btn" class="w-full mt-8 py-4 bg-gray-100 rounded-2xl font-black text-gray-500 hover:bg-gray-200 transition">BACK TO HOME</button></div>`;
+                return `<div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200"><div class="flex justify-between items-end mb-6"><div><h2 class="text-2xl font-black text-gray-800">CARD LIST</h2><p class="text-sm text-gray-400 font-bold uppercase tracking-widest">Display: <span id="filtered-count" class="text-indigo-500 font-black">${this.questions.length}</span> / Total: ${this.questions.length}</p></div></div><select id="char-filter" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-6 outline-none bg-gray-50 font-bold text-gray-600 appearance-none"><option value="">すべてのキャラを表示</option>${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}</select><ul class="divide-y divide-gray-100 border-2 border-gray-50 rounded-2xl sm:h-[500px] overflow-y-auto overscroll-contain bg-white">${this.questions.map(q => `<li class="card-list-item p-5 flex items-center gap-4 hover:bg-indigo-50/30 transition" data-char="${q.charName}"><div class="w-16 h-12 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 cursor-pointer list-img-trigger" data-url="${q.imageUrl}" data-name="${q.cardName}" data-series="${q.series}" data-attr="${q.correctAttribute}"><img src="${q.imageUrl}" class="w-full h-full object-contain"></div><div class="flex-1 min-w-0"><div class="text-[8px] text-gray-300 font-bold uppercase">${q.series}</div><p class="font-black text-sm text-gray-700 break-words leading-tight">${q.cardName}</p><p class="text-xs text-gray-400 font-bold">${q.charName}</p></div><span class="px-4 py-1.5 text-xs font-black rounded-full text-white shadow-sm ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span></li>`).join('')}</ul><button id="back-home-btn" class="w-full mt-8 py-4 bg-gray-100 rounded-2xl font-black text-gray-500 hover:bg-gray-200">BACK TO HOME</button></div>`;
             },
 
             attachEventListeners() {
-                // ナビゲーション（ここが確実に動くように一番上に配置）
-                const navCharBtn = document.getElementById('nav-char-select-btn');
-                if (navCharBtn) navCharBtn.onclick = () => this.setScreen('charSelect');
-                
-                const navCardBtn = document.getElementById('nav-card-list-btn');
-                if (navCardBtn) navCardBtn.onclick = () => this.setScreen('cardList');
-                
-                const startBtn = document.getElementById('start-quiz-btn');
-                if (startBtn) startBtn.onclick = () => this.startQuiz();
+                document.getElementById('start-quiz-btn')?.addEventListener('click', () => this.startQuiz());
+                document.getElementById('nav-card-list-btn')?.addEventListener('click', () => this.setScreen('cardList'));
+                document.getElementById('nav-char-select-btn')?.addEventListener('click', () => this.setScreen('charSelect'));
+                document.querySelectorAll('#back-home-btn').forEach(b => b.addEventListener('click', () => this.setScreen('home')));
+                document.getElementById('abort-quiz-btn')?.addEventListener('click', () => confirm('終了しますか？') && this.setScreen('home'));
 
-                document.querySelectorAll('#back-home-btn').forEach(b => b.onclick = () => this.setScreen('home'));
-                const abortBtn = document.getElementById('abort-quiz-btn');
-                if (abortBtn) abortBtn.onclick = () => confirm('終了しますか？') && this.setScreen('home');
+                document.getElementById('total-questions-home')?.addEventListener('input', e => {
+                    const val = parseInt(e.target.value) || 0;
+                    this.quizSettings.totalQuestions = val;
+                    localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
+                    
+                    // エラー状態の即時反映
+                    const max = this.getAvailableCount();
+                    const startBtn = document.getElementById('start-quiz-btn');
+                    if (val > max || val <= 0) {
+                        e.target.classList.add('border-red-500', 'bg-red-50');
+                        startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        e.target.classList.remove('border-red-500', 'bg-red-50');
+                        startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                });
 
-                // 出題数入力のバリデーション
-                const qInput = document.getElementById('total-questions-home');
-                if (qInput) {
-                    qInput.oninput = e => {
-                        const val = parseInt(e.target.value) || 0;
-                        const max = this.getAvailableCount();
-                        this.quizSettings.totalQuestions = val;
-                        localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
-                        
-                        const isInvalid = val > max || val <= 0;
-                        if (isInvalid) {
-                            e.target.classList.add('border-red-500', 'bg-red-50');
-                            if (startBtn) startBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                        } else {
-                            e.target.classList.remove('border-red-500', 'bg-red-50');
-                            if (startBtn) startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                        }
-                        this.renderApp(); // エラーメッセージ表示のために再描画
-                    };
-                }
-
-                const sToggle = document.getElementById('sound-toggle');
-                if (sToggle) sToggle.onchange = e => {
+                document.getElementById('sound-toggle')?.addEventListener('change', e => {
                     this.quizSettings.soundEnabled = e.target.checked;
                     if (this.quizSettings.soundEnabled) this.initAudio();
                     localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
-                };
+                });
 
-                document.querySelectorAll('.quiz-choice-btn').forEach(btn => btn.onclick = e => this.submitAnswer(e.currentTarget.dataset.attribute));
-                const feedOverlay = document.getElementById('feedback-overlay');
-                if (feedOverlay) feedOverlay.onclick = () => this.nextStep();
+                document.querySelectorAll('.quiz-choice-btn').forEach(btn => btn.addEventListener('click', e => this.submitAnswer(e.currentTarget.dataset.attribute)));
+                document.getElementById('feedback-overlay')?.addEventListener('click', () => this.nextStep());
 
-                const charFilter = document.getElementById('char-filter');
-                if (charFilter) charFilter.onchange = e => {
+                document.getElementById('char-filter')?.addEventListener('change', e => {
                     const val = e.target.value; let count = 0;
                     document.querySelectorAll('.card-list-item').forEach(item => {
                         const isVisible = (val === '' || item.dataset.char === val);
                         item.style.display = isVisible ? 'flex' : 'none';
                         if (isVisible) count++;
                     });
-                    const countEl = document.getElementById('filtered-count');
-                    if (countEl) countEl.innerText = count;
-                };
+                    if (document.getElementById('filtered-count')) document.getElementById('filtered-count').innerText = count;
+                });
 
                 document.getElementById('image-modal')?.addEventListener('click', () => this.closePreview());
                 document.querySelectorAll('.list-img-trigger, .result-img-trigger').forEach(trigger => {
-                    trigger.onclick = e => {
+                    trigger.addEventListener('click', e => {
                         e.stopPropagation(); const d = e.currentTarget.dataset;
                         this.openPreview(d.url, d.name, d.series, d.attr);
-                    };
+                    });
                 });
 
-                const selectAll = document.getElementById('select-all-btn');
-                if (selectAll) selectAll.onclick = () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = true);
-                
-                const deselectAll = document.getElementById('deselect-all-btn');
-                if (deselectAll) deselectAll.onclick = () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = false);
-                
-                const applyCharBtn = document.getElementById('apply-char-btn');
-                if (applyCharBtn) applyCharBtn.onclick = () => {
+                document.getElementById('select-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = true));
+                document.getElementById('deselect-all-btn')?.addEventListener('click', () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = false));
+                document.getElementById('apply-char-btn')?.addEventListener('click', () => {
                     const selected = Array.from(document.querySelectorAll('.char-checkbox:checked')).map(c => c.value);
                     const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))];
                     this.selectedCharacters = selected.length === allChars.length ? [] : selected;
                     this.setScreen('home');
-                };
+                });
             }
         };
         document.addEventListener('DOMContentLoaded', () => window.QuizApp.init());
