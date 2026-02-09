@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ミリしらシートメーカー (CSV対応版)</title>
+    <title>ミリしらシートメーカー</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -11,7 +11,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
         body { font-family: 'Noto Sans JP', sans-serif; background-color: #f3f4f6; overscroll-behavior: none; }
         
-        /* A4横サイズ定義 */
         .a4-landscape {
             width: 1123px;
             height: 794px;
@@ -42,7 +41,7 @@
 
     <div id="app" class="max-w-6xl mx-auto" v-cloak>
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800 cursor-pointer" @click="view = 'main'">ミリしらシートメーカー</h1>
+            <h1 class="text-2xl font-bold text-gray-800" @click="view = 'main'">ミリしらシートメーカー</h1>
             <div v-if="loading" class="text-sm text-blue-500 animate-pulse font-bold">CSV読み込み中...</div>
         </div>
 
@@ -60,7 +59,7 @@
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button v-if="filledCount >= 1" @click="view = 'preview'" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-bold shadow-lg">プレビュー・保存へ</button>
+                    <button v-if="filledCount >= 1" @click="view = 'preview'" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-bold shadow-lg">保存・ダウンロードへ</button>
                 </div>
             </div>
 
@@ -73,9 +72,7 @@
                             <div v-if="slot" class="w-full h-full relative">
                                 <img :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
                             </div>
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-                                <span class="text-xl">+</span>
-                            </div>
+                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xl">+</div>
                         </div>
                         <div class="flex-1 bg-white border-t border-gray-100 flex flex-col">
                             <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400 truncate">名前：</div>
@@ -93,14 +90,11 @@
                     <button @click="view = 'main'" class="text-2xl">&times;</button>
                 </div>
                 <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <div v-for="char in charData" :key="char.name" 
-                         @click="selectCharacter(char.name)"
-                         class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50 relative group">
-                        
+                    <div v-for="char in charData" :key="char.name" @click="selectCharacter(char.name)"
+                         class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50 relative">
                         <div v-if="selectedCharNames.includes(char.name)" class="absolute inset-0 bg-black/40 z-10 flex items-center justify-center rounded">
-                            <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow">配置済み</span>
+                            <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">配置済み</span>
                         </div>
-
                         <div class="w-full aspect-square bg-gray-200 mb-2 rounded overflow-hidden">
                             <img :src="char.urls[0]" class="w-full h-full object-cover" crossorigin="anonymous">
                         </div>
@@ -117,8 +111,7 @@
                     <button @click="view = 'char-select'" class="text-blue-600 text-sm">戻る</button>
                 </div>
                 <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div v-for="url in currentSelectedCharUrls" :key="url" 
-                         @click="selectImage(url)"
+                    <div v-for="url in currentSelectedCharUrls" :key="url" @click="selectImage(url)"
                          class="cursor-pointer border-4 border-transparent hover:border-blue-500 rounded overflow-hidden aspect-square">
                         <img :src="url" class="w-full h-full object-cover" crossorigin="anonymous">
                     </div>
@@ -135,7 +128,7 @@
                 <div class="p-6">
                     <div class="bg-gray-100 aspect-square w-full max-w-[320px] mx-auto overflow-hidden relative border-2 border-blue-500 cursor-grab active:cursor-grabbing select-none touch-action-none"
                          ref="cropContainer"
-                         @pointerdown="startDragging" @pointermove="doDragging" @pointerup="stopDragging" @pointercancel="stopDragging">
+                         @pointerdown="startDragging" @pointermove="doDragging" @pointerup="stopDragging">
                         <img :src="currentSelectedImageUrl" class="absolute max-w-none pointer-events-none" :style="currentCropImgStyle" crossorigin="anonymous">
                     </div>
                     <div class="mt-8 space-y-6">
@@ -146,7 +139,7 @@
                         </div>
                         <div class="flex gap-2">
                             <button @click="resetCrop" class="flex-1 py-2 text-sm text-gray-500 border border-gray-200 rounded hover:bg-gray-50">リセット</button>
-                            <button @click="rotateImage" class="flex-1 py-2 text-sm text-blue-600 border border-blue-200 rounded hover:bg-blue-50 flex items-center justify-center gap-1">90度回転</button>
+                            <button @click="rotateImage" class="flex-1 py-2 text-sm text-blue-600 border border-blue-200 rounded hover:bg-blue-50">90度回転</button>
                             <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">配置決定</button>
                         </div>
                     </div>
@@ -156,8 +149,12 @@
 
         <div v-if="view === 'preview'" class="text-center pb-20">
             <div class="flex flex-wrap justify-center gap-4 mb-8 sticky top-4 z-10">
-                <button @click="downloadPDF" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg">PDF保存</button>
-                <button @click="downloadPNG" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold shadow-lg">PNG保存</button>
+                <button @click="downloadPDF" :disabled="exporting" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg disabled:opacity-50">
+                    {{ exporting ? 'PDF作成中...' : 'PDF保存' }}
+                </button>
+                <button @click="downloadPNG" :disabled="exporting" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold shadow-lg disabled:opacity-50">
+                    {{ exporting ? 'PNG作成中...' : 'PNG保存' }}
+                </button>
                 <button @click="view = 'main'" class="bg-gray-200 text-gray-800 px-8 py-3 rounded-full font-bold">戻る</button>
             </div>
             <div class="preview-wrapper">
@@ -176,8 +173,6 @@
                 </div>
             </div>
         </div>
-
-        <footer class="mt-12 mb-4 text-center text-gray-400 text-[10px]">x: @nek0n0tem0</footer>
     </div>
 
     <script type="module">
@@ -189,6 +184,7 @@
                 const charData = ref([]); 
                 const slots = ref(Array(21).fill(null));
                 const loading = ref(true);
+                const exporting = ref(false);
                 const error = ref(null);
                 
                 const crop = ref({ zoom: 1, x: 0, y: 0, rotate: 0 });
@@ -197,66 +193,45 @@
                 const currentSelectedImageUrl = ref('');
                 const cropContainer = ref(null);
                 const pointers = new Map();
-                let lastPinchDiff = 0;
                 const lastPos = ref({ x: 0, y: 0 });
 
-// CSVを読み込んで解析する関数
-const loadCSV = async () => {
-    try {
-        const response = await fetch('card_data.csv');
-        if (!response.ok) throw new Error('card_data.csv が見つかりません。');
-        
-        const text = await response.text();
-        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-        if (rows.length < 2) throw new Error('CSVにデータが含まれていません。');
+                const loadCSV = async () => {
+                    try {
+                        const response = await fetch('card_data.csv');
+                        if (!response.ok) throw new Error('card_data.csv が見つかりません。');
+                        const text = await response.text();
+                        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+                        const headers = rows[0].split(',').map(h => h.trim());
+                        const nameIndex = headers.indexOf('キャラクター名');
+                        const urlIndex = headers.indexOf('画像URL');
 
-        // ヘッダー解析（日本語ヘッダーに対応）
-        const headers = rows[0].split(',').map(h => h.trim());
-        const nameIndex = headers.indexOf('キャラクター名');
-        const urlIndex = headers.indexOf('画像URL');
+                        if (nameIndex === -1 || urlIndex === -1) throw new Error('CSVヘッダーに "キャラクター名" または "画像URL" が必要です。');
 
-        if (nameIndex === -1 || urlIndex === -1) {
-            throw new Error('CSVに "キャラクター名" または "画像URL" の列が見つかりません。');
-        }
+                        const groupedData = {};
+                        rows.slice(1).forEach(row => {
+                            const cols = row.split(',').map(c => c.trim());
+                            const name = cols[nameIndex];
+                            const url = cols[urlIndex];
+                            if (name && url) {
+                                if (!groupedData[name]) groupedData[name] = [];
+                                groupedData[name].push(url);
+                            }
+                        });
+                        charData.value = Object.keys(groupedData).map(name => ({ name: name, urls: groupedData[name] }));
+                        loading.value = false;
+                    } catch (err) {
+                        error.value = err.message;
+                        loading.value = false;
+                    }
+                };
 
-        // データ解析とグループ化
-        const groupedData = {};
-        rows.slice(1).forEach(row => {
-            // カンマで分割。URL等にカンマが含まれない前提ですが、
-            // 前後の空白を削除してクリーンなデータを取り出します。
-            const cols = row.split(',').map(c => c.trim());
-            const name = cols[nameIndex];
-            const url = cols[urlIndex];
-
-            if (name && url) {
-                if (!groupedData[name]) groupedData[name] = [];
-                groupedData[name].push(url);
-            }
-        });
-
-        charData.value = Object.keys(groupedData).map(name => ({
-            name: name,
-            urls: groupedData[name]
-        }));
-        
-        loading.value = false;
-    } catch (err) {
-        console.error(err);
-        error.value = err.message;
-        loading.value = false;
-    }
-};
                 onMounted(() => {
                     loadCSV();
                     const savedSlots = localStorage.getItem('mirishira_temp_slots');
-                    if (savedSlots) {
-                        try { slots.value = JSON.parse(savedSlots); } catch (e) { console.error(e); }
-                    }
+                    if (savedSlots) { try { slots.value = JSON.parse(savedSlots); } catch (e) {} }
                 });
 
-                watch(slots, (newVal) => {
-                    localStorage.setItem('mirishira_temp_slots', JSON.stringify(newVal));
-                }, { deep: true });
+                watch(slots, (newVal) => { localStorage.setItem('mirishira_temp_slots', JSON.stringify(newVal)); }, { deep: true });
 
                 const selectedCharNames = computed(() => slots.value.filter(s => s !== null).map(s => s.charName));
                 const currentSelectedCharUrls = computed(() => {
@@ -264,28 +239,81 @@ const loadCSV = async () => {
                     return char ? char.urls : [];
                 });
 
-                // UI 操作系
                 const startSelecting = (index) => { currentSlotIndex.value = index; view.value = 'char-select'; };
                 const selectCharacter = (name) => { currentSelectedCharName.value = name; view.value = 'image-select'; };
                 const selectImage = (url) => { currentSelectedImageUrl.value = url; crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; view.value = 'crop-select'; };
                 const finishSlot = () => { slots.value[currentSlotIndex.value] = { charName: currentSelectedCharName.value, imageUrl: currentSelectedImageUrl.value, ...crop.value }; view.value = 'main'; };
-                const getSlotImgStyle = (s) => ({ width: `${s.zoom * 100}%`, height: 'auto', left: `${50 + s.x}%`, top: `${50 + s.y}%`, transform: `translate(-50%, -50%) rotate(${s.rotate || 0}deg)`, position: 'absolute', maxWidth: 'none' });
+                
+                const getSlotImgStyle = (s) => ({
+                    width: `${s.zoom * 100}%`,
+                    left: `${50 + s.x}%`,
+                    top: `${50 + s.y}%`,
+                    transform: `translate(-50%, -50%) rotate(${s.rotate || 0}deg)`,
+                    position: 'absolute',
+                    maxWidth: 'none'
+                });
                 const currentCropImgStyle = computed(() => getSlotImgStyle(crop.value));
                 
-                // ドラッグ/回転/保存処理 (前回のロジックと同じ)
-                const startDragging = (e) => { pointers.set(e.pointerId, e); if (pointers.size === 1) lastPos.value = { x: e.clientX, y: e.clientY }; else if (pointers.size === 2) { const pts = Array.from(pointers.values()); lastPinchDiff = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY); } e.target.setPointerCapture(e.pointerId); };
-                const doDragging = (e) => { if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, e); if (pointers.size === 1) { const rect = cropContainer.value.getBoundingClientRect(); crop.value.x += ((e.clientX - lastPos.value.x) / rect.width) * 100; crop.value.y += ((e.clientY - lastPos.value.y) / rect.height) * 100; lastPos.value = { x: e.clientX, y: e.clientY }; } else if (pointers.size === 2) { const pts = Array.from(pointers.values()); const currentDiff = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY); if (lastPinchDiff > 0) { const ratio = currentDiff / lastPinchDiff; crop.value.zoom = Math.min(Math.max(crop.value.zoom * ratio, 1), 5); } lastPinchDiff = currentDiff; } };
-                const stopDragging = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) lastPinchDiff = 0; };
+                const startDragging = (e) => { pointers.set(e.pointerId, e); lastPos.value = { x: e.clientX, y: e.clientY }; e.target.setPointerCapture(e.pointerId); };
+                const doDragging = (e) => {
+                    if (!pointers.has(e.pointerId)) return;
+                    const rect = cropContainer.value.getBoundingClientRect();
+                    crop.value.x += ((e.clientX - lastPos.value.x) / rect.width) * 100;
+                    crop.value.y += ((e.clientY - lastPos.value.y) / rect.height) * 100;
+                    lastPos.value = { x: e.clientX, y: e.clientY };
+                };
+                const stopDragging = (e) => { pointers.delete(e.pointerId); };
                 const resetCrop = () => { crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; };
                 const rotateImage = () => { crop.value.rotate = (crop.value.rotate + 90) % 360; };
 
-                const downloadPDF = async () => { const canvas = await generateCanvas(); const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] }); pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794); pdf.save('mirishira.pdf'); };
-                const downloadPNG = async () => { const canvas = await generateCanvas(); canvas.toBlob((blob) => { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.download = 'mirishira.png'; link.href = url; link.click(); URL.revokeObjectURL(url); }, 'image/png'); };
-                const generateCanvas = async () => { const sheet = document.getElementById('miri-shira-sheet'); const wrapper = document.getElementById('preview-container'); wrapper.classList.add('no-transform'); const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, width: 1123, height: 794 }); wrapper.classList.remove('no-transform'); return canvas; };
+                const downloadPDF = async () => {
+                    exporting.value = true;
+                    try {
+                        const canvas = await generateCanvas();
+                        const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] });
+                        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794);
+                        pdf.save('mirishira.pdf');
+                    } finally { exporting.value = false; }
+                };
+
+                const downloadPNG = async () => {
+                    exporting.value = true;
+                    try {
+                        const canvas = await generateCanvas();
+                        const link = document.createElement('a');
+                        link.download = 'mirishira.png';
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    } finally { exporting.value = false; }
+                };
+
+                const generateCanvas = async () => {
+                    const sheet = document.getElementById('miri-shira-sheet');
+                    const wrapper = document.getElementById('preview-container');
+                    
+                    // キャプチャ用に一時的にスケールを戻す
+                    wrapper.classList.add('no-transform');
+                    
+                    // 画像の読み込み完了を保証するため少し待機
+                    await new Promise(r => setTimeout(r, 500));
+                    
+                    const canvas = await html2canvas(sheet, {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        backgroundColor: '#ffffff',
+                        width: 1123,
+                        height: 794
+                    });
+                    
+                    wrapper.classList.remove('no-transform');
+                    return canvas;
+                };
+
                 const clearSheet = () => { if (confirm("リセットしますか？")) slots.value = Array(21).fill(null); };
 
                 return {
-                    view, charData, slots, loading, error, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
+                    view, charData, slots, loading, exporting, error, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
                     startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
                     startDragging, doDragging, stopDragging, resetCrop, rotateImage, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
