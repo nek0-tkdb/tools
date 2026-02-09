@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ミリしらシートメーカー</title>
+    <title>ミリしらシートメーカー (CSV対応版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -11,6 +11,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
         body { font-family: 'Noto Sans JP', sans-serif; background-color: #f3f4f6; overscroll-behavior: none; }
         
+        /* A4横サイズ定義 */
         .a4-landscape {
             width: 1123px;
             height: 794px;
@@ -33,15 +34,7 @@
         @media (max-width: 1200px) { .preview-scale { transform: scale(0.45); margin-bottom: -430px; } }
         @media (max-width: 768px) { .preview-scale { transform: scale(0.3); margin-bottom: -550px; } }
 
-        .cursor-grab { cursor: grab; }
-        .cursor-grabbing { cursor: grabbing; }
-        .no-transform { transform: none !important; margin-bottom: 0 !important; }
-
-        /* スマホでのスクロール干渉を防止 */
-        .touch-action-none {
-            touch-action: none;
-        }
-
+        .touch-action-none { touch-action: none; }
         [v-cloak] { display: none; }
     </style>
 </head>
@@ -50,14 +43,14 @@
     <div id="app" class="max-w-6xl mx-auto" v-cloak>
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-gray-800 cursor-pointer" @click="view = 'main'">ミリしらシートメーカー</h1>
-            <div class="flex items-center gap-3">
-                <span v-if="loading" class="text-xs text-gray-400">同期中...</span>
-                <button @click="openAdmin" class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">管理画面</button>
-            </div>
+            <div v-if="loading" class="text-sm text-blue-500 animate-pulse font-bold">CSV読み込み中...</div>
         </div>
 
-        <!-- メイン画面 -->
         <div v-if="view === 'main'" class="space-y-6">
+            <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                {{ error }}
+            </div>
+
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <p class="text-blue-800 text-sm font-bold">枠をクリックしてキャラクターを選択してください</p>
@@ -85,9 +78,7 @@
                             </div>
                         </div>
                         <div class="flex-1 bg-white border-t border-gray-100 flex flex-col">
-                            <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400 truncate">
-                                名前：
-                            </div>
+                            <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400 truncate">名前：</div>
                             <div class="flex-1 p-1 text-[8px] text-gray-400">性格/特徴：</div>
                         </div>
                     </div>
@@ -95,7 +86,6 @@
             </div>
         </div>
 
-        <!-- キャラクター選択 -->
         <div v-if="view === 'char-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
@@ -107,8 +97,7 @@
                          @click="selectCharacter(char.name)"
                          class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50 relative group">
                         
-                        <div v-if="selectedCharNames.includes(char.name)" 
-                             class="absolute inset-0 bg-black/40 z-10 flex items-center justify-center rounded">
+                        <div v-if="selectedCharNames.includes(char.name)" class="absolute inset-0 bg-black/40 z-10 flex items-center justify-center rounded">
                             <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full font-bold shadow">配置済み</span>
                         </div>
 
@@ -121,7 +110,6 @@
             </div>
         </div>
 
-        <!-- 画像選択 -->
         <div v-if="view === 'image-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
@@ -138,20 +126,16 @@
             </div>
         </div>
 
-        <!-- 位置調整 -->
         <div v-if="view === 'crop-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
                 <div class="p-4 bg-gray-50 border-b font-bold flex justify-between items-center">
-                    <span>画像をドラッグまたはピンチして調整</span>
+                    <span>ドラッグして調整</span>
                     <button @click="view = 'image-select'" class="text-gray-400">&times;</button>
                 </div>
                 <div class="p-6">
                     <div class="bg-gray-100 aspect-square w-full max-w-[320px] mx-auto overflow-hidden relative border-2 border-blue-500 cursor-grab active:cursor-grabbing select-none touch-action-none"
                          ref="cropContainer"
-                         @pointerdown="startDragging"
-                         @pointermove="doDragging"
-                         @pointerup="stopDragging"
-                         @pointercancel="stopDragging">
+                         @pointerdown="startDragging" @pointermove="doDragging" @pointerup="stopDragging" @pointercancel="stopDragging">
                         <img :src="currentSelectedImageUrl" class="absolute max-w-none pointer-events-none" :style="currentCropImgStyle" crossorigin="anonymous">
                     </div>
                     <div class="mt-8 space-y-6">
@@ -162,14 +146,8 @@
                         </div>
                         <div class="flex gap-2">
                             <button @click="resetCrop" class="flex-1 py-2 text-sm text-gray-500 border border-gray-200 rounded hover:bg-gray-50">リセット</button>
-                            <!-- 回転ボタンを追加 -->
-                            <button @click="rotateImage" class="flex-1 py-2 text-sm text-blue-600 border border-blue-200 rounded hover:bg-blue-50 flex items-center justify-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                90度回転
-                            </button>
-                            <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-md">配置を決定</button>
+                            <button @click="rotateImage" class="flex-1 py-2 text-sm text-blue-600 border border-blue-200 rounded hover:bg-blue-50 flex items-center justify-center gap-1">90度回転</button>
+                            <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">配置決定</button>
                         </div>
                     </div>
                 </div>
@@ -199,277 +177,117 @@
             </div>
         </div>
 
-        <!-- 管理画面 -->
-        <div v-if="view === 'admin'" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div class="bg-white p-8 rounded-xl shadow-lg max-w-2xl w-full">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">データ管理（クラウド）</h2>
-                    <button @click="view = 'main'" class="text-gray-500 text-2xl">&times;</button>
-                </div>
-                <div v-if="!isAdminAuthenticated">
-                    <input type="password" v-model="adminPassword" @keyup.enter="checkPassword" class="w-full border p-2 rounded mb-4" placeholder="パスワードを入力してください">
-                    <button @click="checkPassword" class="w-full bg-black text-white py-2 rounded font-bold">ログイン</button>
-                </div>
-                <div v-else>
-                    <textarea v-model="csvInput" rows="10" class="w-full border p-3 rounded font-mono text-xs mb-4" placeholder="キャラ名,画像URL"></textarea>
-                    <button @click="importCSV" :disabled="saving" class="w-full bg-green-600 text-white py-3 rounded font-bold disabled:opacity-50">
-                        {{ saving ? '保存中...' : 'クラウドに保存' }}
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- フッター -->
-        <footer class="mt-12 mb-4 text-center text-gray-400 text-[10px]">
-            x: @nek0n0tem0
-        </footer>
+        <footer class="mt-12 mb-4 text-center text-gray-400 text-[10px]">x: @nek0n0tem0</footer>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBwflCp99P6kWbeoy52_5glAhulVP7TRmI",
-            authDomain: "milli-835f0.firebaseapp.com",
-            projectId: "milli-835f0",
-            storageBucket: "milli-835f0.firebasestorage.app",
-            messagingSenderId: "895963869242",
-            appId: "1:895963869242:web:3d40e32de3b54b535cc503",
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = "mirishira-app-01";
 
         createApp({
             setup() {
                 const view = ref('main');
                 const charData = ref([]); 
                 const slots = ref(Array(21).fill(null));
-                const user = ref(null);
                 const loading = ref(true);
-                const saving = ref(false);
-                const crop = ref({ zoom: 1, x: 0, y: 0, rotate: 0 }); // rotateを追加
+                const error = ref(null);
+                
+                const crop = ref({ zoom: 1, x: 0, y: 0, rotate: 0 });
                 const currentSlotIndex = ref(null);
                 const currentSelectedCharName = ref('');
                 const currentSelectedImageUrl = ref('');
                 const cropContainer = ref(null);
-                const adminPassword = ref('');
-                const isAdminAuthenticated = ref(false);
-                const csvInput = ref('');
-
                 const pointers = new Map();
                 let lastPinchDiff = 0;
                 const lastPos = ref({ x: 0, y: 0 });
 
-                onMounted(async () => {
+                // CSVを読み込んで解析する関数
+                const loadCSV = async () => {
+                    try {
+                        const response = await fetch('card_data.csv');
+                        if (!response.ok) throw new Error('card_data.csv が見つかりません。');
+                        
+                        const text = await response.text();
+                        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
+                        if (rows.length < 2) throw new Error('CSVにデータが含まれていません。');
+
+                        // ヘッダー解析
+                        const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
+                        const nameIndex = headers.indexOf('name');
+                        const urlIndex = headers.indexOf('urls');
+
+                        if (nameIndex === -1 || urlIndex === -1) {
+                            throw new Error('CSVに "name" または "urls" の列が見つかりません。');
+                        }
+
+                        // データ解析とグループ化
+                        const groupedData = {};
+                        rows.slice(1).forEach(row => {
+                            const cols = row.split(',');
+                            const name = cols[nameIndex]?.trim();
+                            const url = cols[urlIndex]?.trim();
+                            if (name && url) {
+                                if (!groupedData[name]) groupedData[name] = [];
+                                groupedData[name].push(url);
+                            }
+                        });
+
+                        charData.value = Object.keys(groupedData).map(name => ({
+                            name: name,
+                            urls: groupedData[name]
+                        }));
+                        
+                        loading.value = false;
+                    } catch (err) {
+                        console.error(err);
+                        error.value = err.message;
+                        loading.value = false;
+                    }
+                };
+
+                onMounted(() => {
+                    loadCSV();
                     const savedSlots = localStorage.getItem('mirishira_temp_slots');
                     if (savedSlots) {
-                        try {
-                            slots.value = JSON.parse(savedSlots);
-                        } catch (e) {
-                            console.error("Failed to restore slots", e);
-                        }
+                        try { slots.value = JSON.parse(savedSlots); } catch (e) { console.error(e); }
                     }
-
-                    try {
-                        await signInAnonymously(auth);
-                        onAuthStateChanged(auth, (u) => { user.value = u; });
-                    } catch (e) { console.error("Auth Error", e); }
                 });
 
                 watch(slots, (newVal) => {
                     localStorage.setItem('mirishira_temp_slots', JSON.stringify(newVal));
                 }, { deep: true });
 
-                watch(user, (u) => {
-                    if (u) {
-                        const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters', 'global');
-                        onSnapshot(charDocRef, (snap) => {
-                            if (snap.exists()) {
-                                charData.value = Array.isArray(snap.data().list) ? snap.data().list : [];
-                                updateCsvInput();
-                            }
-                            loading.value = false;
-                        }, (err) => {
-                            console.error("Firestore Listen Error:", err);
-                            loading.value = false;
-                        });
-                    }
-                });
-
-                const updateCsvInput = () => {
-                    let csvStr = '';
-                    charData.value.forEach(char => {
-                        char.urls.forEach(url => {
-                            csvStr += `${char.name},${url}\n`;
-                        });
-                    });
-                    csvInput.value = csvStr.trim();
-                };
-
-                const selectedCharNames = computed(() => {
-                    return slots.value
-                        .filter(s => s !== null)
-                        .map(s => s.charName);
-                });
-
+                const selectedCharNames = computed(() => slots.value.filter(s => s !== null).map(s => s.charName));
                 const currentSelectedCharUrls = computed(() => {
                     const char = charData.value.find(c => c.name === currentSelectedCharName.value);
                     return char ? char.urls : [];
                 });
 
+                // UI 操作系
                 const startSelecting = (index) => { currentSlotIndex.value = index; view.value = 'char-select'; };
                 const selectCharacter = (name) => { currentSelectedCharName.value = name; view.value = 'image-select'; };
-                const selectImage = (url) => { 
-                    currentSelectedImageUrl.value = url; 
-                    crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; 
-                    view.value = 'crop-select'; 
-                };
-                
-                const finishSlot = () => { 
-                    slots.value[currentSlotIndex.value] = { 
-                        charName: currentSelectedCharName.value,
-                        imageUrl: currentSelectedImageUrl.value, 
-                        ...crop.value 
-                    }; 
-                    view.value = 'main'; 
-                };
-                
-                const getSlotImgStyle = (s) => ({ 
-                    width: `${s.zoom * 100}%`, 
-                    height: 'auto', 
-                    left: `${50 + s.x}%`, 
-                    top: `${50 + s.y}%`, 
-                    // rotateをtransformに追加
-                    transform: `translate(-50%, -50%) rotate(${s.rotate || 0}deg)`, 
-                    position: 'absolute', 
-                    maxWidth: 'none' 
-                });
+                const selectImage = (url) => { currentSelectedImageUrl.value = url; crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; view.value = 'crop-select'; };
+                const finishSlot = () => { slots.value[currentSlotIndex.value] = { charName: currentSelectedCharName.value, imageUrl: currentSelectedImageUrl.value, ...crop.value }; view.value = 'main'; };
+                const getSlotImgStyle = (s) => ({ width: `${s.zoom * 100}%`, height: 'auto', left: `${50 + s.x}%`, top: `${50 + s.y}%`, transform: `translate(-50%, -50%) rotate(${s.rotate || 0}deg)`, position: 'absolute', maxWidth: 'none' });
                 const currentCropImgStyle = computed(() => getSlotImgStyle(crop.value));
                 
-                const startDragging = (e) => { 
-                    pointers.set(e.pointerId, e);
-                    if (pointers.size === 1) {
-                        lastPos.value = { x: e.clientX, y: e.clientY }; 
-                    } else if (pointers.size === 2) {
-                        const pts = Array.from(pointers.values());
-                        lastPinchDiff = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
-                    }
-                    e.target.setPointerCapture(e.pointerId); 
-                };
-
-                const doDragging = (e) => {
-                    if (!pointers.has(e.pointerId)) return;
-                    pointers.set(e.pointerId, e);
-
-                    if (pointers.size === 1) {
-                        const rect = cropContainer.value.getBoundingClientRect();
-                        crop.value.x += ((e.clientX - lastPos.value.x) / rect.width) * 100;
-                        crop.value.y += ((e.clientY - lastPos.value.y) / rect.height) * 100;
-                        lastPos.value = { x: e.clientX, y: e.clientY };
-                    } else if (pointers.size === 2) {
-                        const pts = Array.from(pointers.values());
-                        const currentDiff = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY);
-                        if (lastPinchDiff > 0) {
-                            const ratio = currentDiff / lastPinchDiff;
-                            crop.value.zoom = Math.min(Math.max(crop.value.zoom * ratio, 1), 5);
-                        }
-                        lastPinchDiff = currentDiff;
-                    }
-                };
-
-                const stopDragging = (e) => { 
-                    pointers.delete(e.pointerId);
-                    if (pointers.size < 2) lastPinchDiff = 0;
-                };
-                
+                // ドラッグ/回転/保存処理 (前回のロジックと同じ)
+                const startDragging = (e) => { pointers.set(e.pointerId, e); if (pointers.size === 1) lastPos.value = { x: e.clientX, y: e.clientY }; else if (pointers.size === 2) { const pts = Array.from(pointers.values()); lastPinchDiff = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY); } e.target.setPointerCapture(e.pointerId); };
+                const doDragging = (e) => { if (!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, e); if (pointers.size === 1) { const rect = cropContainer.value.getBoundingClientRect(); crop.value.x += ((e.clientX - lastPos.value.x) / rect.width) * 100; crop.value.y += ((e.clientY - lastPos.value.y) / rect.height) * 100; lastPos.value = { x: e.clientX, y: e.clientY }; } else if (pointers.size === 2) { const pts = Array.from(pointers.values()); const currentDiff = Math.hypot(pts[0].clientX - pts[1].clientX, pts[0].clientY - pts[1].clientY); if (lastPinchDiff > 0) { const ratio = currentDiff / lastPinchDiff; crop.value.zoom = Math.min(Math.max(crop.value.zoom * ratio, 1), 5); } lastPinchDiff = currentDiff; } };
+                const stopDragging = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) lastPinchDiff = 0; };
                 const resetCrop = () => { crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; };
-                
-                // 画像回転ロジック
-                const rotateImage = () => {
-                    crop.value.rotate = (crop.value.rotate + 90) % 360;
-                };
+                const rotateImage = () => { crop.value.rotate = (crop.value.rotate + 90) % 360; };
 
-                const openAdmin = () => { view.value = 'admin'; };
-                const checkPassword = () => { if (adminPassword.value === '252') isAdminAuthenticated.value = true; else alert('パスワードが違います'); };
-                
-                const importCSV = async () => {
-                    saving.value = true;
-                    const newData = [];
-                    csvInput.value.split('\n').forEach(line => {
-                        const [name, url] = line.split(',').map(s => s.trim());
-                        if (name && url) {
-                            const existing = newData.find(item => item.name === name);
-                            if (existing) {
-                                existing.urls.push(url);
-                            } else {
-                                newData.push({ name, urls: [url] });
-                            }
-                        }
-                    });
-                    try {
-                        const charDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'characters', 'global');
-                        await setDoc(charDocRef, { list: newData });
-                        alert("クラウドに保存しました。");
-                        view.value = 'main';
-                    } catch (err) {
-                        alert("保存に失敗しました: " + err.message);
-                    } finally { saving.value = false; }
-                };
-
-                const downloadPDF = async () => {
-                    const canvas = await generateCanvas();
-                    const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] });
-                    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794);
-                    pdf.save('mirishira.pdf');
-                };
-
-                const downloadPNG = async () => {
-                    try {
-                        const canvas = await generateCanvas();
-                        canvas.toBlob((blob) => {
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement('a');
-                            link.download = 'mirishira.png';
-                            link.href = url;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            URL.revokeObjectURL(url);
-                        }, 'image/png');
-                    } catch (err) {
-                        console.error("PNG Download Error:", err);
-                        alert("PNGの保存に失敗しました。");
-                    }
-                };
-
-                const generateCanvas = async () => {
-                    const sheet = document.getElementById('miri-shira-sheet');
-                    const wrapper = document.getElementById('preview-container');
-                    wrapper.classList.add('no-transform');
-                    const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, width: 1123, height: 794 });
-                    wrapper.classList.remove('no-transform');
-                    return canvas;
-                };
-
-                const clearSheet = () => {
-                    if (confirm("シートをリセットしてよろしいですか？")) {
-                        slots.value = Array(21).fill(null);
-                    }
-                };
+                const downloadPDF = async () => { const canvas = await generateCanvas(); const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] }); pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794); pdf.save('mirishira.pdf'); };
+                const downloadPNG = async () => { const canvas = await generateCanvas(); canvas.toBlob((blob) => { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.download = 'mirishira.png'; link.href = url; link.click(); URL.revokeObjectURL(url); }, 'image/png'); };
+                const generateCanvas = async () => { const sheet = document.getElementById('miri-shira-sheet'); const wrapper = document.getElementById('preview-container'); wrapper.classList.add('no-transform'); const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, width: 1123, height: 794 }); wrapper.classList.remove('no-transform'); return canvas; };
+                const clearSheet = () => { if (confirm("リセットしますか？")) slots.value = Array(21).fill(null); };
 
                 return {
-                    view, charData, slots, loading, saving, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
+                    view, charData, slots, loading, error, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
                     startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
-                    startDragging, doDragging, stopDragging, resetCrop, rotateImage, openAdmin, checkPassword, importCSV, downloadPDF, downloadPNG,
+                    startDragging, doDragging, stopDragging, resetCrop, rotateImage, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
-                    currentSelectedCharUrls, adminPassword, isAdminAuthenticated, csvInput, clearSheet,
-                    selectedCharNames 
+                    currentSelectedCharUrls, clearSheet, selectedCharNames 
                 };
             }
         }).mount('#app');
