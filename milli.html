@@ -11,27 +11,39 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
         body { font-family: 'Noto Sans JP', sans-serif; background-color: #f3f4f6; overscroll-behavior: none; }
         
-        .a4-landscape {
+        /* 共通のシートデザイン */
+        .sheet-design {
             width: 1123px;
             height: 794px;
             background: white;
-            margin: 0 auto;
             position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            overflow: hidden;
             display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            padding: 20px;
+            box-sizing: border-box;
         }
         
-        .slot-box { border: 1px solid #333; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
-        .slot-img-container { width: 100%; aspect-ratio: 1 / 1; border-bottom: 1px solid #333; overflow: hidden; position: relative; flex-shrink: 0; background: #eee; }
+        .slot-box { border: 1.5px solid #333; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+        .slot-img-container { width: 100%; aspect-ratio: 1 / 1; border-bottom: 1.5px solid #333; overflow: hidden; position: relative; flex-shrink: 0; background: #eee; }
         .slot-info { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-        .slot-name { height: 24px; border-bottom: 1px solid #ccc; background: #fafafa; flex-shrink: 0; font-size: 10px; padding-left: 4px; display: flex; align-items: center; justify-content: flex-start; text-align: left; color: #666; }
-        .slot-desc { flex: 1; background: #fff; font-size: 10px; padding: 4px; color: #666; line-height: 1.2; text-align: left; }
+        .slot-name { height: 28px; border-bottom: 1px solid #ccc; background: #fafafa; flex-shrink: 0; font-size: 11px; padding-left: 6px; display: flex; align-items: center; justify-content: flex-start; text-align: left; color: #333; font-weight: bold; }
+        .slot-desc { flex: 1; background: #fff; font-size: 11px; padding: 6px; color: #666; line-height: 1.3; text-align: left; }
         
-        .preview-wrapper { width: 100%; overflow: hidden; display: flex; justify-content: center; }
+        /* プレビュー用：画面に合わせて縮小 */
+        .preview-wrapper { width: 100%; overflow: hidden; display: flex; justify-content: center; background: #ccc; padding: 40px 0; }
         .preview-scale { transform: scale(0.6); transform-origin: top center; margin-bottom: -320px; }
         @media (max-width: 1200px) { .preview-scale { transform: scale(0.45); margin-bottom: -430px; } }
         @media (max-width: 768px) { .preview-scale { transform: scale(0.3); margin-bottom: -550px; } }
+
+        /* 書き出し用：画面外に隠して原寸保持 */
+        #export-area {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+            z-index: -1;
+        }
 
         .touch-action-none { touch-action: none; }
         [v-cloak] { display: none; }
@@ -45,6 +57,7 @@
             <div v-if="loading" class="text-sm text-blue-500 animate-pulse font-bold">CSV読み込み中...</div>
         </div>
 
+        <!-- 1. メイン編集画面 -->
         <div v-if="view === 'main'" class="space-y-6">
             <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
                 {{ error }}
@@ -52,49 +65,48 @@
 
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <p class="text-blue-800 text-sm font-bold">枠をクリックしてキャラクターを選択してください</p>
+                    <p class="text-blue-800 text-sm font-bold">枠をクリックしてキャラクターを配置してください</p>
                     <div class="flex items-center gap-4 mt-1">
                         <span class="text-xs text-blue-600">配置済み: {{ filledCount }}/21</span>
-                        <button v-if="filledCount > 0" @click="clearSheet" class="text-[10px] text-red-500 hover:underline">シートをクリア</button>
+                        <button v-if="filledCount > 0" @click="clearSheet" class="text-[10px] text-red-500 hover:underline">リセット</button>
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button v-if="filledCount >= 1" @click="view = 'preview'" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-bold shadow-lg">保存・ダウンロードへ</button>
+                    <button v-if="filledCount >= 1" @click="view = 'preview'" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-bold shadow-lg">保存・ダウンロード</button>
                 </div>
             </div>
 
-            <div class="overflow-auto bg-gray-300 p-4 rounded-lg">
+            <!-- 編集用グリッド -->
+            <div class="overflow-auto bg-gray-200 p-4 rounded-lg">
                 <div class="grid gap-2 p-4 bg-white mx-auto shadow-inner grid-cols-7" style="width: 1000px; min-height: 700px;">
                     <div v-for="(slot, index) in slots" :key="index" 
                          @click="startSelecting(index)"
-                         class="border-2 border-dashed border-gray-300 flex flex-col cursor-pointer hover:bg-blue-50 hover:border-blue-300 relative group overflow-hidden bg-gray-50">
-                        <div class="w-full aspect-square bg-gray-200 relative overflow-hidden">
+                         class="border-2 border-dashed border-gray-300 flex flex-col cursor-pointer hover:bg-blue-50 hover:border-blue-300 relative group overflow-hidden bg-gray-50 aspect-[3/4]">
+                        <div class="w-full aspect-square bg-gray-100 relative overflow-hidden">
                             <div v-if="slot" class="w-full h-full relative">
                                 <img :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
                             </div>
                             <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xl">+</div>
                         </div>
-                        <div class="flex-1 bg-white border-t border-gray-100 flex flex-col">
-                            <div class="h-6 border-b border-gray-100 flex items-center px-1 text-[8px] text-gray-400 truncate">名前：</div>
-                            <div class="flex-1 p-1 text-[8px] text-gray-400">性格/特徴：</div>
+                        <div class="flex-1 bg-white border-t border-gray-100 p-1">
+                            <div class="text-[8px] text-gray-300 border-b mb-1">名前：</div>
+                            <div class="text-[8px] text-gray-300">性格/特徴：</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- 2. キャラクター選択 -->
         <div v-if="view === 'char-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                <div class="p-4 border-b flex justify-between items-center">
                     <h3 class="font-bold">キャラクターを選択</h3>
                     <button @click="view = 'main'" class="text-2xl">&times;</button>
                 </div>
                 <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     <div v-for="char in charData" :key="char.name" @click="selectCharacter(char.name)"
                          class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50 relative">
-                        <div v-if="selectedCharNames.includes(char.name)" class="absolute inset-0 bg-black/40 z-10 flex items-center justify-center rounded">
-                            <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">配置済み</span>
-                        </div>
                         <div class="w-full aspect-square bg-gray-200 mb-2 rounded overflow-hidden">
                             <img :src="char.urls[0]" class="w-full h-full object-cover" crossorigin="anonymous">
                         </div>
@@ -104,10 +116,11 @@
             </div>
         </div>
 
+        <!-- 3. 画像選択 -->
         <div v-if="view === 'image-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div class="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
-                    <h3 class="font-bold">{{ currentSelectedCharName }} の画像を選択</h3>
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h3 class="font-bold">{{ currentSelectedCharName }}</h3>
                     <button @click="view = 'char-select'" class="text-blue-600 text-sm">戻る</button>
                 </div>
                 <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -119,10 +132,11 @@
             </div>
         </div>
 
+        <!-- 4. 位置調整 -->
         <div v-if="view === 'crop-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
                 <div class="p-4 bg-gray-50 border-b font-bold flex justify-between items-center">
-                    <span>ドラッグして調整</span>
+                    <span>画像をドラッグして調整</span>
                     <button @click="view = 'image-select'" class="text-gray-400">&times;</button>
                 </div>
                 <div class="p-6">
@@ -131,35 +145,32 @@
                          @pointerdown="startDragging" @pointermove="doDragging" @pointerup="stopDragging">
                         <img :src="currentSelectedImageUrl" class="absolute max-w-none pointer-events-none" :style="currentCropImgStyle" crossorigin="anonymous">
                     </div>
-                    <div class="mt-8 space-y-6">
-                        <div class="flex items-center gap-4">
-                            <span class="text-xs text-gray-400">縮小</span>
-                            <input type="range" v-model.number="crop.zoom" min="1" max="5" step="0.01" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            <span class="text-xs text-gray-400">拡大</span>
-                        </div>
+                    <div class="mt-8 space-y-4">
+                        <input type="range" v-model.number="crop.zoom" min="1" max="5" step="0.01" class="w-full">
                         <div class="flex gap-2">
-                            <button @click="resetCrop" class="flex-1 py-2 text-sm text-gray-500 border border-gray-200 rounded hover:bg-gray-50">リセット</button>
-                            <button @click="rotateImage" class="flex-1 py-2 text-sm text-blue-600 border border-blue-200 rounded hover:bg-blue-50">90度回転</button>
-                            <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">配置決定</button>
+                            <button @click="rotateImage" class="flex-1 py-2 border rounded">回転</button>
+                            <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-2 rounded font-bold">決定</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- 5. プレビュー & 保存 -->
         <div v-if="view === 'preview'" class="text-center pb-20">
             <div class="flex flex-wrap justify-center gap-4 mb-8 sticky top-4 z-10">
-                <button @click="downloadPDF" :disabled="exporting" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg disabled:opacity-50">
-                    {{ exporting ? 'PDF作成中...' : 'PDF保存' }}
-                </button>
                 <button @click="downloadPNG" :disabled="exporting" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold shadow-lg disabled:opacity-50">
-                    {{ exporting ? 'PNG作成中...' : 'PNG保存' }}
+                    {{ exporting ? '作成中...' : 'PNG画像を保存' }}
+                </button>
+                <button @click="downloadPDF" :disabled="exporting" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg disabled:opacity-50">
+                    {{ exporting ? '作成中...' : 'PDFを保存' }}
                 </button>
                 <button @click="view = 'main'" class="bg-gray-200 text-gray-800 px-8 py-3 rounded-full font-bold">戻る</button>
             </div>
+            
             <div class="preview-wrapper">
-                <div id="preview-container" class="preview-scale">
-                    <div id="miri-shira-sheet" class="a4-landscape" style="grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(3, 1fr); gap: 4px; padding: 10px;">
+                <div class="preview-scale">
+                    <div class="sheet-design shadow-2xl">
                         <div v-for="(slot, index) in slots" :key="index" class="slot-box">
                             <div class="slot-img-container">
                                 <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
@@ -169,6 +180,21 @@
                                 <div class="slot-desc">性格/特徴：</div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隠し：書き出し専用の原寸大エリア -->
+        <div id="export-area" v-if="view === 'preview'">
+            <div id="capture-target" class="sheet-design">
+                <div v-for="(slot, index) in slots" :key="index" class="slot-box">
+                    <div class="slot-img-container">
+                        <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
+                    </div>
+                    <div class="slot-info">
+                        <div class="slot-name">名前：</div>
+                        <div class="slot-desc">性格/特徴：</div>
                     </div>
                 </div>
             </div>
@@ -202,10 +228,11 @@
                         const text = await response.text();
                         const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
                         const headers = rows[0].split(',').map(h => h.trim());
+                        
                         const nameIndex = headers.indexOf('キャラクター名');
                         const urlIndex = headers.indexOf('画像URL');
 
-                        if (nameIndex === -1 || urlIndex === -1) throw new Error('CSVヘッダーに "キャラクター名" または "画像URL" が必要です。');
+                        if (nameIndex === -1 || urlIndex === -1) throw new Error('CSVヘッダーを「キャラクター名,画像URL」にしてください。');
 
                         const groupedData = {};
                         rows.slice(1).forEach(row => {
@@ -227,8 +254,8 @@
 
                 onMounted(() => {
                     loadCSV();
-                    const savedSlots = localStorage.getItem('mirishira_temp_slots');
-                    if (savedSlots) { try { slots.value = JSON.parse(savedSlots); } catch (e) {} }
+                    const saved = localStorage.getItem('mirishira_temp_slots');
+                    if (saved) { try { slots.value = JSON.parse(saved); } catch (e) {} }
                 });
 
                 watch(slots, (newVal) => { localStorage.setItem('mirishira_temp_slots', JSON.stringify(newVal)); }, { deep: true });
@@ -249,8 +276,7 @@
                     left: `${50 + s.x}%`,
                     top: `${50 + s.y}%`,
                     transform: `translate(-50%, -50%) rotate(${s.rotate || 0}deg)`,
-                    position: 'absolute',
-                    maxWidth: 'none'
+                    position: 'absolute'
                 });
                 const currentCropImgStyle = computed(() => getSlotImgStyle(crop.value));
                 
@@ -263,17 +289,32 @@
                     lastPos.value = { x: e.clientX, y: e.clientY };
                 };
                 const stopDragging = (e) => { pointers.delete(e.pointerId); };
-                const resetCrop = () => { crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; };
                 const rotateImage = () => { crop.value.rotate = (crop.value.rotate + 90) % 360; };
 
-                const downloadPDF = async () => {
-                    exporting.value = true;
-                    try {
-                        const canvas = await generateCanvas();
-                        const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] });
-                        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794);
-                        pdf.save('mirishira.pdf');
-                    } finally { exporting.value = false; }
+                // キャンバス生成処理（原寸大エリアを対象にする）
+                const generateCanvas = async () => {
+                    // フォントの読み込みを確実にする
+                    await document.fonts.ready;
+                    
+                    const target = document.getElementById('capture-target');
+                    if (!target) throw new Error("Capture target not found");
+
+                    // 念の為画像の読み込み待ち
+                    const imgs = target.querySelectorAll('img');
+                    await Promise.all(Array.from(imgs).map(img => {
+                        if (img.complete) return Promise.resolve();
+                        return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+                    }));
+
+                    return await html2canvas(target, {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: false,
+                        backgroundColor: '#ffffff',
+                        width: 1123,
+                        height: 794,
+                        logging: false
+                    });
                 };
 
                 const downloadPNG = async () => {
@@ -281,33 +322,24 @@
                     try {
                         const canvas = await generateCanvas();
                         const link = document.createElement('a');
-                        link.download = 'mirishira.png';
+                        link.download = `mirishira_${Date.now()}.png`;
                         link.href = canvas.toDataURL('image/png');
                         link.click();
+                    } catch (e) {
+                        alert("画像の生成に失敗しました。CORS設定を確認してください。");
                     } finally { exporting.value = false; }
                 };
 
-                const generateCanvas = async () => {
-                    const sheet = document.getElementById('miri-shira-sheet');
-                    const wrapper = document.getElementById('preview-container');
-                    
-                    // キャプチャ用に一時的にスケールを戻す
-                    wrapper.classList.add('no-transform');
-                    
-                    // 画像の読み込み完了を保証するため少し待機
-                    await new Promise(r => setTimeout(r, 500));
-                    
-                    const canvas = await html2canvas(sheet, {
-                        scale: 2,
-                        useCORS: true,
-                        allowTaint: false,
-                        backgroundColor: '#ffffff',
-                        width: 1123,
-                        height: 794
-                    });
-                    
-                    wrapper.classList.remove('no-transform');
-                    return canvas;
+                const downloadPDF = async () => {
+                    exporting.value = true;
+                    try {
+                        const canvas = await generateCanvas();
+                        const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] });
+                        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794);
+                        pdf.save(`mirishira_${Date.now()}.pdf`);
+                    } catch (e) {
+                        alert("PDFの生成に失敗しました。");
+                    } finally { exporting.value = false; }
                 };
 
                 const clearSheet = () => { if (confirm("リセットしますか？")) slots.value = Array(21).fill(null); };
@@ -315,7 +347,7 @@
                 return {
                     view, charData, slots, loading, exporting, error, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
                     startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
-                    startDragging, doDragging, stopDragging, resetCrop, rotateImage, downloadPDF, downloadPNG,
+                    startDragging, doDragging, stopDragging, rotateImage, downloadPDF, downloadPNG,
                     filledCount: computed(() => slots.value.filter(s => s !== null).length),
                     currentSelectedCharUrls, clearSheet, selectedCharNames 
                 };
