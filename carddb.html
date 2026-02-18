@@ -305,7 +305,6 @@
                 const [cardsCsv, skillsCsv, releaseCsv] = await Promise.all([
                     fetchCsv('card_data.csv'),
                     fetchCsv('skill_data.csv'),
-                    // パスを変更：expect/card_release.csv を読み込むように修正
                     fetchCsv('expect/card_release.csv').catch(() => null)
                 ]);
                 processData(cardsCsv, skillsCsv, releaseCsv);
@@ -658,7 +657,13 @@
                 { label: '狂暴性', val: card['狂暴性'] }, { label: '人間性', val: card['人間性'] }
             ];
 
-            // 修正：モバイル時に上が切れないよう pt-2 を追加、画像下の余白を mb-6 に調整
+            // スキル種別のスタイル判定関数
+            const getSkillTypeStyle = (type) => {
+                if (type === 'パッシブ') return 'bg-emerald-100 text-emerald-700';
+                if (type === 'アクティブ') return 'bg-blue-100 text-blue-700';
+                return 'bg-gray-100 text-gray-700';
+            };
+
             elements.modalContent.innerHTML = `
                 <div class="md:flex md:gap-8 items-start pt-2 md:pt-0">
                     <div class="w-full md:w-[40%] flex-shrink-0">
@@ -711,10 +716,24 @@
                             ${card.skills.length > 0 ? card.skills.map(s => {
                                 const currentMP = s.MP !== undefined && s.MP !== null && s.MP !== '' ? s.MP : s['消費MP'];
                                 return `
-                                <div class="bg-white border-l-4 border-gray-200 pl-4 py-1 hover:border-blue-300 transition-colors"><div class="flex items-center gap-2 flex-wrap mb-1"><span class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm ${s['スキル種別'] === 'パッシブ' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${s['スキル種別']}</span><span class="text-sm font-bold text-gray-800">${s['スキル名']}</span><div class="flex gap-1 ml-auto">${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}${currentMP !== undefined && currentMP !== null && currentMP !== '' ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">MP ${currentMP}</span>` : ''}</div></div>
-                                <div class="flex flex-wrap gap-2 mb-1">${s['攻撃対象'] ? `<span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 rounded">対象: ${s['攻撃対象']}</span>` : ''}${s['ダメージ倍率'] ? `<span class="text-[10px] text-rose-600 bg-rose-50 px-1.5 rounded">倍率: ${s['ダメージ倍率']}</span>` : ''}</div>
-                                <div class="text-[11px] text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
-                                ${s['使用条件'] ? `<div class="text-[10px] text-red-400 mt-1 font-medium bg-red-50 inline-block px-1.5 rounded">条件: ${s['使用条件']}</div>` : ''}</div>
+                                <div class="bg-white border-l-4 border-gray-200 pl-4 py-1 hover:border-blue-300 transition-colors">
+                                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm ${getSkillTypeStyle(s['スキル種別'])}">
+                                            ${s['スキル種別']}
+                                        </span>
+                                        <span class="text-sm font-bold text-gray-800">${s['スキル名']}</span>
+                                        <div class="flex gap-1 ml-auto">
+                                            ${s['消費TU'] !== undefined && s['消費TU'] !== null ? `<span class="text-[8px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">TU ${s['消費TU']}</span>` : ''}
+                                            ${currentMP !== undefined && currentMP !== null && currentMP !== '' ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 rounded-full border">MP ${currentMP}</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 mb-1">
+                                        ${s['攻撃対象'] ? `<span class="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 rounded">対象: ${s['攻撃対象']}</span>` : ''}
+                                        ${s['ダメージ倍率'] ? `<span class="text-[10px] text-rose-600 bg-rose-50 px-1.5 rounded">倍率: ${s['ダメージ倍率']}</span>` : ''}
+                                    </div>
+                                    <div class="text-[11px] text-gray-600 leading-relaxed">${s['効果内容'] || ''}</div>
+                                    ${s['使用条件'] ? `<div class="text-[10px] text-red-400 mt-1 font-medium bg-red-50 inline-block px-1.5 rounded">条件: ${s['使用条件']}</div>` : ''}
+                                </div>
                             `}).join('') : '<p class="text-xs text-gray-400 italic">スキルなし</p>'}
                         </div></div>
                     </div>
