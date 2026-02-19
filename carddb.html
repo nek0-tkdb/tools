@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,17 +12,21 @@
         body {
             -webkit-overflow-scrolling: touch;
         }
+
         .card-image-container {
             aspect-ratio: 1 / 1;
             overflow: hidden;
             background-color: #f3f4f6;
         }
+
         .card-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            object-position: top; /* 画像の上部を優先して表示 */
+            object-position: top;
+            /* 画像の上部を優先して表示 */
         }
+
         .skill-badge {
             font-size: 10px;
             padding: 1px 4px;
@@ -31,26 +36,33 @@
             text-overflow: ellipsis;
             max-width: 100%;
         }
+
         #modal {
             transition: opacity 0.2s ease-out;
         }
+
         .modal-content-container {
             transition: transform 0.3s ease-out;
             transform: translateY(100%);
         }
+
         #modal:not(.hidden) .modal-content-container {
             transform: translateY(0);
         }
+
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
+
         /* お気に入りボタンのアニメーション */
         .heart-btn {
             transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
+
         .heart-btn:active {
             transform: scale(1.4);
         }
+
         /* テーブルのスタイル */
         .table-container {
             overflow-x: auto;
@@ -59,11 +71,13 @@
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             max-height: 80vh;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.7rem;
         }
+
         th {
             background-color: #f9fafb;
             position: sticky;
@@ -77,24 +91,30 @@
             border-bottom: 1px solid #e5e7eb;
             user-select: none;
         }
+
         th.sortable {
             cursor: pointer;
         }
+
         th.sortable:hover {
             background-color: #f3f4f6;
             color: #3b82f6;
         }
+
         td {
             padding: 0.5rem;
             border-bottom: 1px solid #f3f4f6;
             white-space: nowrap;
         }
+
         tr:last-child td {
             border-bottom: none;
         }
+
         tr:hover {
             background-color: #f9fafb;
         }
+
         /* ソートアイコン */
         .sort-icon {
             display: inline-block;
@@ -102,15 +122,18 @@
             font-size: 8px;
             opacity: 0.3;
         }
+
         th.active-sort {
             color: #3b82f6;
             background-color: #eff6ff;
         }
+
         th.active-sort .sort-icon {
             opacity: 1;
         }
     </style>
 </head>
+
 <body class="bg-gray-100 text-gray-900 min-h-screen pb-10">
 
     <!-- ヘッダー -->
@@ -122,15 +145,31 @@
                     <div id="data-status" class="text-[10px] font-bold text-gray-400 mt-1">準備中...</div>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
-                    <button id="view-toggle" class="flex items-center justify-center p-2.5 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors shadow-sm">
-                        <svg id="grid-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                        <svg id="list-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    <button id="view-toggle"
+                        class="flex items-center justify-center p-2.5 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 transition-colors shadow-sm">
+                        <svg id="grid-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0 hidden"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        <svg id="list-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
                     </button>
-                    
-                    <button id="toggle-filters" class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+
+                    <button id="toggle-filters"
+                        class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 relative transition-colors shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
                         <span class="text-sm font-bold">条件</span>
-                        <div id="filter-indicator" class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>
+                        <div id="filter-indicator"
+                            class="hidden absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white">
+                        </div>
                     </button>
                 </div>
             </div>
@@ -140,31 +179,52 @@
                 <div class="grid grid-cols-3 gap-2">
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">スキル名</label>
-                        <select id="filter-skill" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500"><option value="">すべて</option></select>
+                        <select id="filter-skill"
+                            class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                        </select>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">対象</label>
-                        <select id="filter-target" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500"><option value="">すべて</option></select>
+                        <select id="filter-target"
+                            class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                        </select>
                     </div>
                     <div class="invisible"></div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">キャラクター</label>
-                        <select id="filter-char" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500"><option value="">すべて</option></select>
+                        <select id="filter-char"
+                            class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                        </select>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">属性</label>
-                        <select id="filter-attr" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500"><option value="">すべて</option><option value="青">青</option><option value="赤">赤</option><option value="緑">緑</option></select>
+                        <select id="filter-attr"
+                            class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべて</option>
+                            <option value="青">青</option>
+                            <option value="赤">赤</option>
+                            <option value="緑">緑</option>
+                        </select>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">お気に入り</label>
-                        <button id="filter-fav" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors">
-                            <svg id="fav-icon-toggle" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                        <button id="filter-fav"
+                            class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors">
+                            <svg id="fav-icon-toggle" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                            </svg>
                             <span>のみ</span>
                         </button>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">並び替え</label>
-                        <select id="sort-key" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="sort-key"
+                            class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="ソートNo">ソートNo</option>
                             <option value="開始日">開始日</option>
                             <option value="復刻回数">回数</option>
@@ -179,14 +239,20 @@
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 ml-1">順序</label>
-                        <select id="sort-order" class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="sort-order"
+                            class="w-full px-1 py-2 bg-gray-50 border rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="asc">昇順</option>
                             <option value="desc" selected>降順</option>
                         </select>
                     </div>
                     <div class="flex items-end">
-                        <button id="reset-filters" class="w-full py-2 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 flex items-center justify-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        <button id="reset-filters"
+                            class="w-full py-2 bg-gray-200 text-gray-600 text-[10px] font-bold rounded-lg hover:bg-gray-300 flex items-center justify-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
                             リセット
                         </button>
                     </div>
@@ -196,14 +262,17 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-2 py-3">
-        <div id="setup-area" class="hidden p-6 bg-white rounded-xl border-2 border-dashed border-gray-300 text-center my-4">
+        <div id="setup-area"
+            class="hidden p-6 bg-white rounded-xl border-2 border-dashed border-gray-300 text-center my-4">
             <p class="text-sm font-bold text-gray-600 mb-3">CSVファイルを読み込めませんでした（カード、スキル、リリース）</p>
             <input type="file" id="file-input" multiple accept=".csv" class="hidden">
-            <label for="file-input" class="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold cursor-pointer inline-block">ファイルを選択</label>
+            <label for="file-input"
+                class="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-bold cursor-pointer inline-block">ファイルを選択</label>
         </div>
 
         <div id="loading" class="text-center py-20">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent">
+            </div>
         </div>
 
         <div id="card-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 hidden"></div>
@@ -237,15 +306,24 @@
     </main>
 
     <!-- 詳細モーダル -->
-    <div id="modal" class="fixed inset-0 z-[60] hidden bg-black bg-opacity-60 flex items-end md:items-center justify-center p-0 md:p-4">
-        <div class="modal-content-container bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl relative">
-            <button id="close-modal-pc" class="hidden md:block absolute top-4 right-4 z-10 p-2 bg-black/10 hover:bg-black/20 rounded-full text-gray-600 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+    <div id="modal"
+        class="fixed inset-0 z-[60] hidden bg-black bg-opacity-60 flex items-end md:items-center justify-center p-0 md:p-4">
+        <div
+            class="modal-content-container bg-white w-full md:max-w-4xl rounded-t-2xl md:rounded-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl relative">
+            <button id="close-modal-pc"
+                class="hidden md:block absolute top-4 right-4 z-10 p-2 bg-black/10 hover:bg-black/20 rounded-full text-gray-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
             </button>
-            <div class="md:hidden flex justify-center py-2 cursor-pointer" id="close-bar"><div class="w-10 h-1 bg-gray-300 rounded-full"></div></div>
+            <div class="md:hidden flex justify-center py-2 cursor-pointer" id="close-bar">
+                <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+            </div>
             <div id="modal-content" class="overflow-y-auto p-4 md:p-8 no-scrollbar"></div>
             <div class="p-4 border-t bg-gray-50 text-center md:hidden">
-                <button id="close-modal-btn" class="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl active:bg-gray-300 transition-colors">閉じる</button>
+                <button id="close-modal-btn"
+                    class="w-full py-3 bg-gray-200 text-gray-700 font-bold rounded-xl active:bg-gray-300 transition-colors">閉じる</button>
             </div>
         </div>
     </div>
@@ -346,7 +424,7 @@
             cardData.forEach(card => {
                 const nameKey = card['カード名'];
                 card.skills = skillsMap[nameKey] || [];
-                
+
                 const history = releaseMap[nameKey] || [];
                 history.sort((a, b) => String(b['開始日']).localeCompare(String(a['開始日'])));
                 card.release_history = history;
@@ -429,9 +507,10 @@
                     const matchChar = !char || card['キャラクター名'] === char;
                     const matchAttr = !attr || card['属性'] === attr;
                     const matchFav = !showOnlyFavorites || favorites.has(card['カード名']);
-                    const matchSkillFilters = card.skills.some(s => {
-                        const nMatch = !skill || String(s['スキル名']) === skill;
-                        const tMatch = !target || String(s['攻撃対象']) === target;
+                    const skillsToCheck = card.skills.length ? card.skills : [{}];
+                    const matchSkillFilters = skillsToCheck.some(s => {
+                        const nMatch = !skill || String(s['スキル名'] || '') === skill;
+                        const tMatch = !target || String(s['攻撃対象'] || '') === target;
                         return nMatch && tMatch;
                     });
                     return matchChar && matchAttr && matchFav && matchSkillFilters;
@@ -439,12 +518,13 @@
             } else {
                 filtered = [];
                 cardData.forEach(card => {
-                    card.skills.forEach(s => {
+                    const skillsToCheck = card.skills.length ? card.skills : [{}];
+                    skillsToCheck.forEach(s => {
                         const matchChar = !char || card['キャラクター名'] === char;
                         const matchAttr = !attr || card['属性'] === attr;
                         const matchFav = !showOnlyFavorites || favorites.has(card['カード名']);
-                        const matchSkillName = !skill || String(s['スキル名']) === skill;
-                        const matchTarget = !target || String(s['攻撃対象']) === target;
+                        const matchSkillName = !skill || String(s['スキル名'] || '') === skill;
+                        const matchTarget = !target || String(s['攻撃対象'] || '') === target;
                         if (matchChar && matchAttr && matchFav && matchSkillName && matchTarget) {
                             filtered.push({ ...card, ...s, originalCard: card });
                         }
@@ -525,7 +605,7 @@
             elements.filterTarget.onchange = updateAction;
             elements.sortKey.onchange = updateAction;
             elements.sortOrder.onchange = updateAction;
-            
+
             elements.filterFav.onclick = () => {
                 showOnlyFavorites = !showOnlyFavorites;
                 elements.filterFav.classList.toggle('bg-red-50', showOnlyFavorites);
@@ -550,7 +630,7 @@
             elements.closeModalBtn.onclick = closeModal;
             elements.closeModalPc.onclick = closeModal;
             elements.closeBar.onclick = closeModal;
-            window.onclick = (e) => { if(e.target === elements.modal) closeModal(); };
+            window.onclick = (e) => { if (e.target === elements.modal) closeModal(); };
 
             elements.fileInput.onchange = async (e) => {
                 const files = Array.from(e.target.files);
@@ -617,7 +697,7 @@
                 tr.className = 'cursor-pointer hover:bg-blue-50/30 transition-colors';
                 const isFav = favorites.has(row['カード名']);
                 const attrColor = getAttrColor(row['属性']);
-                
+
                 tr.innerHTML = `
                     <td class="text-center"><button onclick="toggleFavorite('${row['カード名']}', event)" class="heart-btn ${isFav ? 'text-red-500' : 'text-gray-300'}"><svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="${isFav ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg></button></td>
                     <td><img src="${row['画像URL']}" class="w-8 h-8 rounded object-cover border" onerror="this.src='https://via.placeholder.com/40x40?text=Card'"></td>
@@ -714,8 +794,8 @@
                         <div class="animate-in fade-in slide-in-from-bottom duration-700"><div class="flex items-center gap-2 mb-3 text-gray-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg><span class="text-[10px] font-bold uppercase tracking-widest">Battle Skills</span></div>
                         <div class="space-y-4">
                             ${card.skills.length > 0 ? card.skills.map(s => {
-                                const currentMP = s.MP !== undefined && s.MP !== null && s.MP !== '' ? s.MP : s['消費MP'];
-                                return `
+                const currentMP = s.MP !== undefined && s.MP !== null && s.MP !== '' ? s.MP : s['消費MP'];
+                return `
                                 <div class="bg-white border-l-4 border-gray-200 pl-4 py-1 hover:border-blue-300 transition-colors">
                                     <div class="flex items-center gap-2 flex-wrap mb-1">
                                         <span class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm ${getSkillTypeStyle(s['スキル種別'])}">
@@ -739,7 +819,7 @@
                     </div>
                 </div>
             `;
-            
+
             // 修正：モーダル表示時に一番上へスクロールさせる
             elements.modalContent.scrollTop = 0;
             elements.modal.classList.remove('hidden');
@@ -748,4 +828,5 @@
         window.onload = init;
     </script>
 </body>
+
 </html>
