@@ -1,298 +1,951 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>カード復刻予測</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>カード復刻予測 | Nek0 Projects</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
-    body { font-family: 'Noto Sans JP', sans-serif; }
-    .card-item:hover { transform: translateX(4px); }
-    .prediction-card { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%); }
-    .glow { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
-    .card-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
-    .card-img-large { width: 120px; height: 120px; object-fit: cover; border-radius: 12px; }
-    .attr-火 { background-color: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.5); }
-    .attr-水 { background-color: rgba(59, 130, 246, 0.3); border-color: rgba(59, 130, 246, 0.5); }
-    .attr-草 { background-color: rgba(34, 197, 94, 0.3); border-color: rgba(34, 197, 94, 0.5); }
+    /* ---- 復刻予測 専用スタイル ---- */
+
+    /* 属性バッジ */
+    .attr-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid;
+    }
+
+    .attr-火 {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .attr-水 {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #60a5fa;
+    }
+
+    .attr-草 {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #4ade80;
+    }
+
+    .attr-赤 {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
+    .attr-青 {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #60a5fa;
+    }
+
+    .attr-緑 {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #4ade80;
+    }
+
+    /* カード一覧アイテム */
+    .card-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .card-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--accent-color);
+      transform: translateX(3px);
+    }
+
+    .card-img {
+      width: 52px;
+      height: 52px;
+      object-fit: cover;
+      object-position: top;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .card-img-large {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      object-position: top;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      flex-shrink: 0;
+    }
+
+    .card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-char {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .card-right {
+      text-align: right;
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* 次回予測カード */
+    .prediction-highlight {
+      background: rgba(167, 139, 250, 0.08);
+      border: 1px solid rgba(167, 139, 250, 0.3);
+      border-radius: 14px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .prediction-highlight:hover {
+      background: rgba(167, 139, 250, 0.14);
+      border-color: var(--accent-color);
+      transform: translateY(-2px);
+    }
+
+    .next-date-box {
+      background: rgba(167, 139, 250, 0.07);
+      border: 1px solid rgba(167, 139, 250, 0.2);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+
+    /* 月間予測リスト */
+    .monthly-group {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .monthly-group-header {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 8px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .monthly-date {
+      color: var(--accent-color);
+      font-weight: 700;
+    }
+
+    .monthly-group-body {
+      padding: 8px;
+    }
+
+    .monthly-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 4px;
+    }
+
+    .monthly-card:last-child {
+      margin-bottom: 0;
+    }
+
+    .monthly-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .monthly-card img {
+      width: 36px;
+      height: 36px;
+      object-fit: cover;
+      object-position: top;
+      border-radius: 6px;
+    }
+
+    /* 信頼度バッジ */
+    .conf-high {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    .conf-medium {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fcd34d;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    .conf-low {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    /* カレンダー */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+    }
+
+    .cal-header-cell {
+      text-align: center;
+      font-size: 0.65rem;
+      padding: 4px 0;
+      color: var(--text-secondary);
+    }
+
+    .cal-header-cell.reprint-day {
+      color: var(--accent-color);
+      font-weight: 700;
+    }
+
+    .cal-cell {
+      min-height: 60px;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(0, 0, 0, 0.15);
+      font-size: 0.7rem;
+      transition: all 0.15s;
+    }
+
+    .cal-cell.is-today {
+      background: rgba(167, 139, 250, 0.12);
+      border-color: var(--accent-color);
+    }
+
+    .cal-cell.is-past {
+      opacity: 0.35;
+    }
+
+    .cal-cell.has-pred {
+      background: rgba(167, 139, 250, 0.07);
+      border-color: rgba(167, 139, 250, 0.25);
+      cursor: pointer;
+    }
+
+    .cal-cell.has-pred:hover {
+      background: rgba(167, 139, 250, 0.15);
+    }
+
+    .cal-cell.reprint-day {
+      border-color: rgba(167, 139, 250, 0.12);
+    }
+
+    .cal-date {
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+    }
+
+    .cal-date.today-text {
+      color: var(--accent-color);
+      font-weight: 700;
+    }
+
+    .cal-date.reprint-text {
+      color: rgba(167, 139, 250, 0.7);
+    }
+
+    .cal-chips {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .cal-chip {
+      font-size: 0.55rem;
+      background: rgba(167, 139, 250, 0.2);
+      color: #ddd6fe;
+      border-radius: 3px;
+      padding: 1px 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ビュー切替ボタン */
+    .view-tab {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .view-tab.active {
+      background: rgba(167, 139, 250, 0.15);
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+      font-weight: 700;
+    }
+
+    /* 検索ボックス */
+    .search-box {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: all 0.2s;
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+
+    .search-box:focus {
+      border-color: var(--accent-color);
+    }
+
+    /* スクロールエリア */
+    .scroll-area {
+      max-height: 500px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .scroll-area::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .scroll-area::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 4px;
+    }
+
+    .scroll-area::-webkit-scrollbar-thumb {
+      background: var(--accent-color);
+      border-radius: 4px;
+      opacity: 0.6;
+    }
+
+    /* モーダル */
+    .pred-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .pred-modal-overlay.open {
+      display: flex;
+    }
+
+    .pred-modal-content {
+      background: var(--bg-dark);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 88vh;
+      overflow-y: auto;
+      position: relative;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 統計グリッド */
+    .stat-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .stat-mini {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .stat-mini-label {
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .stat-mini-val {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    /* ランキングアイコン */
+    .rank-badge {
+      font-size: 1.3rem;
+    }
+
+    /* セクションタイトル */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ローディング */
+    .loading-spin {
+      width: 44px;
+      height: 44px;
+      border: 3px solid var(--accent-color);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @media (max-width: 600px) {
+      .cal-cell {
+        min-height: 44px;
+      }
+
+      .cal-chip {
+        display: none;
+      }
+    }
   </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-white">
-  <div id="loading" class="min-h-screen flex items-center justify-center">
-    <div class="text-center">
-      <div class="text-4xl mb-4 animate-pulse">🔮</div>
-      <p class="text-slate-400">データを読み込み中...</p>
+
+<body>
+  <div class="background-animation"></div>
+
+  <!-- ローディング -->
+  <div id="loading"
+    style="position: fixed; inset: 0; background: var(--bg-dark); z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center;">
+    <div class="loading-spin"></div>
+    <p style="color: var(--text-secondary); font-size: 0.85rem;">データを読み込み中...</p>
+  </div>
+
+  <div id="mainContent" class="hidden">
+    <div class="container">
+
+      <!-- ヘッダー -->
+      <header class="site-header">
+        <div class="logo">🔮 カード復刻予測</div>
+        <p class="subtitle">毎週火曜・金曜に2枚ずつ復刻するパターンから予測</p>
+      </header>
+
+      <main>
+
+        <!-- 次回復刻予測 -->
+        <div class="content-card">
+          <div class="section-label"><i class="fa-solid fa-star" style="color:var(--accent-color);"></i> 次回復刻するカード予測
+          </div>
+          <div id="nextReprintPrediction"></div>
+        </div>
+
+        <!-- 今後1か月の復刻予測 -->
+        <div class="content-card">
+          <div class="section-label"><i class="fa-solid fa-calendar-days" style="color:var(--accent-color);"></i>
+            今後1か月の復刻予測</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 10px;"><span
+              id="dateRange"></span></div>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button id="viewList" class="view-tab active">リスト表示</button>
+            <button id="viewCalendar" class="view-tab">カレンダー表示</button>
+          </div>
+          <div id="monthlyListView" class="scroll-area"></div>
+          <div id="monthlyCalendarView" class="hidden"></div>
+        </div>
+
+        <!-- カード一覧から選択 -->
+        <div class="content-card">
+          <div class="section-label"><i class="fa-solid fa-list" style="color:var(--accent-color);"></i> カード一覧から選択</div>
+          <div style="margin-bottom: 12px;">
+            <input type="text" id="searchInput" placeholder="カード名・キャラ名で検索..." class="search-box">
+          </div>
+          <div id="cardList" class="scroll-area"></div>
+        </div>
+
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 20px;">
+          <a href="../index.html" class="btn-back" style="border: none; opacity: 0.6;">← ツール一覧に戻る</a>
+        </div>
+      </main>
+
+      <footer class="site-footer">
+        <p>&copy; 2024 Nek0 Project. Unofficial Tool.</p>
+      </footer>
     </div>
   </div>
-  <div id="mainContent" class="hidden">
-    <div class="container mx-auto px-4 py-8 max-w-4xl">
-      <header class="text-center mb-10">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent mb-2">🔮 カード復刻予測</h1>
-        <p class="text-slate-400 text-sm">毎週火曜・金曜に2枚ずつ復刻するパターンから予測</p>
-      </header>
-      <section class="mb-10">
-        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span class="text-2xl">✨</span>次回復刻するカード予測</h2>
-        <div id="nextReprintPrediction" class="grid md:grid-cols-2 gap-4"></div>
-      </section>
-      <section class="mb-10">
-        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span class="text-2xl">📅</span>今後1か月の復刻予測</h2>
-        <div class="text-sm text-slate-400 mb-3"><span id="dateRange"></span></div>
-        <div class="flex gap-2 mb-4">
-          <button id="viewList" class="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm transition-all">リスト表示</button>
-          <button id="viewCalendar" class="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-all">カレンダー表示</button>
-        </div>
-        <div id="monthlyListView" class="space-y-2 max-h-[500px] overflow-y-auto pr-2"></div>
-        <div id="monthlyCalendarView" class="hidden"><div id="calendarGrid" class="grid grid-cols-7 gap-1"></div></div>
-      </section>
-      <section>
-        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span class="text-2xl">📋</span>カード一覧から選択</h2>
-        <div class="mb-4"><input type="text" id="searchInput" placeholder="カード名・キャラ名で検索..." class="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"></div>
-        <div id="cardList" class="space-y-2 max-h-[500px] overflow-y-auto pr-2"></div>
-      </section>
-      <div id="detailModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="prediction-card rounded-2xl p-6 max-w-md w-full glow relative max-h-[90vh] overflow-y-auto">
-          <button id="closeModal" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl">&times;</button>
-          <div id="modalContent"></div>
-        </div>
+
+  <!-- 詳細モーダル -->
+  <div id="detailModal" class="pred-modal-overlay">
+    <div class="pred-modal-content">
+      <button id="closeModal"
+        style="position: absolute; top: 14px; right: 14px; background: none; border: none; color: var(--text-secondary); font-size: 1.4rem; cursor: pointer;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script>
+    let cardMap = null;
+    let today = new Date();
+    let allReprintDates = [];
+    const attrConfig = { '火': { emoji: '🔥' }, '水': { emoji: '💧' }, '草': { emoji: '🌿' }, '赤': { emoji: '🔴' }, '青': { emoji: '🔵' }, '緑': { emoji: '🟢' } };
+
+    async function loadCSV(filename) {
+      try {
+        const response = await fetch(filename);
+        if (!response.ok) throw new Error('CSV読み込み失敗');
+        const buffer = await response.arrayBuffer();
+        return new TextDecoder('shift-jis').decode(buffer);
+      } catch (error) {
+        console.error('CSVファイルの読み込みエラー:', error);
+        return null;
+      }
+    }
+
+    function parseCSV(csv) {
+      return csv.trim().split('\n').slice(1).map(line => {
+        const v = line.split(',');
+        return { charName: v[1], cardName: v[2], series: v[3], attr: v[4], startDate: parseDate(v[5]), endDate: parseDate(v[6]), reprintCount: parseInt(v[7]), imageUrl: v[8] };
+      });
+    }
+    function parseDate(s) { const [y, m, d] = s.split('/').map(Number); return new Date(y, m - 1, d); }
+    function formatDate(d) { return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`; }
+
+    function aggregateCards(data) {
+      const map = new Map();
+      data.forEach(e => {
+        const key = `${e.charName}_${e.cardName}`;
+        if (!map.has(key)) map.set(key, { charName: e.charName, cardName: e.cardName, series: e.series, attr: e.attr, imageUrl: e.imageUrl, appearances: [], maxReprintCount: 0 });
+        const c = map.get(key);
+        c.appearances.push({ startDate: e.startDate, endDate: e.endDate, reprintCount: e.reprintCount });
+        c.maxReprintCount = Math.max(c.maxReprintCount, e.reprintCount);
+      });
+      map.forEach(c => c.appearances.sort((a, b) => a.startDate - b.startDate));
+      return map;
+    }
+
+    function calculateIntervals(appearances) {
+      const intervals = [];
+      for (let i = 1; i < appearances.length; i++) intervals.push(Math.round((appearances[i].startDate - appearances[i - 1].startDate) / 864e5));
+      return intervals;
+    }
+
+    function getNextReprintDates(from, count = 200) {
+      const dates = []; const cur = new Date(from);
+      while (dates.length < count) { if (cur.getDay() === 2 || cur.getDay() === 5) dates.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+      return dates;
+    }
+
+    // 期待間隔を加重平均で計算（直近の間隔を重視 + 復刻回数補正）
+    function calcExpectedInterval(card) {
+      const intervals = calculateIntervals(card.appearances);
+      let expectedInterval = 60;
+      if (intervals.length >= 2) {
+        // 直近の間隔ほど重みを大きくした加重平均
+        let weightedSum = 0, weightTotal = 0;
+        intervals.forEach((iv, i) => {
+          const weight = i + 1;
+          weightedSum += iv * weight;
+          weightTotal += weight;
+        });
+        expectedInterval = Math.round(weightedSum / weightTotal);
+      } else if (intervals.length === 1) {
+        expectedInterval = intervals[0];
+      }
+      // 復刻回数が3回以上のカードは間隔が伸びる傾向を補正
+      const reprintCount = card.maxReprintCount;
+      if (reprintCount >= 3) {
+        expectedInterval = Math.round(expectedInterval * (1 + (reprintCount - 2) * 0.15));
+      }
+      return expectedInterval;
+    }
+
+    function calculateReprintScore(card) {
+      const last = card.appearances[card.appearances.length - 1].startDate;
+      const days = Math.round((today - last) / 864e5);
+      const expectedInterval = calcExpectedInterval(card);
+      const intervals = calculateIntervals(card.appearances);
+      const avgInterval = intervals.length > 0 ? Math.round(intervals.reduce((a, b) => a + b, 0) / intervals.length) : 60;
+      return { score: days / expectedInterval, daysSinceLast: days, avgInterval: avgInterval, expectedInterval: expectedInterval, lastAppearance: last, reprintCount: card.maxReprintCount };
+    }
+
+    let cachedRankings = null;
+    function getRankings() {
+      if (cachedRankings) return cachedRankings;
+      const allScores = [];
+      cardMap.forEach((c, k) => allScores.push({ key: k, score: calculateReprintScore(c).score }));
+      allScores.sort((a, b) => b.score - a.score);
+      cachedRankings = allScores;
+      return cachedRankings;
+    }
+
+    function predictNextReprintCandidates() {
+      const rankings = getRankings();
+      const nextDate = allReprintDates[0];
+      return rankings.slice(0, 2).map((r, i) => {
+        const c = cardMap.get(r.key);
+        const score = calculateReprintScore(c);
+        return {
+          key: r.key, charName: c.charName, cardName: c.cardName, imageUrl: c.imageUrl, attr: c.attr, series: c.series,
+          prediction: { predictedDate: nextDate, confidence: r.score > 1.2 ? 'high' : r.score > 0.8 ? 'medium' : 'low', averageInterval: score.avgInterval, lastAppearance: score.lastAppearance },
+          daysUntil: Math.round((nextDate - today) / 864e5), daysSinceLast: score.daysSinceLast, score: r.score, reprintCount: score.reprintCount
+        };
+      });
+    }
+
+    function getMonthlyPredictions() {
+      const end = new Date(today); end.setDate(end.getDate() + 30);
+      const reprintDates = allReprintDates.filter(d => d <= end);
+      const predictions = [];
+      // シミュレーション用: 仮想的な最終復刻日を保持
+      const virtualLastDate = new Map();
+      cardMap.forEach((c, k) => {
+        virtualLastDate.set(k, c.appearances[c.appearances.length - 1].startDate);
+      });
+      reprintDates.forEach(date => {
+        // 各復刻日ごとにスコアを仮想最終復刻日で再計算
+        const scores = [];
+        cardMap.forEach((c, k) => {
+          const lastDate = virtualLastDate.get(k);
+          const days = Math.round((date - lastDate) / 864e5);
+          if (days <= 0) return;
+          const expectedInterval = calcExpectedInterval(c);
+          scores.push({ key: k, score: days / expectedInterval, days, expectedInterval });
+        });
+        scores.sort((a, b) => b.score - a.score);
+        let assigned = 0;
+        for (const s of scores) {
+          if (assigned >= 2) break;
+          const c = cardMap.get(s.key);
+          const intervals = calculateIntervals(c.appearances);
+          const avgInterval = intervals.length > 0 ? Math.round(intervals.reduce((a, b) => a + b, 0) / intervals.length) : 60;
+          const conf = s.score > 1.2 ? 'high' : s.score > 0.8 ? 'medium' : 'low';
+          predictions.push({ key: s.key, charName: c.charName, cardName: c.cardName, imageUrl: c.imageUrl, attr: c.attr, series: c.series, date, confidence: conf, averageInterval: avgInterval, reprintCount: c.maxReprintCount, daysSinceLast: s.days, score: s.score });
+          virtualLastDate.set(s.key, date); // 仮想復刻日を更新
+          assigned++;
+        }
+      });
+      return predictions.sort((a, b) => a.date - b.date);
+    }
+
+    function getAttrBadge(attr) {
+      const c = attrConfig[attr] || { emoji: '' };
+      return `<span class="attr-badge attr-${attr}">${c.emoji} ${attr}</span>`;
+    }
+
+    function getConfBadge(conf) {
+      const labels = { high: '信頼度：高', medium: '信頼度：中', low: '信頼度：低' };
+      return `<span class="conf-${conf}">${labels[conf]}</span>`;
+    }
+
+    function renderCardList(filter = '') {
+      const list = document.getElementById('cardList');
+      const cards = Array.from(cardMap.entries())
+        .filter(([k, c]) => c.cardName.includes(filter) || c.charName.includes(filter))
+        .sort((a, b) => a[1].charName.localeCompare(b[1].charName, 'ja'));
+      if (cards.length === 0) { list.innerHTML = '<div style="text-align: center; padding: 30px; color: var(--text-secondary);">一致するカードがありません</div>'; return; }
+      list.innerHTML = cards.map(([k, c]) => {
+        const last = c.appearances[c.appearances.length - 1].startDate;
+        return `<div class="card-item" data-card="${k}">
+      <img src="${c.imageUrl}" alt="${c.cardName}" class="card-img" loading="lazy" onerror="this.style.display='none'">
+      <div class="card-info">
+        <div class="card-name">${c.cardName}</div>
+        <div class="card-char">${c.charName}</div>
+        <div class="card-meta">${getAttrBadge(c.attr)}<span style="font-size: 0.65rem; color: var(--text-secondary);">${c.series || ''}</span></div>
+      </div>
+      <div class="card-right">${c.maxReprintCount}回<br>${formatDate(last)}</div>
+    </div>`;
+      }).join('');
+      list.querySelectorAll('.card-item').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
+    }
+
+    function showCardDetail(key) {
+      const card = cardMap.get(key);
+      const score = calculateReprintScore(card);
+      const rankings = getRankings();
+      const rank = rankings.findIndex(r => r.key === key) + 1;
+      const dateIndex = Math.floor((rank - 1) / 2);
+      const predictedDate = allReprintDates[dateIndex] || allReprintDates[allReprintDates.length - 1];
+      const confidence = score.score > 1.2 ? 'high' : score.score > 0.8 ? 'medium' : 'low';
+      const intervals = card.appearances.length >= 2 ? calculateIntervals(card.appearances) : [];
+      const daysUntil = Math.round((predictedDate - today) / 864e5);
+      const weekday = ['日', '月', '火', '水', '木', '金', '土'][predictedDate.getDay()];
+      const status = daysUntil === 0 ? '今日！' : daysUntil === 1 ? '明日！' : `あと${daysUntil}日`;
+
+      document.getElementById('modalContent').innerHTML = `
+    <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
+      <img src="${card.imageUrl}" alt="${card.cardName}" class="card-img-large" onerror="this.style.display='none'">
+      <div style="flex: 1; min-width: 0; padding-right: 32px;">
+        <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 4px;">${card.cardName}</h3>
+        <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 8px;">${card.charName}</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">${getAttrBadge(card.attr)}</div>
       </div>
     </div>
-  </div>
-  <script>
-let cardMap = null;
-let today = new Date();
-let allReprintDates = [];
-const attrConfig = { '火': { emoji: '🔥' }, '水': { emoji: '💧' }, '草': { emoji: '🌿' } };
-
-async function loadCSV(filename) {
-  try {
-    const response = await fetch(filename);
-    if (!response.ok) throw new Error('CSV読み込み失敗');
-    return await response.text();
-  } catch (error) {
-    console.error('CSVファイルの読み込みエラー:', error);
-    return null;
-  }
-}
-
-function parseCSV(csv) {
-  return csv.trim().split('\n').slice(1).map(line => {
-    const v = line.split(',');
-    return { charName: v[1], cardName: v[2], series: v[3], attr: v[4], startDate: parseDate(v[5]), endDate: parseDate(v[6]), reprintCount: parseInt(v[7]), imageUrl: v[8] };
-  });
-}
-function parseDate(s) { const [y,m,d] = s.split('/').map(Number); return new Date(y, m-1, d); }
-function formatDate(d) { return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; }
-
-function aggregateCards(data) {
-  const map = new Map();
-  data.forEach(e => {
-    const key = `${e.charName}_${e.cardName}`;
-    if (!map.has(key)) map.set(key, { charName: e.charName, cardName: e.cardName, series: e.series, attr: e.attr, imageUrl: e.imageUrl, appearances: [], maxReprintCount: 0 });
-    const c = map.get(key);
-    c.appearances.push({ startDate: e.startDate, endDate: e.endDate, reprintCount: e.reprintCount });
-    c.maxReprintCount = Math.max(c.maxReprintCount, e.reprintCount);
-  });
-  map.forEach(c => c.appearances.sort((a,b) => a.startDate - b.startDate));
-  return map;
-}
-
-function calculateIntervals(appearances) {
-  const intervals = [];
-  for (let i = 1; i < appearances.length; i++) intervals.push(Math.round((appearances[i].startDate - appearances[i-1].startDate) / 864e5));
-  return intervals;
-}
-
-function getNextReprintDates(from, count = 200) {
-  const dates = []; const cur = new Date(from);
-  while (dates.length < count) { if (cur.getDay() === 2 || cur.getDay() === 5) dates.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
-  return dates;
-}
-
-function calculateReprintScore(card) {
-  const last = card.appearances[card.appearances.length - 1].startDate;
-  const days = Math.round((today - last) / 864e5);
-  let avg = 60;
-  if (card.appearances.length >= 2) { const iv = calculateIntervals(card.appearances); avg = Math.round(iv.reduce((a,b)=>a+b,0) / iv.length); }
-  return { score: days / avg, daysSinceLast: days, avgInterval: avg, lastAppearance: last, reprintCount: card.maxReprintCount };
-}
-
-let cachedRankings = null;
-function getRankings() {
-  if (cachedRankings) return cachedRankings;
-  const allScores = [];
-  cardMap.forEach((c, k) => allScores.push({ key: k, score: calculateReprintScore(c).score }));
-  allScores.sort((a,b) => b.score - a.score);
-  cachedRankings = allScores;
-  return cachedRankings;
-}
-
-function predictNextReprintCandidates() {
-  const rankings = getRankings();
-  const nextDate = allReprintDates[0];
-  return rankings.slice(0, 2).map((r, i) => {
-    const c = cardMap.get(r.key);
-    const score = calculateReprintScore(c);
-    return {
-      key: r.key, charName: c.charName, cardName: c.cardName, imageUrl: c.imageUrl, attr: c.attr, series: c.series,
-      prediction: { predictedDate: nextDate, confidence: r.score > 1.2 ? 'high' : r.score > 0.8 ? 'medium' : 'low', averageInterval: score.avgInterval, lastAppearance: score.lastAppearance },
-      daysUntil: Math.round((nextDate - today) / 864e5), daysSinceLast: score.daysSinceLast, score: r.score, reprintCount: score.reprintCount
-    };
-  });
-}
-
-function getMonthlyPredictions() {
-  const end = new Date(today); end.setDate(end.getDate() + 30);
-  const reprintDates = allReprintDates.filter(d => d <= end);
-  const rankings = getRankings();
-  const predictions = [], used = new Set();
-  reprintDates.forEach(date => {
-    let assigned = 0;
-    for (const r of rankings) {
-      if (assigned >= 2 || used.has(r.key)) continue;
-      const c = cardMap.get(r.key);
-      const score = calculateReprintScore(c);
-      predictions.push({ key: r.key, charName: c.charName, cardName: c.cardName, imageUrl: c.imageUrl, attr: c.attr, series: c.series, date, confidence: r.score > 1.2 ? 'high' : r.score > 0.8 ? 'medium' : 'low', averageInterval: score.avgInterval, reprintCount: score.reprintCount, daysSinceLast: score.daysSinceLast, score: r.score });
-      used.add(r.key); assigned++;
+    <div style="background: rgba(167,139,250,0.07); border: 1px solid rgba(167,139,250,0.2); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+      <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">次回復刻予測</div>
+      <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-color);">${formatDate(predictedDate)}（${weekday}）</div>
+      <div style="font-size: 0.78rem; color: ${daysUntil <= 3 ? '#fcd34d' : 'var(--text-secondary)'}; margin-top: 2px;">${status} / 優先順位 ${rank}位</div>
+    </div>
+    <div class="stat-mini-grid">
+      <div class="stat-mini"><div class="stat-mini-label">最終復刻から</div><div class="stat-mini-val">${score.daysSinceLast}日</div></div>
+      <div class="stat-mini"><div class="stat-mini-label">平均間隔</div><div class="stat-mini-val">${score.avgInterval}日</div></div>
+      <div class="stat-mini"><div class="stat-mini-label">信頼度</div><div class="stat-mini-val" style="font-size: 0.85rem;">${getConfBadge(confidence)}</div></div>
+    </div>
+    <div style="margin-top: 12px;">
+      <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 8px;">復刻履歴（${card.maxReprintCount}回）</div>
+      <div style="max-height: 130px; overflow-y: auto;">
+        ${card.appearances.map((a, i) => `<div style="font-size: 0.75rem; display: flex; justify-content: space-between; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 5px 10px; margin-bottom: 4px;"><span>${i + 1}回目</span><span style="color: var(--text-secondary);">${formatDate(a.startDate)}</span></div>`).join('')}
+      </div>
+      ${intervals.length > 0 ? `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 8px;">間隔: ${intervals.join('日 / ')}日</div>` : ''}
+    </div>
+  `;
+      document.getElementById('detailModal').classList.add('open');
     }
-  });
-  return predictions.sort((a,b) => a.date - b.date);
-}
 
-function getAttrBadge(attr) { const c = attrConfig[attr] || { emoji: '' }; return `<span class="text-xs px-2 py-0.5 rounded border attr-${attr}">${c.emoji} ${attr}</span>`; }
+    function renderNextReprintPrediction() {
+      const candidates = predictNextReprintCandidates();
+      const container = document.getElementById('nextReprintPrediction');
+      if (candidates.length === 0) { container.innerHTML = '<div style="color: var(--text-secondary);">予測データがありません</div>'; return; }
+      const nextDate = candidates[0].prediction.predictedDate;
+      const weekday = ['日', '月', '火', '水', '木', '金', '土'][nextDate.getDay()];
+      const daysUntil = candidates[0].daysUntil;
+      const dayLabel = daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`;
 
-function renderCardList(filter = '') {
-  const list = document.getElementById('cardList');
-  const cards = Array.from(cardMap.entries()).filter(([k, c]) => c.cardName.includes(filter) || c.charName.includes(filter)).sort((a,b) => a[1].charName.localeCompare(b[1].charName, 'ja'));
-  list.innerHTML = cards.map(([k, c]) => {
-    const last = c.appearances[c.appearances.length - 1].startDate;
-    return `<div class="card-item bg-slate-800/40 hover:bg-slate-700/50 rounded-xl p-3 cursor-pointer transition-all border border-slate-700/50" data-card="${k}"><div class="flex items-center gap-3"><img src="${c.imageUrl}" alt="${c.cardName}" class="card-img" loading="lazy" onerror="this.style.display='none'"><div class="flex-1 min-w-0"><div class="font-medium text-sm truncate">${c.cardName}</div><div class="text-xs text-slate-400">${c.charName}</div><div class="flex items-center gap-2 mt-1">${getAttrBadge(c.attr)}<span class="text-xs text-slate-500">${c.series}</span></div></div><div class="text-right"><div class="text-violet-400 text-sm">${c.maxReprintCount}回</div><div class="text-xs text-slate-500">${formatDate(last)}</div></div></div></div>`;
-  }).join('');
-  list.querySelectorAll('.card-item').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
-}
+      container.innerHTML = `
+    <div class="next-date-box">
+      <div style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px;">次回復刻日</div>
+      <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-color);">${formatDate(nextDate)}（${weekday}）<span style="font-size: 0.8rem; color: ${daysUntil <= 1 ? '#fcd34d' : 'var(--text-secondary)'}; margin-left: 8px;">${dayLabel}</span></div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      ${candidates.map((c, i) => `
+        <div class="prediction-highlight" data-card="${c.key}">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+            <span class="rank-badge">${i === 0 ? '🥇' : '🥈'}</span>
+            <span style="font-size: 0.65rem; background: rgba(167,139,250,0.2); border-radius: 999px; padding: 2px 8px; color: var(--accent-color);">予測${i + 1}枚目</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="${c.imageUrl}" alt="${c.cardName}" class="card-img" loading="lazy" onerror="this.style.display='none'">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.cardName}</div>
+              <div style="font-size: 0.7rem; color: var(--text-secondary); margin: 2px 0;">${c.charName}</div>
+              ${getAttrBadge(c.attr)}
+            </div>
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 10px;">
+            最終: ${c.daysSinceLast}日前 / 平均: ${c.prediction.averageInterval}日 / ${c.reprintCount}回目
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+      container.querySelectorAll('.prediction-highlight').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
+    }
 
-function showCardDetail(key) {
-  const card = cardMap.get(key);
-  const score = calculateReprintScore(card);
-  const rankings = getRankings();
-  const rank = rankings.findIndex(r => r.key === key) + 1;
-  const dateIndex = Math.floor((rank - 1) / 2);
-  const predictedDate = allReprintDates[dateIndex] || allReprintDates[allReprintDates.length - 1];
-  const confidence = score.score > 1.2 ? 'high' : score.score > 0.8 ? 'medium' : 'low';
-  const intervals = card.appearances.length >= 2 ? calculateIntervals(card.appearances) : [];
-  const daysUntil = Math.round((predictedDate - today) / 864e5);
-  const weekday = ['日','月','火','水','木','金','土'][predictedDate.getDay()];
-  const status = daysUntil === 0 ? '(今日!)' : daysUntil === 1 ? '(明日!)' : `(あと${daysUntil}日)`;
-  const confColors = { high: 'text-green-400', medium: 'text-yellow-400', low: 'text-red-400' };
-  const confLabels = { high: '高', medium: '中', low: '低' };
-  document.getElementById('modalContent').innerHTML = `
-    <div class="flex items-start gap-4 mb-4"><img src="${card.imageUrl}" alt="${card.cardName}" class="card-img-large" onerror="this.style.display='none'"><div class="flex-1 min-w-0 pr-8"><h3 class="text-lg font-bold mb-1">${card.cardName}</h3><div class="text-slate-300 mb-2">${card.charName}</div><div class="flex items-center gap-2">${getAttrBadge(card.attr)}<span class="text-xs text-slate-400">${card.series}</span></div></div></div>
-    <div class="bg-slate-800/50 rounded-xl p-4 mb-4"><div class="text-sm text-slate-400 mb-1">次回復刻予測</div><div class="text-2xl font-bold text-violet-300">${formatDate(predictedDate)} (${weekday})</div><div class="text-sm ${daysUntil <= 3 ? 'text-yellow-400' : 'text-slate-400'}">${status}</div><div class="text-xs text-slate-500 mt-2">復刻優先順位: ${rank}位 / ${rankings.length}枚中</div></div>
-    <div class="grid grid-cols-3 gap-3 mb-4"><div class="bg-slate-800/30 rounded-lg p-3"><div class="text-xs text-slate-400">最終復刻から</div><div class="text-lg font-bold">${score.daysSinceLast}日</div></div><div class="bg-slate-800/30 rounded-lg p-3"><div class="text-xs text-slate-400">平均間隔</div><div class="text-lg font-bold">${score.avgInterval}日</div></div><div class="bg-slate-800/30 rounded-lg p-3"><div class="text-xs text-slate-400">予測信頼度</div><div class="text-lg font-bold ${confColors[confidence]}">${confLabels[confidence]}</div></div></div>
-    <div class="mb-4"><div class="text-sm text-slate-400 mb-2">復刻履歴 (${card.maxReprintCount}回)</div><div class="space-y-1 max-h-32 overflow-y-auto">${card.appearances.map((a,i) => `<div class="text-sm flex justify-between bg-slate-800/30 rounded px-3 py-1"><span>${i+1}回目</span><span class="text-slate-300">${formatDate(a.startDate)}</span></div>`).join('')}</div></div>
-    ${intervals.length > 0 ? `<div class="text-xs text-slate-500">復刻間隔: ${intervals.join('日, ')}日</div>` : ''}`;
-  document.getElementById('detailModal').classList.remove('hidden');
-  document.getElementById('detailModal').classList.add('flex');
-}
+    function renderMonthlyList(predictions) {
+      const container = document.getElementById('monthlyListView');
+      if (predictions.length === 0) { container.innerHTML = '<div style="color: var(--text-secondary); padding: 20px;">予測データがありません</div>'; return; }
+      const grouped = {};
+      predictions.forEach(p => { const k = formatDate(p.date); if (!grouped[k]) grouped[k] = []; grouped[k].push(p); });
+      container.innerHTML = Object.entries(grouped).map(([date, cards]) => {
+        const d = new Date(date.replace(/\//g, '-'));
+        const daysUntil = Math.round((d - today) / 864e5);
+        const dayLabel = daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`;
+        const weekday = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+        return `<div class="monthly-group">
+      <div class="monthly-group-header">
+        <div><span class="monthly-date">${date}</span><span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 6px;">（${weekday}）</span></div>
+        <span style="font-size: 0.72rem; color: ${daysUntil <= 3 ? '#fcd34d' : 'var(--text-secondary)'};">${dayLabel}</span>
+      </div>
+      <div class="monthly-group-body">
+        ${cards.map(c => `<div class="monthly-card" data-card="${c.key}">
+          <img src="${c.imageUrl}" alt="${c.cardName}" loading="lazy" onerror="this.style.display='none'">
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.cardName}</div>
+            <div style="font-size: 0.68rem; color: var(--text-secondary);">${c.charName}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            ${getConfBadge(c.confidence)}
+            <span style="font-size: 0.65rem; color: var(--text-secondary);">${c.reprintCount}回目</span>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+      }).join('');
+      container.querySelectorAll('[data-card]').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
+    }
 
-function renderNextReprintPrediction() {
-  const candidates = predictNextReprintCandidates();
-  const container = document.getElementById('nextReprintPrediction');
-  if (candidates.length === 0) { container.innerHTML = '<div class="text-slate-400">予測データがありません</div>'; return; }
-  const nextDate = candidates[0].prediction.predictedDate;
-  const weekday = ['日','月','火','水','木','金','土'][nextDate.getDay()];
-  const daysUntil = candidates[0].daysUntil;
-  const dayLabel = daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`;
-  container.innerHTML = `<div class="md:col-span-2 bg-slate-800/40 rounded-xl p-4 mb-2 border border-violet-500/30"><div class="text-sm text-slate-400 mb-1">次回復刻日</div><div class="text-xl font-bold text-violet-300">${formatDate(nextDate)} (${weekday}) <span class="text-sm ${daysUntil <= 1 ? 'text-yellow-400' : 'text-slate-400'}">${dayLabel}</span></div></div>` +
-    candidates.map((c, i) => `<div class="prediction-card rounded-xl p-4 glow border border-violet-500/30 cursor-pointer hover:scale-[1.02] transition-transform" data-card="${c.key}"><div class="flex items-center gap-2 mb-3"><span class="text-2xl">${i === 0 ? '🥇' : '🥈'}</span><span class="text-xs bg-violet-500/30 px-2 py-0.5 rounded-full">予測${i+1}枚目</span></div><div class="flex items-center gap-3"><img src="${c.imageUrl}" alt="${c.cardName}" class="card-img" loading="lazy" onerror="this.style.display='none'"><div class="flex-1 min-w-0"><h3 class="font-bold text-sm truncate">${c.cardName}</h3><div class="text-xs text-slate-300 mb-1">${c.charName}</div><div class="flex items-center gap-2">${getAttrBadge(c.attr)}</div></div></div><div class="text-xs text-slate-400 mt-3 space-y-0.5"><div>最終復刻: ${c.daysSinceLast}日前</div><div>平均間隔: ${c.prediction.averageInterval}日 | ${c.reprintCount}回目</div></div></div>`).join('');
-  container.querySelectorAll('.prediction-card').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
-}
+    function renderMonthlyCalendar(predictions) {
+      const container = document.getElementById('monthlyCalendarView');
+      const predMap = {}; predictions.forEach(p => { const k = formatDate(p.date); if (!predMap[k]) predMap[k] = []; predMap[k].push(p); });
+      const start = new Date(today); start.setDate(start.getDate() - start.getDay());
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      let html = `<div class="cal-grid">`;
+      html += weekdays.map((w, i) => `<div class="cal-header-cell ${i === 2 || i === 5 ? 'reprint-day' : ''}">${w}</div>`).join('');
+      for (let i = 0; i < 35; i++) {
+        const cur = new Date(start); cur.setDate(start.getDate() + i);
+        const k = formatDate(cur);
+        const isToday = formatDate(today) === k;
+        const isPast = cur < today && !isToday;
+        const isReprintDay = cur.getDay() === 2 || cur.getDay() === 5;
+        const cards = predMap[k] || [];
+        let cls = 'cal-cell';
+        if (isToday) cls += ' is-today';
+        if (isPast) cls += ' is-past';
+        if (cards.length > 0) cls += ' has-pred';
+        else if (isReprintDay) cls += ' reprint-day';
+        html += `<div class="${cls}" data-date="${k}">
+      <div class="cal-date ${isToday ? 'today-text' : isReprintDay ? 'reprint-text' : ''}">${cur.getDate()}${isReprintDay && !isPast && cards.length === 0 ? ' 📅' : ''}</div>
+      ${cards.length > 0 ? `<div class="cal-chips">${cards.slice(0, 2).map(c => `<div class="cal-chip" title="${c.charName}: ${c.cardName}">${c.charName.length > 6 ? c.charName.substring(0, 6) + '..' : c.charName}</div>`).join('')}</div>` : ''}
+    </div>`;
+      }
+      html += '</div>';
+      container.innerHTML = html;
+      container.querySelectorAll('[data-date]').forEach(cell => {
+        const cards = predMap[cell.dataset.date];
+        if (cards && cards.length > 0) cell.addEventListener('click', () => cards.length === 1 ? showCardDetail(cards[0].key) : showDateDetail(cell.dataset.date, cards));
+      });
+    }
 
-function renderMonthlyList(predictions) {
-  const container = document.getElementById('monthlyListView');
-  const confColors = { high: 'bg-green-500/20 text-green-400 border-green-500/30', medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', low: 'bg-red-500/20 text-red-400 border-red-500/30' };
-  const confLabels = { high: '高', medium: '中', low: '低' };
-  if (predictions.length === 0) { container.innerHTML = '<div class="text-slate-400 p-4">予測データがありません</div>'; return; }
-  const grouped = {};
-  predictions.forEach(p => { const k = formatDate(p.date); if (!grouped[k]) grouped[k] = []; grouped[k].push(p); });
-  container.innerHTML = Object.entries(grouped).map(([date, cards]) => {
-    const d = new Date(date.replace(/\//g, '-'));
-    const daysUntil = Math.round((d - today) / 864e5);
-    const dayLabel = daysUntil === 0 ? '今日' : daysUntil === 1 ? '明日' : `${daysUntil}日後`;
-    const weekday = ['日','月','火','水','木','金','土'][d.getDay()];
-    return `<div class="bg-slate-800/40 rounded-xl overflow-hidden border border-slate-700/50"><div class="bg-slate-700/50 px-4 py-2 flex justify-between items-center"><div class="font-medium"><span class="text-violet-300">${date}</span><span class="text-slate-400 text-sm ml-2">(${weekday})</span></div><span class="text-xs ${daysUntil <= 3 ? 'text-yellow-400' : 'text-slate-400'}">${dayLabel}</span></div><div class="p-2 space-y-1">${cards.map(c => `<div class="flex items-center gap-3 bg-slate-800/50 rounded-lg px-3 py-2 cursor-pointer hover:bg-slate-700/50 transition-all" data-card="${c.key}"><img src="${c.imageUrl}" alt="${c.cardName}" class="w-10 h-10 rounded object-cover" loading="lazy" onerror="this.style.display='none'"><div class="flex-1 min-w-0"><div class="font-medium text-sm truncate">${c.cardName}</div><div class="text-xs text-slate-400">${c.charName}</div></div><div class="flex items-center gap-2"><span class="text-xs px-2 py-0.5 rounded border ${confColors[c.confidence]}">${confLabels[c.confidence]}</span><span class="text-xs text-slate-400">${c.reprintCount}回目</span></div></div>`).join('')}</div></div>`;
-  }).join('');
-  container.querySelectorAll('[data-card]').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
-}
+    function showDateDetail(dateKey, cards) {
+      const d = new Date(dateKey.replace(/\//g, '-'));
+      const weekday = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+      document.getElementById('modalContent').innerHTML = `
+    <h3 style="font-size: 1rem; font-weight: 700; margin-bottom: 4px; padding-right: 32px;">${dateKey}（${weekday}）</h3>
+    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 12px;">${cards.length}枚のカードが復刻予測</div>
+    <div style="max-height: 320px; overflow-y: auto;">
+      ${cards.map(c => `<div class="monthly-card" data-card="${c.key}">
+        <img src="${c.imageUrl}" alt="${c.cardName}" style="width:44px;height:44px;object-fit:cover;object-position:top;border-radius:8px;" onerror="this.style.display='none'">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.82rem;font-weight:700;">${c.cardName}</div>
+          <div style="font-size:0.7rem;color:var(--text-secondary);">${c.charName}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          ${getConfBadge(c.confidence)}
+          <span style="font-size:0.65rem;color:var(--text-secondary);">${c.reprintCount}回目</span>
+        </div>
+      </div>`).join('')}
+    </div>
+  `;
+      document.getElementById('modalContent').querySelectorAll('[data-card]').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
+      document.getElementById('detailModal').classList.add('open');
+    }
 
-function renderMonthlyCalendar(predictions) {
-  const container = document.getElementById('calendarGrid');
-  const predMap = {}; predictions.forEach(p => { const k = formatDate(p.date); if (!predMap[k]) predMap[k] = []; predMap[k].push(p); });
-  const start = new Date(today); start.setDate(start.getDate() - start.getDay());
-  const weekdays = ['日','月','火','水','木','金','土'];
-  let html = weekdays.map((w,i) => `<div class="text-center text-xs py-2 ${i === 2 || i === 5 ? 'text-violet-400 font-bold' : 'text-slate-400'}">${w}</div>`).join('');
-  for (let i = 0; i < 35; i++) {
-    const cur = new Date(start); cur.setDate(start.getDate() + i);
-    const k = formatDate(cur);
-    const isToday = formatDate(today) === k;
-    const isPast = cur < today && !isToday;
-    const isReprintDay = cur.getDay() === 2 || cur.getDay() === 5;
-    const cards = predMap[k] || [];
-    let bg = isToday ? 'bg-violet-600/30 border-violet-500' : cards.length > 0 ? 'bg-fuchsia-900/40 border-fuchsia-500/50 hover:bg-fuchsia-800/50 cursor-pointer' : isReprintDay && !isPast ? 'bg-slate-700/30 border-slate-600/50' : 'bg-slate-800/30 border-slate-700/30';
-    html += `<div class="min-h-[80px] p-1 rounded-lg border ${bg} ${isPast ? 'opacity-40' : ''} transition-all" data-date="${k}"><div class="text-xs ${isToday ? 'text-violet-300 font-bold' : isReprintDay ? 'text-violet-400' : 'text-slate-400'} mb-1">${cur.getDate()}${isReprintDay && !isPast && cards.length === 0 ? ' 📅' : ''}</div>${cards.length > 0 ? `<div class="space-y-0.5">${cards.slice(0,2).map(c => `<div class="text-[10px] bg-violet-500/30 text-violet-200 rounded px-1 py-0.5 truncate" title="${c.charName}: ${c.cardName}">${c.charName.length > 6 ? c.charName.substring(0,6)+'..' : c.charName}</div>`).join('')}</div>` : ''}</div>`;
-  }
-  container.innerHTML = html;
-  container.querySelectorAll('[data-date]').forEach(cell => {
-    const cards = predMap[cell.dataset.date];
-    if (cards && cards.length > 0) cell.addEventListener('click', () => cards.length === 1 ? showCardDetail(cards[0].key) : showDateDetail(cell.dataset.date, cards));
-  });
-}
+    function renderMonthlyPredictions() {
+      const predictions = getMonthlyPredictions();
+      const end = new Date(today); end.setDate(end.getDate() + 30);
+      document.getElementById('dateRange').textContent = `${formatDate(today)} 〜 ${formatDate(end)}（${predictions.length}枚予測）`;
+      renderMonthlyList(predictions);
+      renderMonthlyCalendar(predictions);
+    }
 
-function showDateDetail(dateKey, cards) {
-  const d = new Date(dateKey.replace(/\//g, '-'));
-  const weekday = ['日','月','火','水','木','金','土'][d.getDay()];
-  const confLabels = { high: '高', medium: '中', low: '低' };
-  const confColors = { high: 'text-green-400', medium: 'text-yellow-400', low: 'text-red-400' };
-  document.getElementById('modalContent').innerHTML = `<h3 class="text-xl font-bold mb-4 pr-8">${dateKey} (${weekday})</h3><div class="text-sm text-slate-400 mb-3">${cards.length}枚のカードが復刻予測</div><div class="space-y-2 max-h-80 overflow-y-auto">${cards.map(c => `<div class="flex items-center gap-3 bg-slate-800/50 rounded-lg p-3 cursor-pointer hover:bg-slate-700/50 transition-all" data-card="${c.key}"><img src="${c.imageUrl}" alt="${c.cardName}" class="w-12 h-12 rounded object-cover" onerror="this.style.display='none'"><div class="flex-1 min-w-0"><div class="font-medium text-sm">${c.cardName}</div><div class="text-xs text-slate-400">${c.charName}</div><div class="flex items-center gap-3 text-xs text-slate-400 mt-1"><span>復刻${c.reprintCount}回目</span><span class="${confColors[c.confidence]}">信頼度: ${confLabels[c.confidence]}</span></div></div></div>`).join('')}</div>`;
-  document.getElementById('modalContent').querySelectorAll('[data-card]').forEach(el => el.addEventListener('click', () => showCardDetail(el.dataset.card)));
-  document.getElementById('detailModal').classList.remove('hidden');
-  document.getElementById('detailModal').classList.add('flex');
-}
+    function setupEventListeners() {
+      document.getElementById('searchInput').addEventListener('input', e => renderCardList(e.target.value));
+      document.getElementById('closeModal').addEventListener('click', () => document.getElementById('detailModal').classList.remove('open'));
+      document.getElementById('detailModal').addEventListener('click', e => { if (e.target === e.currentTarget) document.getElementById('detailModal').classList.remove('open'); });
+      document.getElementById('viewList').addEventListener('click', () => {
+        document.getElementById('viewList').classList.add('active');
+        document.getElementById('viewCalendar').classList.remove('active');
+        document.getElementById('monthlyListView').classList.remove('hidden');
+        document.getElementById('monthlyCalendarView').classList.add('hidden');
+      });
+      document.getElementById('viewCalendar').addEventListener('click', () => {
+        document.getElementById('viewCalendar').classList.add('active');
+        document.getElementById('viewList').classList.remove('active');
+        document.getElementById('monthlyCalendarView').classList.remove('hidden');
+        document.getElementById('monthlyListView').classList.add('hidden');
+      });
+    }
 
-function renderMonthlyPredictions() {
-  const predictions = getMonthlyPredictions();
-  const end = new Date(today); end.setDate(end.getDate() + 30);
-  document.getElementById('dateRange').textContent = `${formatDate(today)} 〜 ${formatDate(end)} （${predictions.length}枚予測）`;
-  renderMonthlyList(predictions);
-  renderMonthlyCalendar(predictions);
-}
+    async function init() {
+      const csvData = await loadCSV('../card_release.csv');
+      if (!csvData) {
+        document.getElementById('loading').innerHTML = `<div style="text-align:center;padding:30px;"><div style="font-size:2.5rem;margin-bottom:12px;">⚠️</div><h1 style="font-weight:700;margin-bottom:8px;">CSV ファイルが見つかりません</h1><p style="color:var(--text-secondary);font-size:0.85rem;">card_release.csv を配置してください。</p></div>`;
+        return;
+      }
+      const data = parseCSV(csvData);
+      cardMap = aggregateCards(data);
+      allReprintDates = getNextReprintDates(today, 200);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('mainContent').classList.remove('hidden');
+      renderCardList();
+      renderNextReprintPrediction();
+      renderMonthlyPredictions();
+      setupEventListeners();
+    }
 
-function setupEventListeners() {
-  document.getElementById('searchInput').addEventListener('input', e => renderCardList(e.target.value));
-  document.getElementById('closeModal').addEventListener('click', () => { document.getElementById('detailModal').classList.add('hidden'); document.getElementById('detailModal').classList.remove('flex'); });
-  document.getElementById('detailModal').addEventListener('click', e => { if (e.target === e.currentTarget) { document.getElementById('detailModal').classList.add('hidden'); document.getElementById('detailModal').classList.remove('flex'); } });
-  document.getElementById('viewList').addEventListener('click', () => { document.getElementById('viewList').className = 'px-4 py-2 rounded-lg bg-violet-600 text-white text-sm transition-all'; document.getElementById('viewCalendar').className = 'px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-all'; document.getElementById('monthlyListView').classList.remove('hidden'); document.getElementById('monthlyCalendarView').classList.add('hidden'); });
-  document.getElementById('viewCalendar').addEventListener('click', () => { document.getElementById('viewCalendar').className = 'px-4 py-2 rounded-lg bg-violet-600 text-white text-sm transition-all'; document.getElementById('viewList').className = 'px-4 py-2 rounded-lg bg-slate-700 text-slate-300 text-sm hover:bg-slate-600 transition-all'; document.getElementById('monthlyCalendarView').classList.remove('hidden'); document.getElementById('monthlyListView').classList.add('hidden'); });
-}
-
-async function init() {
-  const csvData = await loadCSV('card_release.csv');
-  if (!csvData) {
-    document.getElementById('loading').innerHTML = `<div class="text-center p-8"><div class="text-4xl mb-4">⚠️</div><h1 class="text-xl font-bold mb-2">CSVファイルが見つかりません</h1><p class="text-slate-400">card_release.csv をHTMLと同じフォルダに配置してください</p></div>`;
-    return;
-  }
-  const data = parseCSV(csvData);
-  cardMap = aggregateCards(data);
-  allReprintDates = getNextReprintDates(today, 200);
-  document.getElementById('loading').classList.add('hidden');
-  document.getElementById('mainContent').classList.remove('hidden');
-  renderCardList();
-  renderNextReprintPrediction();
-  renderMonthlyPredictions();
-  setupEventListeners();
-}
-
-init();
+    init();
   </script>
 </body>
+
 </html>
