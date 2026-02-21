@@ -928,7 +928,7 @@
     }
 
     async function init() {
-      const csvData = await loadCSV('../card_release.csv');
+      const csvData = await loadCSV('card_release.csv');
       if (!csvData) {
         document.getElementById('loading').innerHTML = `<div style="text-align:center;padding:30px;"><div style="font-size:2.5rem;margin-bottom:12px;">⚠️</div><h1 style="font-weight:700;margin-bottom:8px;">CSV ファイルが見つかりません</h1><p style="color:var(--text-secondary);font-size:0.85rem;">card_release.csv を配置してください。</p></div>`;
         return;
