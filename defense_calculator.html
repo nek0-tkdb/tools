@@ -3,341 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>拠点防衛シミュレーター</title>
-    <!-- Tailwind CSS CDNを読み込み -->
+    <title>移転のお知らせ - Website Relocated</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* フォント設定 (日本語対応) */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
         body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background-color: #f3f4f6; /* 薄いグレーの背景 */
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
         }
-        /* カスタムスタイル */
-        .tab-button {
-            transition: all 0.3s ease;
-            cursor: pointer;
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
         }
-        .tab-button.active {
-            border-color: #4f46e5;
-            color: #4f46e5;
-            background-color: #eef2ff;
-        }
-        .tab-button:not(.active):hover {
-            background-color: #e5e7eb;
-        }
-        .card {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-            border-radius: 0.75rem; /* rounded-xl */
-        }
-        .input-field {
-            border-color: #d1d5db;
-            transition: border-color 0.2s;
-        }
-        .input-field:focus {
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 1px #4f46e5;
-        }
-        .btn-link {
-            transition: all 0.2s;
-        }
-        .btn-link:hover {
-            opacity: 0.8;
-            text-decoration: underline;
-        }
-        .result-box {
-            animation: fadeIn 0.5s ease-out;
-        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        .progress-bar {
+            transition: width 1s linear;
+        }
     </style>
 </head>
-<body class="p-4 sm:p-8 min-h-screen flex items-start justify-center">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-2xl bg-white p-6 sm:p-10 card mt-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">拠点防衛シミュレーター</h1>
-        <p class="text-sm text-gray-600 mb-6 text-center">最大防衛時間は45分です。</p>
-        
-        <!-- 共通の拠点タイプ選択 -->
-        <div class="mb-6 p-4 border border-indigo-200 rounded-lg bg-indigo-50">
-            <label for="common-base-type" class="block text-base font-bold text-indigo-800 mb-2">① 防衛拠点の種類を選択</label>
-            <select id="common-base-type" required class="input-field mt-1 block w-full pl-3 pr-10 py-2 text-base border rounded-md focus:outline-none">
-                <option value="Lv.1">Lv.1: タウン (4秒/班)</option>
-                <option value="Lv.2">Lv.2: 寮 (3秒/班)</option>
-                <option value="Lv.3">Lv.3: 城 (2秒/班)</option>
-            </select>
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
+        <!-- Icon -->
+        <div class="mb-6 inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
         </div>
 
-        <!-- タブ切り替え -->
-        <div class="flex border-b border-gray-200 mb-6">
-            <button id="tab-groups" class="tab-button flex-1 py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-600 active" data-tab="groups">
-                ② 必要な班数を計算 (自動更新)
-            </button>
-            <button id="tab-time" class="tab-button flex-1 py-3 px-4 text-sm font-medium border-b-2 border-transparent text-gray-600" data-tab="time">
-                ③ 防衛時間から逆算 (自動更新)
-            </button>
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">ホームページを移転しました</h1>
+        <p class="text-gray-600 mb-6">
+            ご訪問ありがとうございます。<br>
+            当サイトは新しいURLへ移転いたしました。
+        </p>
+
+        <!-- New URL Box -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-8 break-all">
+            <p class="text-sm text-gray-500 mb-1">新しいURL</p>
+            <a href="https://nek0-tkdb.netlify.app/" class="text-blue-600 font-medium hover:underline text-lg">
+                https://nek0-tkdb.netlify.app/
+            </a>
         </div>
 
-        <!-- 機能①: 必要な班数を計算 -->
-        <div id="content-groups" class="tab-content">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">必要な班数を算出</h2>
-            <form id="form-groups" class="space-y-4">
-                <div>
-                    <label for="defense-time-minutes" class="block text-sm font-medium text-gray-700 mb-1">防衛したい時間 (分)</label>
-                    <!-- step="0.1"をstep="1"に変更 -->
-                    <input type="number" id="defense-time-minutes" required min="1" max="45" step="1" placeholder="例: 10, 45" class="input-field mt-1 block w-full px-3 py-2 border rounded-md" aria-describedby="time-constraint">
-                    <p id="time-constraint" class="mt-1 text-xs text-gray-500">※最大45分まで入力可能です。</p>
-                </div>
-                <!-- 自動計算を行うため、手動計算ボタンは削除しました -->
-            </form>
-            <div id="result-groups" class="mt-6 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-md result-box hidden">
-                <!-- 結果が表示されます -->
+        <!-- Countdown & Redirect -->
+        <div class="mb-8">
+            <p class="text-sm text-gray-500 mb-2">
+                <span id="countdown" class="font-bold text-blue-600">5</span> 秒後に自動的に移動します
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div id="progress" class="bg-blue-600 h-full progress-bar" style="width: 0%"></div>
             </div>
         </div>
 
-        <!-- 機能②: 防衛できる時間(分)を計算 -->
-        <div id="content-time" class="tab-content hidden">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">防衛可能時間を算出</h2>
-            <form id="form-time" class="space-y-4">
-                <div>
-                    <label for="num-groups" class="block text-sm font-medium text-gray-700 mb-1">班数</label>
-                    <input type="number" id="num-groups" required min="1" placeholder="例: 150" class="input-field mt-1 block w-full px-3 py-2 border rounded-md">
-                </div>
-                <!-- 自動計算を行うため、ボタンを削除し、代わりに注意書きを表示 -->
-                <div class="text-sm text-gray-500 italic text-center py-2">
-                    入力と同時に自動で計算結果が表示されます。
-                </div>
-            </form>
-            <div id="result-time" class="mt-6 p-4 bg-indigo-50 border-l-4 border-indigo-500 rounded-md result-box hidden">
-                <!-- 結果が表示されます -->
-            </div>
-        </div>
+        <!-- Manual Link Button -->
+        <a href="https://nek0-tkdb.netlify.app/" 
+           class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+            今すぐ移動する
+        </a>
 
-        <!-- エラーメッセージ用モーダル (アラート禁止のためカスタムUIを使用) -->
-        <div id="error-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden z-50 flex items-center justify-center">
-            <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-                <h3 class="text-lg font-bold text-red-600 mb-4">入力エラー</h3>
-                <p id="error-message" class="text-gray-700 mb-6"></p>
-                <button onclick="document.getElementById('error-modal').classList.add('hidden')" class="w-full py-2 px-4 bg-red-500 text-white font-medium rounded-md hover:bg-red-600">閉じる</button>
-            </div>
-        </div>
-
-        <!-- フッターとその上部のボタン -->
-        <div class="mt-8 pt-4 border-t border-gray-200 flex flex-col items-center space-y-4">
-        <!-- 修正: index.htmlに戻るボタンを、ブラウザの履歴で戻る機能に変更 -->
-        <div class="text-center mt-6">
-            <button onclick="history.back();" 
-                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out text-sm">
-                ← ツール集トップに戻る
-            </button>
-        </div>
-            
-            <!-- フッター情報 -->
-            <footer class="text-xs text-gray-500">
-                <p>X: nek0n0tem0</p>
-            </footer>
-        </div>
+        <!-- Footer Note -->
+        <p class="mt-8 text-xs text-gray-400 leading-relaxed">
+            お手数ですが、ブックマーク（お気に入り）に<br>
+            登録されている方は変更をお願いいたします。
+        </p>
     </div>
 
     <script>
-        // 定数定義
-        const DEFENSE_SECONDS_PER_GROUP = {
-            'Lv.1': 4, // タウン
-            'Lv.2': 3, // 寮
-            'Lv.3': 2, // 城
-        };
-        const MAX_TIME_MINUTES = 45;
+        window.onload = function() {
+            const targetUrl = "https://nek0-tkdb.netlify.app/";
+            let seconds = 5;
+            const countdownEl = document.getElementById('countdown');
+            const progressEl = document.getElementById('progress');
 
-        // UI要素の取得
-        const formGroups = document.getElementById('form-groups');
-        const formTime = document.getElementById('form-time');
-        const resultGroups = document.getElementById('result-groups');
-        const resultTime = document.getElementById('result-time');
-        const defenseTimeInput = document.getElementById('defense-time-minutes');
-        const numGroupsInput = document.getElementById('num-groups');
-        const commonBaseTypeInput = document.getElementById('common-base-type'); 
-        const errorModal = document.getElementById('error-modal');
-        const errorMessage = document.getElementById('error-message');
-
-        // タブ切り替えロジック
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-                const targetTab = button.dataset.tab;
-
-                // すべてのタブボタンとコンテンツを非アクティブ化/非表示化
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-
-                // 選択されたタブボタンとコンテンツをアクティブ化/表示化
-                button.classList.add('active');
-                document.getElementById(`content-${targetTab}`).classList.remove('hidden');
-
-                // 結果表示をリセット
-                resultGroups.classList.add('hidden');
-                resultTime.classList.add('hidden');
+            // Countdown and Progress bar logic
+            const timer = setInterval(() => {
+                seconds--;
+                countdownEl.textContent = seconds;
                 
-                // タブ切り替え時に、自動計算が有効なタブであれば計算をトリガーする
-                if (targetTab === 'groups') {
-                    autoCalculateGroups();
-                } else if (targetTab === 'time') {
-                    autoCalculateTime();
+                // Update progress bar (0% to 100%)
+                const progressPercentage = ((5 - seconds) / 5) * 100;
+                progressEl.style.width = progressPercentage + '%';
+
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = targetUrl;
                 }
-            });
-        });
-
-        // エラー表示関数
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorModal.classList.remove('hidden');
-        }
-
-        /**
-         * 機能②: 防衛時間から必要な班数を計算する (コアロジック)
-         * @param {string} baseType - 拠点レベル ('Lv.1', 'Lv.2', 'Lv.3')
-         * @param {number} timeMinutes - 防衛したい時間 (分)
-         */
-        function calculateGroups(baseType, timeMinutes) {
-            const secPerGroup = DEFENSE_SECONDS_PER_GROUP[baseType];
-            const totalSeconds = timeMinutes * 60;
-            
-            // 必要な班数 = 総秒数 / (1班あたりの秒数)
-            const requiredGroups = Math.ceil(totalSeconds / secPerGroup);
-
-            // 結果表示
-            resultGroups.innerHTML = `
-                <p class="text-sm font-bold text-indigo-800">計算結果</p>
-                <p class="text-2xl font-extrabold text-indigo-900 mt-1">${requiredGroups} 班</p>
-                <p class="text-sm text-gray-700 mt-2">
-                    選択拠点: ${baseType}（${secPerGroup}秒/班）<br>
-                    防衛時間: ${timeMinutes} 分間（${totalSeconds} 秒）<br>
-                    <span class="font-semibold text-red-600">※小数点以下は切り上げています。</span>
-                </p>
-            `;
-            resultGroups.classList.remove('hidden');
-        }
-
-        /**
-         * 機能③: 班数から防衛できる時間(分)を計算する (コアロジック)
-         * @param {string} baseType - 拠点レベル ('Lv.1', 'Lv.2', 'Lv.3')
-         * @param {number} numGroups - 班数
-         */
-        function calculateTime(baseType, numGroups) {
-            const secPerGroup = DEFENSE_SECONDS_PER_GROUP[baseType];
-
-            // 総防衛時間(秒) = 班数 × 1班あたりの秒数
-            let totalDefenseSeconds = numGroups * secPerGroup;
-
-            let resultMessage = ``;
-            const MAX_TIME_SECONDS = MAX_TIME_MINUTES * 60;
-
-            if (totalDefenseSeconds > MAX_TIME_SECONDS) {
-                // 45分を超える場合は45分に制限
-                totalDefenseSeconds = MAX_TIME_SECONDS;
-                resultMessage = `<span class="font-semibold text-red-600">※最大防衛時間の${MAX_TIME_MINUTES}分に到達しています。</span>`;
-            }
-
-            // 分と秒に分解 
-            const finalMinutes = Math.floor(totalDefenseSeconds / 60);
-            const finalSeconds = totalDefenseSeconds % 60;
-            
-            // 結果表示
-            resultTime.innerHTML = `
-                <p class="text-sm font-bold text-indigo-800">計算結果</p>
-                <p class="text-2xl font-extrabold text-indigo-900 mt-1">${finalMinutes} 分 ${finalSeconds} 秒</p>
-                <p class="text-sm text-gray-700 mt-2">
-                    選択拠点: ${baseType}（${secPerGroup}秒/班）<br>
-                    総班数: ${numGroups} 班<br>
-                    ${resultMessage}
-                </p>
-            `;
-            resultTime.classList.remove('hidden');
-        }
-
-        /**
-         * 機能②: 必要な班数を計算の自動計算ロジック
-         */
-        function autoCalculateGroups() {
-            // タブがアクティブでない場合は計算しない
-            if (document.getElementById('content-groups').classList.contains('hidden')) {
-                return;
-            }
-
-            const baseType = commonBaseTypeInput.value;
-            const timeValue = defenseTimeInput.value.trim(); 
-            const timeMinutes = parseFloat(timeValue);
-
-            // 必須入力チェック: 値がない、または数値に変換できない、または0以下
-            if (timeValue === '' || isNaN(timeMinutes) || timeMinutes <= 0) {
-                resultGroups.classList.add('hidden');
-                return;
-            }
-            
-            // 45分以上の場合は計算しない
-            if (timeMinutes > MAX_TIME_MINUTES) {
-                resultGroups.classList.add('hidden');
-                return;
-            }
-
-            // 有効な入力値であれば計算を実行
-            calculateGroups(baseType, timeMinutes);
-        }
-        
-        /**
-         * 機能③: 防衛可能時間を計算の自動計算ロジック
-         */
-        function autoCalculateTime() {
-            // タブがアクティブでない場合は計算しない
-            if (document.getElementById('content-time').classList.contains('hidden')) {
-                return;
-            }
-
-            const baseType = commonBaseTypeInput.value;
-            const groupsValue = numGroupsInput.value.trim();
-            const numGroups = parseInt(groupsValue, 10);
-
-            // 必須入力チェック: 値がない、または整数でない、または0以下
-            if (groupsValue === '' || isNaN(numGroups) || numGroups <= 0) {
-                resultTime.classList.add('hidden');
-                return;
-            }
-            
-            // 有効な入力値であれば計算を実行
-            calculateTime(baseType, numGroups);
-        }
-
-        // --- イベントリスナー設定 ---
-
-        // 共通: 拠点タイプが変更されたら両方のタブで計算をトリガー
-        commonBaseTypeInput.addEventListener('change', () => {
-            autoCalculateGroups();
-            autoCalculateTime();
-        });
-        
-        // 機能②: 自動計算のトリガー設定 (防衛時間入力)
-        defenseTimeInput.addEventListener('input', autoCalculateGroups);
-        
-        // 機能②: フォームのSubmit (Enterキー対策 - エラー表示のみ残す)
-        formGroups.addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Enterキーで送信を試みた際、45分以上の値が入っている場合はエラーを表示
-            if (defenseTimeInput.value.trim() !== '' && parseFloat(defenseTimeInput.value) > MAX_TIME_MINUTES) {
-                showError(`防衛時間は最大${MAX_TIME_MINUTES}分までです。入力値: ${parseFloat(defenseTimeInput.value)}分`);
-            }
-            // 計算はinputイベントで自動実行されるため、ここでは何もしない
-        });
-
-        // 機能③: 自動計算のトリガー設定 (班数入力)
-        numGroupsInput.addEventListener('input', autoCalculateTime);
-
-        // 機能③: フォームのSubmit (Enterキー対策)
-        formTime.addEventListener('submit', function(e) {
-            e.preventDefault();
-            autoCalculateTime(); 
-        });
-
-        // 初期化: 時間入力の最大値を設定
-        defenseTimeInput.setAttribute('max', MAX_TIME_MINUTES);
+            }, 1000);
+        };
     </script>
 </body>
 </html>
