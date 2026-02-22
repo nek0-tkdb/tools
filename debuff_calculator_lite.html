@@ -3,285 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>デバフ計算ツール</title>
-    <!-- Tailwind CSS CDNを読み込み -->
+    <title>移転のお知らせ - Website Relocated</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Interフォントを適用 */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7ffec; /* 柔らかな背景色 */
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
         }
-        .card {
-            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
         }
-        /* 最後の項目から下線を取り除く */
-        #timeResults > div:last-child {
-            border-bottom: none;
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar {
+            transition: width 1s linear;
         }
     </style>
 </head>
-<body class="p-4 sm:p-8 min-h-screen flex items-center justify-center">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div id="app" class="w-full max-w-xl bg-white p-6 sm:p-8 rounded-xl card border border-gray-200">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6 border-b pb-2">
-            デバフ計算ツール
-        </h1>
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
+        <!-- Icon -->
+        <div class="mb-6 inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+        </div>
 
-        <!-- 入力エリア -->
-        <div class="space-y-6">
-            <!-- 味方側の入力 -->
-            <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                <h2 class="text-xl font-semibold text-indigo-700 mb-4">
-                    <span class="mr-2">🛡️</span>味方情報
-                </h2>
-                <!-- 戦力入力 -->
-                <div class="mb-4">
-                    <label for="myPower" class="block text-sm font-medium text-gray-700">
-                        自分の戦力 (万単位)
-                    </label>
-                    <!-- 初期値を空欄に修正 -->
-                    <input type="number" id="myPower" value="" min="1"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-indigo-500 focus:ring-indigo-500 transition">
-                </div>
-                <!-- 属性選択エリアは削除しました -->
-            </div>
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">ホームページを移転しました</h1>
+        <p class="text-gray-600 mb-6">
+            ご訪問ありがとうございます。<br>
+            当サイトは新しいURLへ移転いたしました。
+        </p>
 
-            <!-- 敵側の入力 -->
-            <div class="bg-red-50 p-4 rounded-lg border border-red-200">
-                <h2 class="text-xl font-semibold text-red-700 mb-4">
-                    <span class="mr-2">⚔️</span>敵情報
-                </h2>
-                <!-- 戦力入力 -->
-                <div class="mb-4">
-                    <label for="enemyPower" class="block text-sm font-medium text-gray-700">
-                        相手の戦力 (万単位)
-                    </label>
-                    <!-- 初期値を空欄に修正 -->
-                    <input type="number" id="enemyPower" value="" min="1"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-red-500 focus:ring-red-500 transition">
-                </div>
-                <!-- 属性選択エリアは削除しました -->
+        <!-- New URL Box -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-8 break-all">
+            <p class="text-sm text-gray-500 mb-1">新しいURL</p>
+            <a href="https://nek0-tkdb.netlify.app/" class="text-blue-600 font-medium hover:underline text-lg">
+                https://nek0-tkdb.netlify.app/
+            </a>
+        </div>
+
+        <!-- Countdown & Redirect -->
+        <div class="mb-8">
+            <p class="text-sm text-gray-500 mb-2">
+                <span id="countdown" class="font-bold text-blue-600">5</span> 秒後に自動的に移動します
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div id="progress" class="bg-blue-600 h-full progress-bar" style="width: 0%"></div>
             </div>
         </div>
 
-        <!-- 「計算する」ボタンは削除しました。入力時に自動で計算されます。 -->
+        <!-- Manual Link Button -->
+        <a href="https://nek0-tkdb.netlify.app/" 
+           class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+            今すぐ移動する
+        </a>
 
-        <!-- 結果表示エリア -->
-        <div id="results" class="mt-8 pt-6 border-t border-gray-300 space-y-4">
-            <h2 class="text-2xl font-bold text-gray-800 text-center">
-                計算結果
-            </h2>
-            
-            <div id="output" class="text-center p-4 rounded-lg bg-green-100 border border-green-300">
-                
-                <p class="text-lg text-gray-700 font-semibold mb-2">必要な班の数 (6人/班)</p>
-                <p id="neededSquads" class="text-4xl font-extrabold text-green-800">- 班</p>
-                
-                <p class="text-lg text-gray-700 font-semibold mb-2 mt-4">必要な追加人数</p>
-                <p id="neededPeople" class="text-3xl font-extrabold text-green-700">- 人</p>
-                
-                <!-- 弱体化率の表示を移動 -->
-                <p class="text-lg text-gray-700 font-semibold mb-2 mt-4">弱体化率 (デバフ率)</p>
-                <p id="debuffRate" class="text-3xl font-extrabold text-red-600">- %</p>
-            </div>
-            
-            <!-- 修正: かかる時間表示エリアを縦並び(flex-col)に修正 -->
-            <h3 class="text-xl font-bold text-gray-700 text-center pt-4 border-t border-gray-200">
-                デバフにかかる時間の目安
-            </h3>
-            <div id="timeResults" class="flex flex-col space-y-0 p-3 bg-white rounded-lg border border-gray-300">
-                
-                <!-- Lv.1 (タウン) -->
-                <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span class="font-semibold text-gray-700 text-sm sm:text-base">Lv.1 (タウン: 4秒/班)</span>
-                    <span class="text-lg font-bold text-indigo-700">
-                        <span id="timeLv1Sec">- 秒</span> 
-                        <span id="timeLv1Min" class="text-sm font-normal text-gray-500 ml-1">(- 分)</span>
-                    </span>
-                </div>
-                
-                <!-- Lv.2 (寮) -->
-                <div class="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span class="font-semibold text-gray-700 text-sm sm:text-base">Lv.2 (寮: 3秒/班)</span>
-                    <span class="text-lg font-bold text-blue-700">
-                        <span id="timeLv2Sec">- 秒</span> 
-                        <span id="timeLv2Min" class="text-sm font-normal text-gray-500 ml-1">(- 分)</span>
-                    </span>
-                </div>
-                
-                <!-- Lv.3 (城) -->
-                <div class="flex justify-between items-center py-2">
-                    <span class="font-semibold text-gray-700 text-sm sm:text-base">Lv.3 (城: 2秒/班)</span>
-                    <span class="text-lg font-bold text-red-700">
-                        <span id="timeLv3Sec">- 秒</span> 
-                        <span id="timeLv3Min" class="text-sm font-normal text-gray-500 ml-1">(- 分)</span>
-                    </span>
-                </div>
-            </div>
-            
-            <!-- エラーメッセージ表示エリア -->
-            <div id="errorMessage" class="hidden p-3 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded-md text-center font-medium">
-                <!-- エラーメッセージがここに入る -->
-            </div>
-        </div>
-        
-        <!-- 修正: ツール集トップページへのリンク -->
-        <div class="text-center mt-6">
-            <button onclick="window.location.href='https://nek0-tkdb.github.io/tools/';" 
-                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out text-sm">
-                ← ツール集トップに戻る
-            </button>
-        </div>
-        
-        <!-- フッター情報 -->
-        <div class="mt-4 pt-4 border-t border-gray-200 text-center text-xs text-gray-500 space-y-1">
-            <p>X: nek0n0tem0</p>
-            <p>※このアプリではデータ保存機能は使用していません</p>
-        </div>
+        <!-- Footer Note -->
+        <p class="mt-8 text-xs text-gray-400 leading-relaxed">
+            お手数ですが、ブックマーク（お気に入り）に<br>
+            登録されている方は変更をお願いいたします。
+        </p>
     </div>
 
     <script>
-        // 班の計算に使用する固定係数 (元のアプリから流用)
-        const SQUAD_SCALING_FACTOR = 80;
+        window.onload = function() {
+            const targetUrl = "https://nek0-tkdb.netlify.app/";
+            let seconds = 5;
+            const countdownEl = document.getElementById('countdown');
+            const progressEl = document.getElementById('progress');
 
-        // かかる時間の係数 (秒/班)
-        const TIME_COEFFICIENTS = {
-            lv1: 4, // タウン
-            lv2: 3, // 寮
-            lv3: 2  // 城 (2秒/班と解釈)
+            // Countdown and Progress bar logic
+            const timer = setInterval(() => {
+                seconds--;
+                countdownEl.textContent = seconds;
+                
+                // Update progress bar (0% to 100%)
+                const progressPercentage = ((5 - seconds) / 5) * 100;
+                progressEl.style.width = progressPercentage + '%';
+
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = targetUrl;
+                }
+            }, 1000);
         };
-
-        // 初期ロード時の設定
-        document.addEventListener('DOMContentLoaded', () => {
-            // 入力欄の値が変更されたら再計算するイベントを設定
-            document.getElementById('myPower').addEventListener('input', calculateDebuff);
-            document.getElementById('enemyPower').addEventListener('input', calculateDebuff);
-        });
-
-
-        /**
-         * 属性補正を無視し、戦力の差に基づいて必要な班の数と人数を計算するメイン関数
-         */
-        function calculateDebuff() {
-            const myPowerInput = document.getElementById('myPower');
-            const enemyPowerInput = document.getElementById('enemyPower');
-            const errorMessageDiv = document.getElementById('errorMessage');
-            const outputDiv = document.getElementById('output');
-            
-            errorMessageDiv.classList.add('hidden');
-            outputDiv.classList.remove('bg-blue-100', 'border-blue-300');
-            outputDiv.classList.add('bg-green-100', 'border-green-300');
-
-            // 1. 入力値の取得とバリデーション
-            const myPower = parseFloat(myPowerInput.value);
-            const enemyPower = parseFloat(enemyPowerInput.value);
-
-            // 値が空の場合、エラーではなく結果表示をリセットする
-            if (myPowerInput.value === "" || enemyPowerInput.value === "") {
-                document.getElementById('neededSquads').textContent = '- 班';
-                document.getElementById('debuffRate').textContent = '- %'; // NEW: 弱体化率リセット
-                document.getElementById('neededPeople').textContent = '- 人';
-                document.getElementById('timeLv1Sec').textContent = '- 秒';
-                document.getElementById('timeLv2Sec').textContent = '- 秒';
-                document.getElementById('timeLv3Sec').textContent = '- 秒';
-                document.getElementById('timeLv1Min').textContent = '(- 分)';
-                document.getElementById('timeLv2Min').textContent = '(- 分)';
-                document.getElementById('timeLv3Min').textContent = '(- 分)';
-                return;
-            }
-
-            if (isNaN(myPower) || myPower <= 0 || isNaN(enemyPower) || enemyPower <= 0) {
-                errorMessageDiv.textContent = '戦力には1以上の正の数を入力してください。';
-                errorMessageDiv.classList.remove('hidden');
-                document.getElementById('neededSquads').textContent = '- 班';
-                document.getElementById('debuffRate').textContent = '- %'; // NEW: 弱体化率リセット
-                document.getElementById('neededPeople').textContent = '- 人';
-                document.getElementById('timeLv1Sec').textContent = '- 秒';
-                document.getElementById('timeLv2Sec').textContent = '- 秒';
-                document.getElementById('timeLv3Sec').textContent = '- 秒';
-                document.getElementById('timeLv1Min').textContent = '(- 分)';
-                document.getElementById('timeLv2Min').textContent = '(- 分)';
-                document.getElementById('timeLv3Min').textContent = '(- 分)';
-                return;
-            }
-
-            // 2. 属性補正を無視し、乗数 M = 1.00 とする
-            const multiplier = 1.00;
-            
-            // 3. 有効戦力 (属性補正なし) と不足率の計算
-            const effectiveMyPower = myPower * multiplier;
-            
-            // 敵戦力に対する戦力の不足率を計算: (1 - P_my / P_enemy)
-            const deficitRatio = 1 - (effectiveMyPower / enemyPower);
-
-            // NEW: 弱体化率の初期化と計算
-            let debuffRate = 0;
-            
-            let neededSquads = 0;
-            let neededPeople = 0;
-            
-            // 4. 不足率が0より大きい場合、班の計算を実行
-            if (deficitRatio > 0) {
-                // 不足率をパーセンテージに変換し、小数点以下2桁で丸める
-                debuffRate = (deficitRatio * 100).toFixed(2);
-                
-                // 不足率に定数80を乗じる: (1 - Ratio) * 80
-                const squadCalculationBase = deficitRatio * SQUAD_SCALING_FACTOR;
-                
-                // 切り上げ: ROUNDUP(...)
-                const roundedSquads = Math.ceil(squadCalculationBase);
-                
-                // max(0, ...)
-                neededSquads = Math.max(0, roundedSquads);
-                
-                // 5. 人数を計算 (1班 = 6人)
-                neededPeople = neededSquads * 6;
-            } else {
-                // 自分の戦力が敵以上の場合、弱体化率は0%
-                debuffRate = (0).toFixed(2);
-            }
-
-            // 6. 結果の表示
-            document.getElementById('neededSquads').textContent = `${neededSquads} 班`;
-            document.getElementById('neededPeople').textContent = `${neededPeople} 人`;
-            document.getElementById('debuffRate').textContent = `${debuffRate} %`; // NEW: 弱体化率の表示
-            
-            // 7. かかる時間の計算と表示 (秒と分)
-            const timeLv1Sec = neededSquads * TIME_COEFFICIENTS.lv1;
-            const timeLv2Sec = neededSquads * TIME_COEFFICIENTS.lv2;
-            const timeLv3Sec = neededSquads * TIME_COEFFICIENTS.lv3;
-            
-            const timeLv1Min = (timeLv1Sec / 60).toFixed(2);
-            const timeLv2Min = (timeLv2Sec / 60).toFixed(2);
-            const timeLv3Min = (timeLv3Sec / 60).toFixed(2);
-
-            document.getElementById('timeLv1Sec').textContent = `${timeLv1Sec} 秒`;
-            document.getElementById('timeLv2Sec').textContent = `${timeLv2Sec} 秒`;
-            document.getElementById('timeLv3Sec').textContent = `${timeLv3Sec} 秒`;
-            
-            document.getElementById('timeLv1Min').textContent = `(${timeLv1Min} 分)`;
-            document.getElementById('timeLv2Min').textContent = `(${timeLv2Min} 分)`;
-            document.getElementById('timeLv3Min').textContent = `(${timeLv3Min} 分)`;
-            
-            // 必要な班数が0の場合の特別表示
-            if (neededSquads === 0) {
-                document.getElementById('neededSquads').textContent = '不要';
-                document.getElementById('neededPeople').textContent = '不要';
-                document.getElementById('timeLv1Sec').textContent = '不要';
-                document.getElementById('timeLv2Sec').textContent = '不要';
-                document.getElementById('timeLv3Sec').textContent = '不要';
-                document.getElementById('timeLv1Min').textContent = '';
-                document.getElementById('timeLv2Min').textContent = '';
-                document.getElementById('timeLv3Min').textContent = '';
-                outputDiv.classList.remove('bg-green-100', 'border-green-300');
-                outputDiv.classList.add('bg-blue-100', 'border-blue-300'); // 青系の色に変更
-            } else {
-                outputDiv.classList.remove('bg-blue-100', 'border-blue-300');
-                outputDiv.classList.add('bg-green-100', 'border-green-300'); // 緑系の色に変更
-            }
-        }
     </script>
 </body>
 </html>
