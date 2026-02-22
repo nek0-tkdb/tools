@@ -3,427 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画像属性3択クイズ</title>
+    <title>移転のお知らせ - Website Relocated</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            padding-bottom: 30px;
-            min-height: 100vh;
-            overflow-x: hidden;
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
         }
-        .app-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            padding: 5px;
-            font-size: 10px;
-            color: #6b7280;
-            background-color: #e5e7eb;
-            z-index: 999;
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
         }
-        img {
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .fixed-card-img {
-            width: 270px;
-            height: 200px;
-            object-fit: contain;
-            background-color: #e5e7eb;
-            border-radius: 0.5rem;
-        }
-        #feedback-overlay {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 50;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            border-radius: 0.75rem;
-            cursor: pointer;
-            padding: 1.5rem;
-        }
-        #image-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0,0,0,0.85);
-            backdrop-filter: blur(8px);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .confetti {
-            position: fixed;
-            top: -20px;
-            z-index: 9999;
-            pointer-events: none;
-            animation: fall linear forwards;
-        }
-        @keyframes fall {
-            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-        .toggle-checkbox:checked {
-            right: 0;
-            border-color: #4f46e5;
-        }
-        .toggle-checkbox:checked + .toggle-label {
-            background-color: #4f46e5;
+
+        .progress-bar {
+            transition: width 1s linear;
         }
     </style>
-    <script>
-        document.addEventListener('contextmenu', e => e.target.tagName === 'IMG' && e.preventDefault());
-
-        const CSV_FILE = 'quiz_data2.csv';
-        const APP_URL = 'https://nek0-tkdb.github.io/tools/quiz_app.html';
-
-        window.QuizApp = {
-            questions: [],
-            selectedCharacters: [],
-            currentScreen: 'home',
-            quizSettings: { totalQuestions: 3, soundEnabled: false },
-            currentQuiz: { active: false, currentQuestionIndex: 0, score: 0, quizQuestions: [], answerHistory: [] },
-            audioCtx: null,
-            
-            ATTRIBUTES: {
-                fire: { name: '赤', color: 'bg-red-500 hover:bg-red-600 border-red-700', text: 'text-red-600' },
-                water: { name: '青', color: 'bg-blue-500 hover:bg-blue-600 border-blue-700', text: 'text-blue-600' },
-                grass: { name: '緑', color: 'bg-green-500 hover:bg-green-600 border-green-700', text: 'text-green-600' }
-            },
-            
-            ATTRIBUTE_MAP: { '赤': 'fire', '青': 'water', '緑': 'grass' },
-
-            async init() {
-                this.loadSettings();
-                await this.loadCsvData();
-                this.renderApp();
-            },
-
-            loadSettings() {
-                const stored = localStorage.getItem('quizSettings');
-                if (stored) this.quizSettings = JSON.parse(stored);
-            },
-
-            async loadCsvData() {
-                try {
-                    const response = await fetch(CSV_FILE);
-                    if (!response.ok) throw new Error('CSV not found');
-                    const text = await response.text();
-                    const lines = text.trim().split(/\r?\n/).slice(1); 
-                    this.questions = lines.map((line, index) => {
-                        const parts = line.split(',').map(s => {
-                            let val = s.trim();
-                            if (val.startsWith('"') && val.endsWith('"')) val = val.substring(1, val.length - 1);
-                            return val.replace(/""/g, '"');
-                        });
-                        const [char, card, series, attr, url, date] = parts;
-                        return {
-                            id: index, charName: char || '', cardName: card || '無題のカード', series: series || '',
-                            correctAttribute: this.ATTRIBUTE_MAP[attr] || 'fire', imageUrl: url || '', createdAt: date ? new Date(date) : new Date()
-                        };
-                    });
-                } catch (e) { console.error(e); }
-            },
-
-            initAudio() {
-                if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            },
-
-            playSound(type) {
-                if (!this.quizSettings.soundEnabled || !this.audioCtx) return;
-                const osc = this.audioCtx.createOscillator();
-                const gain = this.audioCtx.createGain();
-                osc.connect(gain); gain.connect(this.audioCtx.destination);
-                const now = this.audioCtx.currentTime;
-
-                if (type === 'correct') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
-                    osc.frequency.exponentialRampToValueAtTime(1320, now + 0.1);
-                    gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                    osc.start(); osc.stop(now + 0.3);
-                } else if (type === 'incorrect') {
-                    osc.type = 'triangle'; osc.frequency.setValueAtTime(440, now);
-                    osc.frequency.linearRampToValueAtTime(220, now + 0.2);
-                    gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                    osc.start(); osc.stop(now + 0.4);
-                } else if (type === 'perfect') {
-                    const osc2 = this.audioCtx.createOscillator();
-                    const gain2 = this.audioCtx.createGain();
-                    osc2.connect(gain2); gain2.connect(this.audioCtx.destination);
-                    osc.type = 'square'; osc2.type = 'square';
-                    const notes = [523.25, 659.25, 783.99, 1046.50];
-                    notes.forEach((freq, i) => {
-                        osc.frequency.setValueAtTime(freq, now + (i * 0.1));
-                        osc2.frequency.setValueAtTime(freq * 0.5, now + (i * 0.1));
-                    });
-                    gain.gain.setValueAtTime(0.05, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-                    gain2.gain.setValueAtTime(0.05, now); gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-                    osc.start(); osc2.start(); osc.stop(now + 0.8); osc2.stop(now + 0.8);
-                }
-            },
-
-            getAvailableCount() {
-                if (this.selectedCharacters.length === 0) return this.questions.length;
-                return this.questions.filter(q => this.selectedCharacters.includes(q.charName)).length;
-            },
-
-            setScreen(screen) {
-                this.currentScreen = screen;
-                this.renderApp();
-            },
-
-            openPreview(url, name, series, attrKey) {
-                const modal = document.getElementById('image-modal');
-                document.getElementById('modal-img').src = url;
-                document.getElementById('modal-card-name').innerText = name;
-                document.getElementById('modal-series-name').innerText = series;
-                const attrEl = document.getElementById('modal-attr-info');
-                if (attrKey) {
-                    const data = this.ATTRIBUTES[attrKey];
-                    attrEl.innerHTML = `属性: <span class="${data.text} font-black">${data.name}</span>`;
-                    attrEl.style.display = 'block';
-                } else { attrEl.style.display = 'none'; }
-                modal.style.display = 'flex';
-            },
-
-            closePreview() { document.getElementById('image-modal').style.display = 'none'; },
-
-            startQuiz() {
-                const max = this.getAvailableCount();
-                if (this.quizSettings.totalQuestions > max || this.quizSettings.totalQuestions <= 0) {
-                    alert(`エラー：有効な出題数（1～${max}）を指定してください。`);
-                    return;
-                }
-                this.initAudio();
-                let available = [...this.questions];
-                if (this.selectedCharacters.length > 0) available = available.filter(q => this.selectedCharacters.includes(q.charName));
-                available.sort(() => Math.random() - 0.5);
-                const count = this.quizSettings.totalQuestions;
-                this.currentQuiz = { active: true, currentQuestionIndex: 0, score: 0, quizQuestions: available.slice(0, count), answerHistory: [] };
-                this.setScreen('quiz');
-            },
-
-            triggerConfetti(special = false) {
-                const colors = special ? ['#FFD700', '#FFFFFF', '#FF4500'] : ['#FFD700', '#FF6347', '#32CD32', '#1E90FF'];
-                const shapes = ['★', '☆'];
-                const confettiCount = special ? 200 : 80;
-                for (let i = 0; i < confettiCount; i++) {
-                    const el = document.createElement('div');
-                    el.className = 'confetti'; el.innerText = shapes[Math.floor(Math.random() * shapes.length)];
-                    el.style.left = Math.random() * 100 + 'vw'; el.style.color = colors[Math.floor(Math.random() * colors.length)];
-                    el.style.fontSize = Math.random() * (special ? 30 : 20) + 15 + 'px';
-                    el.style.animationDuration = Math.random() * (special ? 3 : 2) + 1.5 + 's';
-                    document.body.appendChild(el);
-                    setTimeout(() => el.remove(), 4000);
-                }
-            },
-
-            submitAnswer(attr) {
-                const quiz = this.currentQuiz;
-                const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
-                const isCorrect = currentQ.correctAttribute === attr;
-                const corAttrData = this.ATTRIBUTES[currentQ.correctAttribute];
-                quiz.answerHistory.push({ question: currentQ, selected: attr, correct: isCorrect });
-                
-                const overlay = document.getElementById('feedback-overlay');
-                document.querySelectorAll('.quiz-choice-btn').forEach(b => b.disabled = true);
-                
-                overlay.innerHTML = `
-                    <div class="text-4xl font-black mb-3 scale-110">${isCorrect ? '正解！' : '不正解...'}</div>
-                    <div class="bg-white/95 p-4 rounded-xl shadow-lg border border-gray-200 min-w-[240px] mb-4">
-                        <div class="text-[10px] text-gray-500 uppercase tracking-widest">${currentQ.series}</div>
-                        <div class="text-sm text-gray-800 font-bold mb-1 break-words">${currentQ.cardName}</div>
-                        <div class="text-base font-bold pt-1 border-t border-gray-300">正解: <span class="${corAttrData.text}">${corAttrData.name}</span></div>
-                    </div>
-                    <div class="text-xs font-bold bg-black/10 px-4 py-2 rounded-full animate-pulse text-black">タップして次へ</div>
-                `;
-                overlay.style.display = 'flex';
-                if (isCorrect) {
-                    quiz.score++; this.playSound('correct');
-                    overlay.style.color = '#10B981'; overlay.style.backgroundColor = 'rgba(209, 250, 229, 0.95)';
-                    this.triggerConfetti();
-                } else {
-                    this.playSound('incorrect');
-                    overlay.style.color = '#EF4444'; overlay.style.backgroundColor = 'rgba(254, 226, 226, 0.95)';
-                }
-            },
-
-            nextStep() {
-                const quiz = this.currentQuiz;
-                quiz.currentQuestionIndex++;
-                if (quiz.currentQuestionIndex >= quiz.quizQuestions.length) {
-                    quiz.active = false; this.setScreen('results');
-                    if (quiz.score === quiz.quizQuestions.length) { this.triggerConfetti(true); this.playSound('perfect'); }
-                } else { this.renderApp(); }
-            },
-
-            renderApp() {
-                const container = document.getElementById('app-container');
-                let html = '';
-                switch (this.currentScreen) {
-                    case 'home': html = this.renderHome(); break;
-                    case 'quiz': html = this.renderQuiz(); break;
-                    case 'cardList': html = this.renderCardList(); break;
-                    case 'charSelect': html = this.renderCharSelect(); break;
-                    case 'results': html = this.renderResults(); break;
-                }
-                container.innerHTML = `<div class="max-w-4xl mx-auto w-full p-4 sm:p-8">${html}</div>`;
-                this.attachEventListeners();
-            },
-
-            renderHome() {
-                const max = this.getAvailableCount();
-                const isInvalid = this.quizSettings.totalQuestions > max || this.quizSettings.totalQuestions <= 0;
-                return `
-                    <div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-100">
-                        <h1 class="text-4xl font-black mb-8 text-gray-800 tracking-tighter">属性当てクイズ</h1>
-                        <div class="flex flex-col items-center gap-6 mb-8 border-b pb-8">
-                            <div><label class="block text-sm font-bold mb-1 text-gray-500 tracking-widest uppercase">出題数 (最大 ${max}問)</label>
-                            <input type="number" id="total-questions-home" value="${this.quizSettings.totalQuestions}" min="1" max="${max}" 
-                                   class="p-4 border-2 ${isInvalid ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-2xl w-32 text-center text-xl font-bold outline-none transition">
-                            ${isInvalid ? `<p class="text-red-500 text-[10px] mt-2 font-bold animate-bounce">最大数を確認してください</p>` : ''}</div>
-                            <div class="flex items-center gap-3"><span class="text-sm font-bold text-gray-600">効果音</span>
-                            <div class="relative inline-block w-12 align-middle select-none"><input type="checkbox" id="sound-toggle" ${this.quizSettings.soundEnabled ? 'checked' : ''} class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/><label for="sound-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label></div></div>
-                        </div>
-                        <div class="space-y-4">
-                            <button id="start-quiz-btn" class="w-full text-2xl py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition transform hover:scale-[1.02] ${isInvalid ? 'opacity-50 cursor-not-allowed' : ''}">START</button>
-                            <button id="nav-char-select-btn" class="w-full py-4 border-2 border-gray-200 rounded-2xl hover:bg-gray-50 font-bold text-gray-600 transition">🎯 キャラ選択 (${this.selectedCharacters.length === 0 ? '全キャラ' : this.selectedCharacters.length + '名'})</button>
-                            <button id="nav-card-list-btn" class="w-full py-4 border-2 border-gray-200 rounded-2xl hover:bg-gray-50 font-bold text-gray-600 transition">カード一覧 (${this.questions.length}枚)</button>
-                        </div>
-                    </div>`;
-            },
-
-            renderQuiz() {
-                const quiz = this.currentQuiz; const choices = ['fire', 'water', 'grass'].sort(() => Math.random() - 0.5);
-                const currentQ = quiz.quizQuestions[quiz.currentQuestionIndex];
-                return `<div class="bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center border border-gray-200 max-w-md mx-auto relative overflow-hidden"><div id="feedback-overlay"></div><div class="w-full"><div class="flex justify-between items-center mb-6 border-b pb-4"><h2 class="text-xl font-black text-gray-800 text-center flex-1 tracking-widest">Q. ${quiz.currentQuestionIndex + 1} / ${quiz.quizQuestions.length}</h2><button id="abort-quiz-btn" class="text-xs font-bold text-gray-300 hover:text-red-400 absolute right-6">Quit</button></div><div class="flex justify-center mb-8"><img src="${currentQ.imageUrl}" class="fixed-card-img shadow-xl border-4 border-white"></div><div class="grid grid-cols-3 gap-2 w-full">${choices.map(attr => `<button data-attribute="${attr}" class="quiz-choice-btn py-6 rounded-2xl text-white font-black text-xl shadow-lg border-b-8 transition active:translate-y-2 active:border-b-0 ${this.ATTRIBUTES[attr].color}">${this.ATTRIBUTES[attr].name}</button>`).join('')}</div></div></div>`;
-            },
-
-            renderCharSelect() {
-                const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
-                return `<div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200"><h2 class="text-2xl font-black mb-6 border-b pb-2 text-gray-800 tracking-widest">出題キャラ選択</h2><div class="flex gap-2 mb-4"><button id="select-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200 transition">全選択</button><button id="deselect-all-btn" class="flex-1 py-2 bg-gray-100 rounded-lg text-sm font-bold hover:bg-gray-200 transition">全解除</button></div><div class="space-y-2 max-h-96 overflow-y-auto mb-6 overscroll-contain">${allChars.map(name => `<label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition"><input type="checkbox" value="${name}" class="char-checkbox w-5 h-5 mr-3" ${this.selectedCharacters.includes(name) || this.selectedCharacters.length === 0 ? 'checked' : ''}><span class="font-bold text-gray-700">${name}</span></label>`).join('')}</div><button id="apply-char-btn" class="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-md hover:bg-indigo-700 transition">選択を確定</button></div>`;
-            },
-
-            renderResults() {
-                const quiz = this.currentQuiz; 
-                const total = quiz.quizQuestions.length;
-                const score = quiz.score;
-                const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
-                const isPerfect = score === total;
-
-                // 指定されたシェア文章形式
-                const shareMsg = `属性当てクイズの結果、全${total}問中${score}問正解、正答率${percentage}%でした！あなたもチャレンジ♪\n${APP_URL}`;
-                const xShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMsg)}`;
-
-                const historyHtml = quiz.answerHistory.map(h => `<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border-2 ${h.correct ? 'border-green-100' : 'border-red-100'} shadow-sm"><div class="w-20 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 cursor-pointer result-img-trigger" data-url="${h.question.imageUrl}" data-name="${h.question.cardName}" data-series="${h.question.series}" data-attr="${h.question.correctAttribute}"><img src="${h.question.imageUrl}" class="w-full h-full object-contain"></div><div class="flex-1 min-w-0 text-left"><div class="text-[9px] text-gray-400 font-bold uppercase">${h.question.series}</div><p class="font-black text-sm text-gray-800 break-words leading-tight">${h.question.cardName}</p><div class="text-xs mt-1 flex gap-3"><span><b class="${this.ATTRIBUTES[h.selected].text}">${this.ATTRIBUTES[h.selected].name}</b></span><span class="text-gray-300">▶</span><span>正解: <b class="${this.ATTRIBUTES[h.question.correctAttribute].text}">${this.ATTRIBUTES[h.question.correctAttribute].name}</b></span></div></div><div class="text-2xl">${h.correct ? '✅' : '❌'}</div></div>`).join('');
-                
-                return `<div class="bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-200"><h2 class="text-2xl font-black mb-2 text-gray-800 uppercase tracking-widest text-sm">Result</h2><div class="${isPerfect ? 'animate-bounce' : ''}"><p class="text-6xl font-black mb-2 text-indigo-600 tracking-tighter">${score} / ${total}</p>${isPerfect ? '<p class="text-xl font-black text-yellow-500 mb-6 uppercase italic tracking-widest">✨ Perfect! ✨</p>' : '<p class="mb-8"></p>'}</div><div class="flex gap-4 mb-10"><button id="back-home-btn" class="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-gray-600 hover:bg-gray-200 transition">HOME</button><a href="${xShareUrl}" target="_blank" class="flex-1 py-4 bg-black text-white rounded-2xl font-black flex items-center justify-center shadow-lg hover:bg-gray-800 transition">SHARE</a></div><div class="text-left"><h3 class="font-black mb-6 text-gray-400 uppercase tracking-widest text-sm text-center">Review</h3><div class="space-y-3">${historyHtml}</div></div></div>`;
-            },
-
-            renderCardList() {
-                const charNames = [...new Set(this.questions.map(q => q.charName).filter(n => n))].sort();
-                return `<div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-200"><div class="flex justify-between items-end mb-6"><div><h2 class="text-2xl font-black text-gray-800">CARD LIST</h2><p class="text-sm text-gray-400 font-bold uppercase tracking-widest">Display: <span id="filtered-count" class="text-indigo-500 font-black">${this.questions.length}</span> / Total: ${this.questions.length}</p></div></div><select id="char-filter" class="w-full p-4 border-2 border-gray-100 rounded-2xl mb-6 outline-none bg-gray-50 font-bold text-gray-600 appearance-none"><option value="">すべてのキャラを表示</option>${charNames.map(n => `<option value="${n}">${n}</option>`).join('')}</select><ul class="divide-y divide-gray-100 border-2 border-gray-50 rounded-2xl sm:h-[500px] overflow-y-auto overscroll-contain bg-white">${this.questions.map(q => `<li class="card-list-item p-5 flex items-center gap-4 hover:bg-indigo-50/30 transition" data-char="${q.charName}"><div class="w-16 h-12 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 cursor-pointer list-img-trigger" data-url="${q.imageUrl}" data-name="${q.cardName}" data-series="${q.series}" data-attr="${q.correctAttribute}"><img src="${q.imageUrl}" class="w-full h-full object-contain"></div><div class="flex-1 min-w-0 text-left"><div class="text-[8px] text-gray-300 font-bold uppercase">${q.series}</div><p class="font-black text-sm text-gray-700 break-words leading-tight">${q.cardName}</p><p class="text-xs text-gray-400 font-bold">${q.charName}</p></div><span class="px-4 py-1.5 text-xs font-black rounded-full text-white shadow-sm ${this.ATTRIBUTES[q.correctAttribute].color.split(' ')[0]}">${this.ATTRIBUTES[q.correctAttribute].name}</span></li>`).join('')}</ul><button id="back-home-btn" class="w-full mt-8 py-4 bg-gray-100 rounded-2xl font-black text-gray-500 hover:bg-gray-200 transition">BACK TO HOME</button></div>`;
-            },
-
-            attachEventListeners() {
-                const navCharBtn = document.getElementById('nav-char-select-btn');
-                if (navCharBtn) navCharBtn.onclick = () => this.setScreen('charSelect');
-                
-                const navCardBtn = document.getElementById('nav-card-list-btn');
-                if (navCardBtn) navCardBtn.onclick = () => this.setScreen('cardList');
-                
-                const startBtn = document.getElementById('start-quiz-btn');
-                if (startBtn) startBtn.onclick = () => this.startQuiz();
-
-                document.querySelectorAll('#back-home-btn').forEach(b => b.onclick = () => this.setScreen('home'));
-                const abortBtn = document.getElementById('abort-quiz-btn');
-                if (abortBtn) abortBtn.onclick = () => confirm('終了しますか？') && this.setScreen('home');
-
-                const qInput = document.getElementById('total-questions-home');
-                if (qInput) {
-                    qInput.oninput = e => {
-                        const val = parseInt(e.target.value) || 0;
-                        const max = this.getAvailableCount();
-                        this.quizSettings.totalQuestions = val;
-                        localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
-                        this.renderApp(); 
-                    };
-                }
-
-                const sToggle = document.getElementById('sound-toggle');
-                if (sToggle) sToggle.onchange = e => {
-                    this.quizSettings.soundEnabled = e.target.checked;
-                    if (this.quizSettings.soundEnabled) this.initAudio();
-                    localStorage.setItem('quizSettings', JSON.stringify(this.quizSettings));
-                };
-
-                document.querySelectorAll('.quiz-choice-btn').forEach(btn => btn.onclick = e => this.submitAnswer(e.currentTarget.dataset.attribute));
-                const feedOverlay = document.getElementById('feedback-overlay');
-                if (feedOverlay) feedOverlay.onclick = () => this.nextStep();
-
-                const charFilter = document.getElementById('char-filter');
-                if (charFilter) charFilter.onchange = e => {
-                    const val = e.target.value; let count = 0;
-                    document.querySelectorAll('.card-list-item').forEach(item => {
-                        const isVisible = (val === '' || item.dataset.char === val);
-                        item.style.display = isVisible ? 'flex' : 'none';
-                        if (isVisible) count++;
-                    });
-                    const countEl = document.getElementById('filtered-count');
-                    if (countEl) countEl.innerText = count;
-                };
-
-                document.getElementById('image-modal')?.addEventListener('click', () => this.closePreview());
-                document.querySelectorAll('.list-img-trigger, .result-img-trigger').forEach(trigger => {
-                    trigger.onclick = e => {
-                        e.stopPropagation(); const d = e.currentTarget.dataset;
-                        this.openPreview(d.url, d.name, d.series, d.attr);
-                    };
-                });
-
-                const selectAll = document.getElementById('select-all-btn');
-                if (selectAll) selectAll.onclick = () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = true);
-                const deselectAll = document.getElementById('deselect-all-btn');
-                if (deselectAll) deselectAll.onclick = () => document.querySelectorAll('.char-checkbox').forEach(c => c.checked = false);
-                const applyCharBtn = document.getElementById('apply-char-btn');
-                if (applyCharBtn) applyCharBtn.onclick = () => {
-                    const selected = Array.from(document.querySelectorAll('.char-checkbox:checked')).map(c => c.value);
-                    const allChars = [...new Set(this.questions.map(q => q.charName).filter(n => n))];
-                    this.selectedCharacters = selected.length === allChars.length ? [] : selected;
-                    this.setScreen('home');
-                };
-            }
-        };
-        document.addEventListener('DOMContentLoaded', () => window.QuizApp.init());
-    </script>
 </head>
-<body class="bg-gray-50">
-    <div id="image-modal">
-        <div class="bg-white p-4 rounded-2xl shadow-2xl max-w-[310px] w-full flex flex-col items-center">
-            <img id="modal-img" class="fixed-card-img mb-4" src="">
-            <div class="w-full text-center px-2 mb-4 text-gray-800">
-                <p id="modal-series-name" class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1"></p>
-                <p id="modal-card-name" class="text-sm font-black break-words leading-tight mb-2"></p>
-                <p id="modal-attr-info" class="text-xs font-bold"></p>
-            </div>
-            <p class="text-[10px] text-indigo-500 font-black tracking-widest border-t border-indigo-50 w-full pt-3 text-center">TAP TO CLOSE</p>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
+        <!-- Icon -->
+        <div class="mb-6 inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
         </div>
+
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">ホームページを移転しました</h1>
+        <p class="text-gray-600 mb-6">
+            ご訪問ありがとうございます。<br>
+            当サイトは新しいURLへ移転いたしました。
+        </p>
+
+        <!-- New URL Box -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-8 break-all">
+            <p class="text-sm text-gray-500 mb-1">新しいURL</p>
+            <a href="https://nek0-tkdb.netlify.app/" class="text-blue-600 font-medium hover:underline text-lg">
+                https://nek0-tkdb.netlify.app/
+            </a>
+        </div>
+
+        <!-- Countdown & Redirect -->
+        <div class="mb-8">
+            <p class="text-sm text-gray-500 mb-2">
+                <span id="countdown" class="font-bold text-blue-600">5</span> 秒後に自動的に移動します
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div id="progress" class="bg-blue-600 h-full progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Manual Link Button -->
+        <a href="https://nek0-tkdb.netlify.app/" 
+           class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+            今すぐ移動する
+        </a>
+
+        <!-- Footer Note -->
+        <p class="mt-8 text-xs text-gray-400 leading-relaxed">
+            お手数ですが、ブックマーク（お気に入り）に<br>
+            登録されている方は変更をお願いいたします。
+        </p>
     </div>
-    <div id="app-container" class="min-h-screen flex items-center justify-center py-10">
-        <div class="text-center"><div class="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto"></div><p class="mt-4 text-gray-400 font-bold uppercase tracking-widest text-xs">Loading</p></div>
-    </div>
-    <div class="app-footer">X: nek0n0tem0</div>
+
+    <script>
+        window.onload = function() {
+            const targetUrl = "https://nek0-tkdb.netlify.app/";
+            let seconds = 5;
+            const countdownEl = document.getElementById('countdown');
+            const progressEl = document.getElementById('progress');
+
+            // Countdown and Progress bar logic
+            const timer = setInterval(() => {
+                seconds--;
+                countdownEl.textContent = seconds;
+                
+                // Update progress bar (0% to 100%)
+                const progressPercentage = ((5 - seconds) / 5) * 100;
+                progressEl.style.width = progressPercentage + '%';
+
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = targetUrl;
+                }
+            }, 1000);
+        };
+    </script>
 </body>
 </html>
