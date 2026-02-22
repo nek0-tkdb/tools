@@ -3,246 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>弱体化計算シミュレーター</title>
-    <!-- Tailwind CSS CDNの読み込み -->
+    <title>移転のお知らせ - Website Relocated</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Interフォントの設定 -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f7f7;
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
         }
-        .container {
-            /* PC表示での最大幅 */
-            max-width: 900px;
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
         }
-        /* 日本語表示用のカスタムスタイル */
-        .jp-num {
-            font-variant-numeric: tabular-nums;
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar {
+            transition: width 1s linear;
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div id="app" class="container mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl">
-        <!-- 修正: アプリケーションのタイトルを変更 -->
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b-4 border-indigo-500 pb-2">相手戦力弱体化率計算アプリ</h1>
-        
-        <!-- 修正: 説明文を変更 -->
-        <p class="text-sm text-gray-500 mb-6 whitespace-pre-line">以下の使い方を想定しています。
-総戦力高いけど単騎そんなに高くない班⇒班の戦力を入れて弱体化率を調べる
-単騎めちゃくちゃ高い班⇒単騎の戦力を入れて弱体化率を調べる</p>
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
+        <!-- Icon -->
+        <div class="mb-6 inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+        </div>
 
-        <!-- 入力エリア -->
-        <div class="space-y-4 mb-8 bg-indigo-50 p-4 rounded-lg">
-            <!-- 班の戦力入力 -->
-            <div>
-                <!-- 修正: ラベルを「対戦相手の班戦力」に変更 -->
-                <label for="bandPower" class="block text-sm font-medium text-gray-700 mb-1">対戦相手の班戦力 (万単位で入力してください)</label>
-                <!-- 初期値を空欄 (value="1500"を削除) に修正 -->
-                <input type="number" id="bandPower" value="" placeholder="例: 1500 (1500万)" 
-                       class="w-full p-3 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg transition duration-150 ease-in-out"
-                       oninput="calculateWeakening()">
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">ホームページを移転しました</h1>
+        <p class="text-gray-600 mb-6">
+            ご訪問ありがとうございます。<br>
+            当サイトは新しいURLへ移転いたしました。
+        </p>
+
+        <!-- New URL Box -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-8 break-all">
+            <p class="text-sm text-gray-500 mb-1">新しいURL</p>
+            <a href="https://nek0-tkdb.netlify.app/" class="text-blue-600 font-medium hover:underline text-lg">
+                https://nek0-tkdb.netlify.app/
+            </a>
+        </div>
+
+        <!-- Countdown & Redirect -->
+        <div class="mb-8">
+            <p class="text-sm text-gray-500 mb-2">
+                <span id="countdown" class="font-bold text-blue-600">5</span> 秒後に自動的に移動します
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div id="progress" class="bg-blue-600 h-full progress-bar" style="width: 0%"></div>
             </div>
-            <!-- 単騎の戦力入力 -->
-            <div>
-                <!-- 修正: ラベルを「対戦相手の単騎戦力」に変更 -->
-                <label for="soloPower" class="block text-sm font-medium text-gray-700 mb-1">対戦相手の単騎戦力 (万単位で入力してください)</label>
-                <!-- 初期値を空欄 (value="900"を削除) に修正 -->
-                <input type="number" id="soloPower" value="" placeholder="例: 900 (900万)" 
-                       class="w-full p-3 border border-indigo-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-lg transition duration-150 ease-in-out"
-                       oninput="calculateWeakening()">
-            </div>
-        </div>
-        
-        <!-- 結果表示エリア -->
-        <h2 class="text-2xl font-semibold text-gray-800 mb-4">弱体化シミュレーション結果</h2>
-        <div class="overflow-x-auto shadow-lg rounded-xl">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-indigo-600 text-white">
-                    <tr>
-                        <!-- パディングをpx-2 py-2に調整 -->
-                        <th class="px-2 py-2 text-center text-xs font-medium uppercase tracking-wider rounded-tl-xl">弱体化率</th>
-                        <th class="px-2 py-2 text-center text-xs font-medium uppercase tracking-wider">人</th>
-                        <th class="px-2 py-2 text-center text-xs font-medium uppercase tracking-wider">班</th>
-                        <!-- ヘッダーを短縮し、パディングを調整 -->
-                        <th class="px-2 py-2 text-center text-xs font-medium uppercase tracking-wider">班戦力(万)</th>
-                        <th class="px-2 py-2 text-center text-xs font-medium uppercase tracking-wider rounded-tr-xl">単騎戦力(万)</th>
-                    </tr>
-                </thead>
-                <tbody id="resultsTableBody" class="bg-white divide-y divide-gray-200">
-                    <!-- 結果がここに挿入されます -->
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- 修正: index.htmlに戻るボタンを、ブラウザの履歴で戻る機能に変更 -->
-        <div class="text-center mt-6">
-            <button onclick="history.back();" 
-                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out text-sm">
-                ← ツール集トップに戻る
-            </button>
         </div>
 
-        <!-- フッター: 認証ステータスとユーザー情報を表示 (IDを復活させました) -->
-        <div id="authStatusContainer" class="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-400 text-center space-y-1">
-            <p class="text-gray-500">X: nek0n0tem0</p>
-            <p class="text-red-500/70 mb-1">※このアプリではデータ保存機能は使用していません</p>
-            <!-- JavaScriptが参照する要素 -->
-            <p id="authStatus" class="text-gray-400"></p>
-        </div>
+        <!-- Manual Link Button -->
+        <a href="https://nek0-tkdb.netlify.app/" 
+           class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+            今すぐ移動する
+        </a>
+
+        <!-- Footer Note -->
+        <p class="mt-8 text-xs text-gray-400 leading-relaxed">
+            お手数ですが、ブックマーク（お気に入り）に<br>
+            登録されている方は変更をお願いいたします。
+        </p>
     </div>
 
-    <!-- Firebase SDKの読み込み -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firestoreのログレベルを設定 (デバッグ用)
-        // setLogLevel('Debug'); // 必要に応じてコメント解除
-
-        // グローバル変数から設定を取得
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Firebase初期化と認証
-        let app;
-        let auth;
-        let db;
-        let userId = 'anonymous';
-
-        const initFirebase = async () => {
-            if (Object.keys(firebaseConfig).length > 0) {
-                try {
-                    app = initializeApp(firebaseConfig);
-                    auth = getAuth(app);
-                    db = getFirestore(app);
-
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-
-                    onAuthStateChanged(auth, (user) => {
-                        if (user) {
-                            userId = user.uid;
-                            document.getElementById('authStatus').textContent = '認証済みユーザーID: ' + userId;
-                        } else {
-                            userId = 'anonymous';
-                            document.getElementById('authStatus').textContent = '匿名認証済み';
-                        }
-                        // 認証完了後に計算を実行
-                        window.calculateWeakening();
-                    });
-
-                } catch (error) {
-                    console.error("Firebase Initialization or Authentication Error:", error);
-                    document.getElementById('authStatus').textContent = 'Firebase認証エラーが発生しました。';
-                    // エラー時でも計算は実行
-                    window.calculateWeakening();
-                }
-            } else {
-                document.getElementById('authStatus').textContent = 'Firebase設定がありません。';
-                // 設定がない場合でも計算は実行
-                window.calculateWeakening();
-            }
-        };
-
-        // ウィンドウにグローバル関数を公開
-        window.calculateWeakening = calculateWeakening;
-        window.addEventListener('load', initFirebase);
-    </script>
-
     <script>
-        /**
-         * 数値を万単位に変換し、日本語のロケールでカンマ区切りにフォーマットする
-         * (この関数は入力値が万単位になったため、そのまま万単位として表示します)
-         * @param {number} value - 変換する数値 (例: 1500万を計算で出した場合、1500)
-         * @returns {string} - フォーマットされた文字列 (例: "1,500")
-         */
-        function formatToMan(value) {
-            if (isNaN(value) || value === null) return '0';
-            // 小数点以下を四捨五入して、日本語ロケールでカンマ区切りを適用
-            return Math.round(value).toLocaleString('ja-JP', { maximumFractionDigits: 0 });
-        }
+        window.onload = function() {
+            const targetUrl = "https://nek0-tkdb.netlify.app/";
+            let seconds = 5;
+            const countdownEl = document.getElementById('countdown');
+            const progressEl = document.getElementById('progress');
 
-        /**
-         * 弱体化の計算を実行し、結果テーブルを更新する
-         */
-        function calculateWeakening() {
-            const bandPowerInput = document.getElementById('bandPower').value;
-            const soloPowerInput = document.getElementById('soloPower').value;
-            const resultsTableBody = document.getElementById('resultsTableBody');
-            
-            // 入力値を数値として取得。無効な場合は0を使用
-            // ここで入力値は万単位 (例: 1500)
-            const inputBandPowerMan = parseFloat(bandPowerInput) || 0;
-            const inputSoloPowerMan = parseFloat(soloPowerInput) || 0;
+            // Countdown and Progress bar logic
+            const timer = setInterval(() => {
+                seconds--;
+                countdownEl.textContent = seconds;
+                
+                // Update progress bar (0% to 100%)
+                const progressPercentage = ((5 - seconds) / 5) * 100;
+                progressEl.style.width = progressPercentage + '%';
 
-            // 計算は万単位で行う
-            const initialBandPower = inputBandPowerMan;
-            const initialSoloPower = inputSoloPowerMan;
-
-            // ユーザーの提供された例（10%で48人、8班）から定数を導出
-            // 1%あたりの「人」の数: 480人 / 100% = 4.8人/1%
-            const PEOPLE_PER_PERCENT = 4.8; 
-            // 1%あたりの「班」の数: 80班 / 100% = 0.8班/1%
-            const GROUPS_PER_PERCENT = 0.8;
-
-            let html = '';
-
-            // 初期値が空欄になった場合、計算結果も表示しない（0%の行以外）
-            if (inputBandPowerMan === 0 && inputSoloPowerMan === 0) {
-                // 両方0の場合、0%の行のみ表示
-                html += `
-                    <tr class="hover:bg-indigo-50 transition duration-150 ease-in-out">
-                        <td class="px-2 py-2 text-sm text-center font-medium text-gray-900">0%</td>
-                        <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">0</td>
-                        <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">0</td>
-                        <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900 bg-indigo-50">0</td>
-                        <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900">0</td>
-                    </tr>
-                `;
-            } else {
-                for (let percent = 0; percent <= 100; percent += 10) {
-                    const rate = percent / 100; // 0.0, 0.1, 0.2, ... 1.0
-
-                    // 弱体化後の戦力を計算（万単位）
-                    const newBandPowerMan = initialBandPower * (1 - rate);
-                    const newSoloPowerMan = initialSoloPower * (1 - rate);
-                    
-                    // 人数と班数を計算
-                    // percentはパーセント値 (0, 10, 20, ...)
-                    const people = Math.round(percent * PEOPLE_PER_PERCENT);
-                    const groups = Math.round(percent * GROUPS_PER_PERCENT);
-
-                    // 万単位でフォーマット（既に万単位の値なのでそのまま）
-                    const formattedBand = formatToMan(newBandPowerMan);
-                    const formattedSolo = formatToMan(newSoloPowerMan);
-
-                    // テーブル行のHTMLを構築
-                    // パディングをpx-2 py-2に調整
-                    html += `
-                        <tr class="hover:bg-indigo-50 transition duration-150 ease-in-out">
-                            <td class="px-2 py-2 text-sm text-center font-medium text-gray-900">${percent}%</td>
-                            <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">${people}</td>
-                            <td class="px-2 py-2 text-sm text-center jp-num text-gray-700">${groups}</td>
-                            <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900 bg-indigo-50">${formattedBand}</td>
-                            <td class="px-2 py-2 text-sm text-right jp-num font-bold text-gray-900">${formattedSolo}</td>
-                        </tr>
-                    `;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = targetUrl;
                 }
-            }
-
-
-            resultsTableBody.innerHTML = html;
-        }
-
-        // 初期ロード時に計算を実行
-        // window.onload = calculateWeakening;
+            }, 1000);
+        };
     </script>
 </body>
 </html>
