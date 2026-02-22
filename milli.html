@@ -2,357 +2,101 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ミリしらシートメーカー</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>移転のお知らせ - Website Relocated</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
-        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f3f4f6; overscroll-behavior: none; }
         
-        /* 共通のシートデザイン */
-        .sheet-design {
-            width: 1123px;
-            height: 794px;
-            background: white;
-            position: relative;
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 8px;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        
-        .slot-box { border: 1.5px solid #333; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
-        .slot-img-container { width: 100%; aspect-ratio: 1 / 1; border-bottom: 1.5px solid #333; overflow: hidden; position: relative; flex-shrink: 0; background: #eee; }
-        .slot-info { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-        .slot-name { height: 28px; border-bottom: 1px solid #ccc; background: #fafafa; flex-shrink: 0; font-size: 11px; padding-left: 6px; display: flex; align-items: center; justify-content: flex-start; text-align: left; color: #333; font-weight: bold; }
-        .slot-desc { flex: 1; background: #fff; font-size: 11px; padding: 6px; color: #666; line-height: 1.3; text-align: left; }
-        
-        /* プレビュー用：画面に合わせて縮小 */
-        .preview-wrapper { width: 100%; overflow: hidden; display: flex; justify-content: center; background: #ccc; padding: 40px 0; }
-        .preview-scale { transform: scale(0.6); transform-origin: top center; margin-bottom: -320px; }
-        @media (max-width: 1200px) { .preview-scale { transform: scale(0.45); margin-bottom: -430px; } }
-        @media (max-width: 768px) { .preview-scale { transform: scale(0.3); margin-bottom: -550px; } }
-
-        /* 書き出し用：画面外に隠して原寸保持 */
-        #export-area {
-            position: absolute;
-            top: -9999px;
-            left: -9999px;
-            z-index: -1;
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
         }
 
-        .touch-action-none { touch-action: none; }
-        [v-cloak] { display: none; }
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar {
+            transition: width 1s linear;
+        }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div id="app" class="max-w-6xl mx-auto" v-cloak>
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-800" @click="view = 'main'">ミリしらシートメーカー</h1>
-            <div v-if="loading" class="text-sm text-blue-500 animate-pulse font-bold">CSV読み込み中...</div>
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
+        <!-- Icon -->
+        <div class="mb-6 inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
         </div>
 
-        <!-- 1. メイン編集画面 -->
-        <div v-if="view === 'main'" class="space-y-6">
-            <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-                {{ error }}
-            </div>
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">ホームページを移転しました</h1>
+        <p class="text-gray-600 mb-6">
+            ご訪問ありがとうございます。<br>
+            当サイトは新しいURLへ移転いたしました。
+        </p>
 
-            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <p class="text-blue-800 text-sm font-bold">枠をクリックしてキャラクターを配置してください</p>
-                    <div class="flex items-center gap-4 mt-1">
-                        <span class="text-xs text-blue-600">配置済み: {{ filledCount }}/21</span>
-                        <button v-if="filledCount > 0" @click="clearSheet" class="text-[10px] text-red-500 hover:underline">リセット</button>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button v-if="filledCount >= 1" @click="view = 'preview'" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-bold shadow-lg">保存・ダウンロード</button>
-                </div>
-            </div>
+        <!-- New URL Box -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-8 break-all">
+            <p class="text-sm text-gray-500 mb-1">新しいURL</p>
+            <a href="https://nek0-tkdb.netlify.app/" class="text-blue-600 font-medium hover:underline text-lg">
+                https://nek0-tkdb.netlify.app/
+            </a>
+        </div>
 
-            <!-- 編集用グリッド -->
-            <div class="overflow-auto bg-gray-200 p-4 rounded-lg">
-                <div class="grid gap-2 p-4 bg-white mx-auto shadow-inner grid-cols-7" style="width: 1000px; min-height: 700px;">
-                    <div v-for="(slot, index) in slots" :key="index" 
-                         @click="startSelecting(index)"
-                         class="border-2 border-dashed border-gray-300 flex flex-col cursor-pointer hover:bg-blue-50 hover:border-blue-300 relative group overflow-hidden bg-gray-50 aspect-[3/4]">
-                        <div class="w-full aspect-square bg-gray-100 relative overflow-hidden">
-                            <div v-if="slot" class="w-full h-full relative">
-                                <img :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
-                            </div>
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xl">+</div>
-                        </div>
-                        <div class="flex-1 bg-white border-t border-gray-100 p-1">
-                            <div class="text-[8px] text-gray-300 border-b mb-1">名前：</div>
-                            <div class="text-[8px] text-gray-300">性格/特徴：</div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Countdown & Redirect -->
+        <div class="mb-8">
+            <p class="text-sm text-gray-500 mb-2">
+                <span id="countdown" class="font-bold text-blue-600">5</span> 秒後に自動的に移動します
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div id="progress" class="bg-blue-600 h-full progress-bar" style="width: 0%"></div>
             </div>
         </div>
 
-        <!-- 2. キャラクター選択 -->
-        <div v-if="view === 'char-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div class="p-4 border-b flex justify-between items-center">
-                    <h3 class="font-bold">キャラクターを選択</h3>
-                    <button @click="view = 'main'" class="text-2xl">&times;</button>
-                </div>
-                <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    <div v-for="char in charData" :key="char.name" @click="selectCharacter(char.name)"
-                         class="cursor-pointer border hover:border-blue-500 p-2 rounded text-center transition hover:shadow-md bg-gray-50 relative">
-                        <div class="w-full aspect-square bg-gray-200 mb-2 rounded overflow-hidden">
-                            <img :src="char.urls[0]" class="w-full h-full object-cover" crossorigin="anonymous">
-                        </div>
-                        <div class="text-xs font-bold truncate">{{ char.name }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Manual Link Button -->
+        <a href="https://nek0-tkdb.netlify.app/" 
+           class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+            今すぐ移動する
+        </a>
 
-        <!-- 3. 画像選択 -->
-        <div v-if="view === 'image-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                <div class="p-4 border-b flex justify-between items-center">
-                    <h3 class="font-bold">{{ currentSelectedCharName }}</h3>
-                    <button @click="view = 'char-select'" class="text-blue-600 text-sm">戻る</button>
-                </div>
-                <div class="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    <div v-for="url in currentSelectedCharUrls" :key="url" @click="selectImage(url)"
-                         class="cursor-pointer border-4 border-transparent hover:border-blue-500 rounded overflow-hidden aspect-square">
-                        <img :src="url" class="w-full h-full object-cover" crossorigin="anonymous">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. 位置調整 -->
-        <div v-if="view === 'crop-select'" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
-                <div class="p-4 bg-gray-50 border-b font-bold flex justify-between items-center">
-                    <span>画像をドラッグして調整</span>
-                    <button @click="view = 'image-select'" class="text-gray-400">&times;</button>
-                </div>
-                <div class="p-6">
-                    <div class="bg-gray-100 aspect-square w-full max-w-[320px] mx-auto overflow-hidden relative border-2 border-blue-500 cursor-grab active:cursor-grabbing select-none touch-action-none"
-                         ref="cropContainer"
-                         @pointerdown="startDragging" @pointermove="doDragging" @pointerup="stopDragging">
-                        <img :src="currentSelectedImageUrl" class="absolute max-w-none pointer-events-none" :style="currentCropImgStyle" crossorigin="anonymous">
-                    </div>
-                    <div class="mt-8 space-y-4">
-                        <input type="range" v-model.number="crop.zoom" min="1" max="5" step="0.01" class="w-full">
-                        <div class="flex gap-2">
-                            <button @click="rotateImage" class="flex-1 py-2 border rounded">回転</button>
-                            <button @click="finishSlot" class="flex-[2] bg-blue-600 text-white py-2 rounded font-bold">決定</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 5. プレビュー & 保存 -->
-        <div v-if="view === 'preview'" class="text-center pb-20">
-            <div class="flex flex-wrap justify-center gap-4 mb-8 sticky top-4 z-10">
-                <button @click="downloadPNG" :disabled="exporting" class="bg-indigo-600 text-white px-8 py-3 rounded-full font-bold shadow-lg disabled:opacity-50">
-                    {{ exporting ? '作成中...' : 'PNG画像を保存' }}
-                </button>
-                <button @click="downloadPDF" :disabled="exporting" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg disabled:opacity-50">
-                    {{ exporting ? '作成中...' : 'PDFを保存' }}
-                </button>
-                <button @click="view = 'main'" class="bg-gray-200 text-gray-800 px-8 py-3 rounded-full font-bold">戻る</button>
-            </div>
-            
-            <div class="preview-wrapper">
-                <div class="preview-scale">
-                    <div class="sheet-design shadow-2xl">
-                        <div v-for="(slot, index) in slots" :key="index" class="slot-box">
-                            <div class="slot-img-container">
-                                <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
-                            </div>
-                            <div class="slot-info">
-                                <div class="slot-name">名前：</div>
-                                <div class="slot-desc">性格/特徴：</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 隠し：書き出し専用の原寸大エリア -->
-        <div id="export-area" v-if="view === 'preview'">
-            <div id="capture-target" class="sheet-design">
-                <div v-for="(slot, index) in slots" :key="index" class="slot-box">
-                    <div class="slot-img-container">
-                        <img v-if="slot" :src="slot.imageUrl" class="absolute max-w-none" :style="getSlotImgStyle(slot)" crossorigin="anonymous">
-                    </div>
-                    <div class="slot-info">
-                        <div class="slot-name">名前：</div>
-                        <div class="slot-desc">性格/特徴：</div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Footer Note -->
+        <p class="mt-8 text-xs text-gray-400 leading-relaxed">
+            お手数ですが、ブックマーク（お気に入り）に<br>
+            登録されている方は変更をお願いいたします。
+        </p>
     </div>
 
-    <script type="module">
-        import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+    <script>
+        window.onload = function() {
+            const targetUrl = "https://nek0-tkdb.netlify.app/";
+            let seconds = 5;
+            const countdownEl = document.getElementById('countdown');
+            const progressEl = document.getElementById('progress');
 
-        createApp({
-            setup() {
-                const view = ref('main');
-                const charData = ref([]); 
-                const slots = ref(Array(21).fill(null));
-                const loading = ref(true);
-                const exporting = ref(false);
-                const error = ref(null);
+            // Countdown and Progress bar logic
+            const timer = setInterval(() => {
+                seconds--;
+                countdownEl.textContent = seconds;
                 
-                const crop = ref({ zoom: 1, x: 0, y: 0, rotate: 0 });
-                const currentSlotIndex = ref(null);
-                const currentSelectedCharName = ref('');
-                const currentSelectedImageUrl = ref('');
-                const cropContainer = ref(null);
-                const pointers = new Map();
-                const lastPos = ref({ x: 0, y: 0 });
+                // Update progress bar (0% to 100%)
+                const progressPercentage = ((5 - seconds) / 5) * 100;
+                progressEl.style.width = progressPercentage + '%';
 
-                const loadCSV = async () => {
-                    try {
-                        const response = await fetch('card_data.csv');
-                        if (!response.ok) throw new Error('card_data.csv が見つかりません。');
-                        const text = await response.text();
-                        const rows = text.split(/\r?\n/).filter(row => row.trim() !== '');
-                        const headers = rows[0].split(',').map(h => h.trim());
-                        
-                        const nameIndex = headers.indexOf('キャラクター名');
-                        const urlIndex = headers.indexOf('画像URL');
-
-                        if (nameIndex === -1 || urlIndex === -1) throw new Error('CSVヘッダーを「キャラクター名,画像URL」にしてください。');
-
-                        const groupedData = {};
-                        rows.slice(1).forEach(row => {
-                            const cols = row.split(',').map(c => c.trim());
-                            const name = cols[nameIndex];
-                            const url = cols[urlIndex];
-                            if (name && url) {
-                                if (!groupedData[name]) groupedData[name] = [];
-                                groupedData[name].push(url);
-                            }
-                        });
-                        charData.value = Object.keys(groupedData).map(name => ({ name: name, urls: groupedData[name] }));
-                        loading.value = false;
-                    } catch (err) {
-                        error.value = err.message;
-                        loading.value = false;
-                    }
-                };
-
-                onMounted(() => {
-                    loadCSV();
-                    const saved = localStorage.getItem('mirishira_temp_slots');
-                    if (saved) { try { slots.value = JSON.parse(saved); } catch (e) {} }
-                });
-
-                watch(slots, (newVal) => { localStorage.setItem('mirishira_temp_slots', JSON.stringify(newVal)); }, { deep: true });
-
-                const selectedCharNames = computed(() => slots.value.filter(s => s !== null).map(s => s.charName));
-                const currentSelectedCharUrls = computed(() => {
-                    const char = charData.value.find(c => c.name === currentSelectedCharName.value);
-                    return char ? char.urls : [];
-                });
-
-                const startSelecting = (index) => { currentSlotIndex.value = index; view.value = 'char-select'; };
-                const selectCharacter = (name) => { currentSelectedCharName.value = name; view.value = 'image-select'; };
-                const selectImage = (url) => { currentSelectedImageUrl.value = url; crop.value = { zoom: 1, x: 0, y: 0, rotate: 0 }; view.value = 'crop-select'; };
-                const finishSlot = () => { slots.value[currentSlotIndex.value] = { charName: currentSelectedCharName.value, imageUrl: currentSelectedImageUrl.value, ...crop.value }; view.value = 'main'; };
-                
-                const getSlotImgStyle = (s) => ({
-                    width: `${s.zoom * 100}%`,
-                    left: `${50 + s.x}%`,
-                    top: `${50 + s.y}%`,
-                    transform: `translate(-50%, -50%) rotate(${s.rotate || 0}deg)`,
-                    position: 'absolute'
-                });
-                const currentCropImgStyle = computed(() => getSlotImgStyle(crop.value));
-                
-                const startDragging = (e) => { pointers.set(e.pointerId, e); lastPos.value = { x: e.clientX, y: e.clientY }; e.target.setPointerCapture(e.pointerId); };
-                const doDragging = (e) => {
-                    if (!pointers.has(e.pointerId)) return;
-                    const rect = cropContainer.value.getBoundingClientRect();
-                    crop.value.x += ((e.clientX - lastPos.value.x) / rect.width) * 100;
-                    crop.value.y += ((e.clientY - lastPos.value.y) / rect.height) * 100;
-                    lastPos.value = { x: e.clientX, y: e.clientY };
-                };
-                const stopDragging = (e) => { pointers.delete(e.pointerId); };
-                const rotateImage = () => { crop.value.rotate = (crop.value.rotate + 90) % 360; };
-
-                // キャンバス生成処理（原寸大エリアを対象にする）
-                const generateCanvas = async () => {
-                    // フォントの読み込みを確実にする
-                    await document.fonts.ready;
-                    
-                    const target = document.getElementById('capture-target');
-                    if (!target) throw new Error("Capture target not found");
-
-                    // 念の為画像の読み込み待ち
-                    const imgs = target.querySelectorAll('img');
-                    await Promise.all(Array.from(imgs).map(img => {
-                        if (img.complete) return Promise.resolve();
-                        return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
-                    }));
-
-                    return await html2canvas(target, {
-                        scale: 2,
-                        useCORS: true,
-                        allowTaint: false,
-                        backgroundColor: '#ffffff',
-                        width: 1123,
-                        height: 794,
-                        logging: false
-                    });
-                };
-
-                const downloadPNG = async () => {
-                    exporting.value = true;
-                    try {
-                        const canvas = await generateCanvas();
-                        const link = document.createElement('a');
-                        link.download = `mirishira_${Date.now()}.png`;
-                        link.href = canvas.toDataURL('image/png');
-                        link.click();
-                    } catch (e) {
-                        alert("画像の生成に失敗しました。CORS設定を確認してください。");
-                    } finally { exporting.value = false; }
-                };
-
-                const downloadPDF = async () => {
-                    exporting.value = true;
-                    try {
-                        const canvas = await generateCanvas();
-                        const pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'px', format: [1123, 794] });
-                        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 1123, 794);
-                        pdf.save(`mirishira_${Date.now()}.pdf`);
-                    } catch (e) {
-                        alert("PDFの生成に失敗しました。");
-                    } finally { exporting.value = false; }
-                };
-
-                const clearSheet = () => { if (confirm("リセットしますか？")) slots.value = Array(21).fill(null); };
-
-                return {
-                    view, charData, slots, loading, exporting, error, crop, currentSelectedCharName, currentSelectedImageUrl, cropContainer,
-                    startSelecting, selectCharacter, selectImage, finishSlot, getSlotImgStyle, currentCropImgStyle,
-                    startDragging, doDragging, stopDragging, rotateImage, downloadPDF, downloadPNG,
-                    filledCount: computed(() => slots.value.filter(s => s !== null).length),
-                    currentSelectedCharUrls, clearSheet, selectedCharNames 
-                };
-            }
-        }).mount('#app');
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = targetUrl;
+                }
+            }, 1000);
+        };
     </script>
 </body>
 </html>
