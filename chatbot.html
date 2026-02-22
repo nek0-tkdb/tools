@@ -3,267 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAQ Chatbot</title>
+    <title>移転のお知らせ - Website Relocated</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
         
         body {
             font-family: 'Noto Sans JP', sans-serif;
-            background-color: #f3f4f6;
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; /* ボディ全体のスクロールを抑止 */
+            background-color: #f8fafc;
         }
 
-        .chat-container {
-            flex: 1;
-            overflow-y: auto;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch; /* iOSでのスクロールを滑らかに */
+        .fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
         }
 
-        .message-bubble {
-            max-width: 85%;
-            word-wrap: break-word;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .bot-message {
-            background-color: white;
-            border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .user-message {
-            background-color: #4f46e5;
-            color: white;
-            border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
-            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
-        }
-
-        .typing-indicator span {
-            height: 8px;
-            width: 8px;
-            background-color: #94a3b8;
-            display: inline-block;
-            border-radius: 50%;
-            animation: bounce 1.3s linear infinite;
-        }
-        .typing-indicator span:nth-child(2) { animation-delay: -1.1s; }
-        .typing-indicator span:nth-child(3) { animation-delay: -0.9s; }
-
-        @keyframes bounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-4px); }
-        }
-
-        /* スクロールバーのカスタマイズ */
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
+        .progress-bar {
+            transition: width 1s linear;
         }
     </style>
 </head>
-<body class="max-w-md mx-auto w-full border-x border-gray-200 shadow-xl bg-gray-50">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <!-- Header -->
-    <header class="bg-indigo-600 text-white p-4 flex items-center justify-between shadow-md z-10 flex-shrink-0">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <i class="fas fa-robot text-xl"></i>
-            </div>
-            <div>
-                <h1 class="text-lg font-bold leading-tight">ヘルプセンター</h1>
-                <p class="text-xs text-indigo-100">AIチャットボットが回答します</p>
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center fade-in">
+        <!-- Icon -->
+        <div class="mb-6 inline-flex items-center justify-center w-16 h-16 bg-blue-100 text-blue-600 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+        </div>
+
+        <!-- Message -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">ホームページを移転しました</h1>
+        <p class="text-gray-600 mb-6">
+            ご訪問ありがとうございます。<br>
+            当サイトは新しいURLへ移転いたしました。
+        </p>
+
+        <!-- New URL Box -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-8 break-all">
+            <p class="text-sm text-gray-500 mb-1">新しいURL</p>
+            <a href="https://nek0-tkdb.netlify.app/" class="text-blue-600 font-medium hover:underline text-lg">
+                https://nek0-tkdb.netlify.app/
+            </a>
+        </div>
+
+        <!-- Countdown & Redirect -->
+        <div class="mb-8">
+            <p class="text-sm text-gray-500 mb-2">
+                <span id="countdown" class="font-bold text-blue-600">5</span> 秒後に自動的に移動します
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                <div id="progress" class="bg-blue-600 h-full progress-bar" style="width: 0%"></div>
             </div>
         </div>
-        <button onclick="location.reload()" class="p-2 hover:bg-indigo-700 rounded-full transition-colors">
-            <i class="fas fa-sync-alt"></i>
-        </button>
-    </header>
 
-    <!-- Chat Area -->
-    <main id="chat-window" class="chat-container p-4 space-y-4">
-        <!-- Welcome Message -->
-        <div class="flex items-start gap-2">
-            <div class="flex-shrink-0 w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold">
-                B
-            </div>
-            <div class="message-bubble bot-message p-3 text-sm text-gray-800">
-                こんにちは！ゲームの進め方やアイテムについて質問してください。<br>
-                例：「ダイヤについて」「ギルドとは？」
-            </div>
-        </div>
-    </main>
+        <!-- Manual Link Button -->
+        <a href="https://nek0-tkdb.netlify.app/" 
+           class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+            今すぐ移動する
+        </a>
 
-    <!-- Input Area -->
-    <footer class="bg-white border-t p-4 pb-6 md:pb-4 flex-shrink-0">
-        <form id="chat-form" class="flex items-center gap-2 w-full overflow-hidden">
-            <input 
-                type="text" 
-                id="user-input" 
-                placeholder="メッセージを入力..." 
-                class="flex-1 min-w-0 bg-gray-100 border-none rounded-full px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                autocomplete="off"
-            >
-            <button 
-                type="submit" 
-                id="send-btn"
-                class="flex-shrink-0 bg-indigo-600 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-indigo-700 active:scale-95 transition-all shadow-lg"
-            >
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </form>
-    </footer>
+        <!-- Footer Note -->
+        <p class="mt-8 text-xs text-gray-400 leading-relaxed">
+            お手数ですが、ブックマーク（お気に入り）に<br>
+            登録されている方は変更をお願いいたします。
+        </p>
+    </div>
 
     <script>
-        let faqData = [];
-        let lastResults = []; // 候補リストを一時保存
-        const chatWindow = document.getElementById('chat-window');
-        const chatForm = document.getElementById('chat-form');
-        const userInput = document.getElementById('user-input');
+        window.onload = function() {
+            const targetUrl = "https://nek0-tkdb.netlify.app/";
+            let seconds = 5;
+            const countdownEl = document.getElementById('countdown');
+            const progressEl = document.getElementById('progress');
 
-        // CSVファイルの読み込み
-        async function loadFAQData() {
-            try {
-                const response = await fetch('faq_data.csv');
-                if (!response.ok) throw new Error('CSVファイルの読み込みに失敗しました。');
-                const csvText = await response.text();
+            // Countdown and Progress bar logic
+            const timer = setInterval(() => {
+                seconds--;
+                countdownEl.textContent = seconds;
                 
-                // CSVパース (簡易版)
-                const rows = csvText.split(/\r?\n/);
-                
-                faqData = rows.slice(1).filter(row => row.trim() !== '').map(row => {
-                    const values = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
-                    const cleanValues = values.map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"'));
-                    
-                    return {
-                        category: cleanValues[0],
-                        keywords: cleanValues[1] ? cleanValues[1].split('|') : [],
-                        title: cleanValues[2],
-                        content: cleanValues[3],
-                        priority: parseInt(cleanValues[4]) || 0
-                    };
-                });
-                console.log('Loaded FAQ items:', faqData.length);
-            } catch (error) {
-                console.error('Error:', error);
-                addMessage('bot', '申し訳ありません。データの読み込みに失敗しました。設定を確認してください。');
-            }
-        }
+                // Update progress bar (0% to 100%)
+                const progressPercentage = ((5 - seconds) / 5) * 100;
+                progressEl.style.width = progressPercentage + '%';
 
-        // メッセージの表示
-        function addMessage(sender, text, isTyping = false) {
-            const div = document.createElement('div');
-            div.className = `flex ${sender === 'user' ? 'justify-end' : 'items-start'} gap-2 animate-fade-in`;
-            
-            if (isTyping) {
-                div.id = 'typing-indicator';
-                div.innerHTML = `
-                    <div class="flex-shrink-0 w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold">B</div>
-                    <div class="message-bubble bot-message p-3 typing-indicator">
-                        <span></span> <span></span> <span></span>
-                    </div>
-                `;
-            } else {
-                const icon = sender === 'bot' ? 
-                    '<div class="flex-shrink-0 w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-sm font-bold">B</div>' : '';
-                
-                div.innerHTML = `
-                    ${icon}
-                    <div class="message-bubble ${sender === 'user' ? 'user-message' : 'bot-message'} p-3 text-sm shadow-sm">
-                        ${text.replace(/\n/g, '<br>')}
-                    </div>
-                `;
-            }
-
-            chatWindow.appendChild(div);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            return div;
-        }
-
-        // 検索ロジック
-        function findAnswer(query) {
-            const lowerQuery = query.toLowerCase().trim();
-            if (!lowerQuery) return null;
-
-            // キーワードに部分一致するか検索
-            let matches = faqData.filter(item => {
-                return item.keywords.some(kw => lowerQuery.includes(kw.toLowerCase()) || kw.toLowerCase().includes(query));
-            });
-
-            // 一致するものがない場合、タイトルや内容から検索
-            if (matches.length === 0) {
-                matches = faqData.filter(item => {
-                    return item.title.toLowerCase().includes(lowerQuery) || item.content.toLowerCase().includes(lowerQuery);
-                });
-            }
-
-            // 優先度順にソート（高い順）
-            matches.sort((a, b) => b.priority - a.priority);
-
-            return matches.length > 0 ? matches : null;
-        }
-
-        // 送信ハンドラ
-        chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const text = userInput.value.trim();
-            if (!text) return;
-
-            // ユーザーメッセージを表示
-            addMessage('user', text);
-            userInput.value = '';
-
-            // タイピング中を表示
-            const indicator = addMessage('bot', '', true);
-
-            setTimeout(() => {
-                indicator.remove();
-
-                // 1. 番号選択のチェック (lastResultsがある場合)
-                const selectedIndex = parseInt(text) - 1;
-                if (lastResults.length > 0 && !isNaN(selectedIndex) && lastResults[selectedIndex]) {
-                    const res = lastResults[selectedIndex];
-                    addMessage('bot', `【${res.title}】\n\n${res.content}`);
-                    lastResults = []; // 回答後はリストをクリア
-                    return;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    window.location.href = targetUrl;
                 }
-
-                // 2. 通常検索
-                const results = findAnswer(text);
-
-                if (results) {
-                    if (results.length === 1) {
-                        const res = results[0];
-                        addMessage('bot', `【${res.title}】\n\n${res.content}`);
-                        lastResults = [];
-                    } else {
-                        // 複数候補がある場合
-                        lastResults = results.slice(0, 5); // 最大5件保持
-                        let responseText = `複数の候補が見つかりました。番号を入力して選択してください：\n\n`;
-                        lastResults.forEach((res, i) => {
-                            responseText += `${i + 1}. ${res.title}\n`;
-                        });
-                        addMessage('bot', responseText);
-                    }
-                } else {
-                    lastResults = [];
-                    addMessage('bot', 'すみません、その質問に関する情報が見つかりませんでした。別のキーワードでお試しください。');
-                }
-            }, 600);
-        });
-
-        // 初期化
-        window.onload = loadFAQData;
+            }, 1000);
+        };
     </script>
 </body>
 </html>
