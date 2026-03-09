@@ -190,38 +190,54 @@ function mkUnit(card,team,idx){
   return{id:team+'_'+idx,cardId:card.id,name:card.name,char:card.char,attr:card.attr,at:card.at,img:card.img,
     maxHp:card.hp,hp:card.hp,atk:card.atk,pa:card.pa,sa:card.sa,pd:card.pd,sd:card.sd,spd:card.spd,
     mp:4,tu:0,team:team,alive:true,inField:idx<4,fieldOrder:idx,skills:card.skills,un:card.un,ue:card.ue,
-    statuses:{},ironHeart:false,ironHeartUsed:false,lifeFlipUsed:false,tuElapsed:0,origPd:card.pd,origSd:card.sd,origPa:card.pa,origSa:card.sa};
+    statuses:{},ironHeart:false,ironHeartUsed:false,lifeFlipUsed:false,tuElapsed:0,firstAttackDone:false,origPd:card.pd,origSd:card.sd,origPa:card.pa,origSa:card.sa};
 }
+
+// Unit label helper: 【味方/敵】キャラ名(カード名)
+function uL(u){return (u.team==='p'?'【味方】':'【敵】')+u.char+'('+u.name+')';}
 
 function applyPassive(unit,allUnits,logs,globalTU){
   const p=unit.skills.find(s=>s.type==='パ');if(!p)return;
-  const n=p.name;const tm=unit.team==='p'?'【味方】':'【敵】';
+  const n=p.name;const me=uL(unit);
   if(n==='アイアンハート'){unit.ironHeart=true;}
-  else if(n==='オートMP+2'){unit.mp=Math.min(10,unit.mp+2);logs.push({tu:globalTU,team:unit.team,t:'status',m:tm+unit.char+'：MP+2'});}
-  else if(n==='オートレイジ'){unit.statuses.rage=3;logs.push({tu:globalTU,team:unit.team,t:'status',m:tm+unit.char+'：レイジ状態'});}
+  else if(n==='オートMP+2'){unit.mp=Math.min(10,unit.mp+2);logs.push({tu:globalTU,team:unit.team,t:'status',m:me+'：MP+2'});}
+  else if(n==='オートレイジ'){unit.statuses.rage=3;logs.push({tu:globalTU,team:unit.team,t:'status',m:me+'：レイジ状態'});}
   else if(n==='オートカース'){
     const enemies=allUnits.filter(u=>u.team!==unit.team&&u.alive&&u.inField);
     if(enemies.length){const t=enemies[Math.floor(Math.random()*enemies.length)];t.statuses.curse=true;
-    const etm=t.team==='p'?'【味方】':'【敵】';
-    logs.push({tu:globalTU,team:unit.team,t:'status',m:tm+unit.char+'→'+etm+t.char+'：カース状態'});}
+    logs.push({tu:globalTU,team:unit.team,t:'status',m:me+'→'+uL(t)+'：カース状態'});}
   }
-  else if(n==='オート物攻ブースト'){unit.pa=Math.floor(unit.pa*1.1);logs.push({tu:globalTU,team:unit.team,t:'status',m:tm+unit.char+'：物攻UP'});}
-  else if(n==='オート特攻ブースト'){unit.sa=Math.floor(unit.sa*1.1);logs.push({tu:globalTU,team:unit.team,t:'status',m:tm+unit.char+'：特攻UP'});}
-  else if(n==='チャージアドバンス'){unit.statuses.charge=true;unit.hp=Math.min(unit.maxHp,unit.hp+Math.floor(unit.maxHp*0.05));logs.push({tu:globalTU,team:unit.team,t:'status',m:tm+unit.char+'：チャージ状態'});}
-  else if(n==='ディフェンスブースト'){unit.pd=Math.floor(unit.pd*1.1);unit.sd=Math.floor(unit.sd*1.1);logs.push({tu:globalTU,team:unit.team,t:'status',m:tm+unit.char+'：防御UP'});}
+  else if(n==='オート物攻ブースト'){const bef=unit.pa;unit.pa=Math.floor(unit.pa*1.1);logs.push({tu:globalTU,team:unit.team,t:'status',m:me+'：物攻UP '+bef+'→'+unit.pa});}
+  else if(n==='オート特攻ブースト'){const bef=unit.sa;unit.sa=Math.floor(unit.sa*1.1);logs.push({tu:globalTU,team:unit.team,t:'status',m:me+'：特攻UP '+bef+'→'+unit.sa});}
+  else if(n==='チャージアドバンス'){unit.statuses.charge=true;unit.hp=Math.min(unit.maxHp,unit.hp+Math.floor(unit.maxHp*0.05));logs.push({tu:globalTU,team:unit.team,t:'status',m:me+'：チャージ状態'});}
+  else if(n==='ディフェンスブースト'){unit.pd=Math.floor(unit.pd*1.1);unit.sd=Math.floor(unit.sd*1.1);logs.push({tu:globalTU,team:unit.team,t:'status',m:me+'：防御UP 物防'+unit.pd+' 特防'+unit.sd});}
 }
 
-function calcDmg(atk,def,skill){
-  let mul=parseDmg(skill.dmg);if(mul===0)return 0;
-  let as,ds;if(atk.at==='P'||atk.at==='M'){as=atk.pa;ds=def.pd;}else{as=atk.sa;ds=def.sd;}
+function calcDmgDetail(atk,def,skill){
+  let mul=parseDmg(skill.dmg);if(mul===0)return{dmg:0,detail:''};
+  let as,ds,atkType;if(atk.at==='P'||atk.at==='M'){as=atk.pa;ds=def.pd;atkType='物理';}else{as=atk.sa;ds=def.sd;atkType='特殊';}
   let base=(as*mul*0.5)/Math.max(1,ds*0.003);
-  base=base*(1+atk.atk*0.0001);base*=attrMul(atk.attr,def.attr);
-  if(atk.statuses.rage)base*=1.05;if(def.statuses.curse)base*=1.05;
-  base*=(0.95+Math.random()*0.1);return Math.max(1,Math.floor(base));
+  const baseBeforeMods=Math.floor(base);
+  base=base*(1+atk.atk*0.0001);
+  const am=attrMul(atk.attr,def.attr);base*=am;
+  let rageMul=1,curseMul=1;
+  if(atk.statuses.rage){rageMul=1.05;base*=1.05;}
+  if(def.statuses.curse){curseMul=1.05;base*=1.05;}
+  base*=(0.95+Math.random()*0.1);
+  const final=Math.max(1,Math.floor(base));
+  let detail=atkType+'攻'+as+' x'+mul+'倍 / 防'+ds+' 属性x'+am;
+  if(rageMul>1)detail+=' 怒x1.05';if(curseMul>1)detail+=' 呪x1.05';
+  detail+=' → '+final;
+  return{dmg:final,detail:detail,mul:mul,attrMul:am};
 }
 
 function canUseSkill(unit,skill,allUnits){
   if(skill.mp<0&&unit.mp+skill.mp<0)return false;
+  const sn=skill.name;
+  // カースイーター: cursed enemies required
+  if(sn==='カースイーター'){if(!allUnits.filter(u=>u.team!==unit.team&&u.alive&&u.inField&&u.statuses.curse).length)return false;}
+  // ドリームイーター: sleeping enemies required
+  if(sn==='ドリームイーター'){if(!allUnits.filter(u=>u.team!==unit.team&&u.alive&&u.inField&&u.statuses.sleep).length)return false;}
   const c=skill.cond;if(!c)return true;
   if(c.includes('HP50%以下')&&unit.hp>unit.maxHp*0.5)return false;
   if(c.includes('HP75%以上')&&unit.hp<unit.maxHp*0.75)return false;
@@ -390,6 +406,7 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
   const[chosenTargets,setChosenTargets]=useState([]);
   const[logExpanded,setLogExpanded]=useState(false);
   const[previewUnit,setPreviewUnit]=useState(null);
+  const[targetFilter,setTargetFilter]=useState(null); // 'curse','sleep', or null
   const logRef=useRef(null);const autoRef=useRef(null);
   const{units,logs,globalTU}=bs;
   const fieldUnits=units.filter(u=>u.inField);
@@ -412,8 +429,7 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
     const res=all.filter(u=>u.team===team&&!u.inField&&u.alive);
     if(fa.length<4&&res.length>0){
       const nxt=res[0];nxt.inField=true;nxt.tu=Math.max(10,500-nxt.spd);
-      const tm=team==='p'?'【味方】':'【敵】';
-      newLogs.push({tu:gtu,team:team,t:'info',m:tm+'増援：'+nxt.char+'('+nxt.name+')参戦!'});
+      newLogs.push({tu:gtu,team:team,t:'info',m:'増援：'+uL(nxt)+'参戦!'});
       const pas=nxt.skills.find(s=>s.type==='パ');
       if(pas&&pas.cond&&pas.cond.includes('増援から戦闘に参加した時')){
         applyEntrySkill(nxt,all,newLogs,gtu);
@@ -424,29 +440,29 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
 
   function applyEntrySkill(unit,all,logs,gtu){
     const p=unit.skills.find(s=>s.type==='パ');if(!p)return;
-    const n=p.name;const tm=unit.team==='p'?'【味方】':'【敵】';
+    const n=p.name;const me=uL(unit);
     const enemies=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField);
     if(n.includes('スタンエントリー')){
       let t;
       if(p.effect.includes('TUが最も高い'))t=enemies.length?enemies.reduce((a,b)=>a.tu>b.tu?a:b):null;
       else if(p.effect.includes('TUが最も低い'))t=enemies.length?enemies.reduce((a,b)=>a.tu<b.tu?a:b):null;
       else t=enemies.length?enemies[Math.floor(Math.random()*enemies.length)]:null;
-      if(t){t.tu+=300;const etm=t.team==='p'?'【味方】':'【敵】';logs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+'→'+etm+t.char+'：スタン(300TU)'});}
+      if(t){t.tu+=300;logs.push({tu:gtu,team:unit.team,t:'status',m:me+'→'+uL(t)+'：スタン(300TU)'});}
     }
     else if(n.includes('スリープエントリー')){
       let t;
       if(p.effect.includes('TUが最も高い'))t=enemies.length?enemies.reduce((a,b)=>a.tu>b.tu?a:b):null;
       else if(p.effect.includes('TUが最も低い'))t=enemies.length?enemies.reduce((a,b)=>a.tu<b.tu?a:b):null;
       else t=enemies.length?enemies[Math.floor(Math.random()*enemies.length)]:null;
-      if(t){t.statuses.sleep=true;const etm=t.team==='p'?'【味方】':'【敵】';logs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+'→'+etm+t.char+'：スリープ'});}
+      if(t){t.statuses.sleep=true;logs.push({tu:gtu,team:unit.team,t:'status',m:me+'→'+uL(t)+'：スリープ'});}
     }
     else if(n.includes('ポイズンエントリー')){
       const t=enemies.length?enemies[Math.floor(Math.random()*enemies.length)]:null;
-      if(t){t.statuses.poison={atk:unit.atk};const etm=t.team==='p'?'【味方】':'【敵】';logs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+'→'+etm+t.char+'：ポイズン'});}
+      if(t){t.statuses.poison={atk:unit.atk};logs.push({tu:gtu,team:unit.team,t:'status',m:me+'→'+uL(t)+'：ポイズン'});}
     }
     else if(n.includes('俊敏性ダウンエントリー')){
       const t=enemies.length?enemies[Math.floor(Math.random()*enemies.length)]:null;
-      if(t){t.statuses.speedDown=true;delete t.statuses.speedUp;const etm=t.team==='p'?'【味方】':'【敵】';logs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+'→'+etm+t.char+'：俊敏性ダウン'});}
+      if(t){t.statuses.speedDown=true;delete t.statuses.speedUp;logs.push({tu:gtu,team:unit.team,t:'status',m:me+'→'+uL(t)+'：俊敏性ダウン'});}
     }
   }
 
@@ -457,22 +473,44 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
   }
 
   function handleDeath(unit,killer,all,newLogs,gtu){
-    unit.hp=0;unit.alive=false;
-    const tm=unit.team==='p'?'【味方】':'【敵】';
-    newLogs.push({tu:gtu,team:null,t:'info',m:'💀 '+tm+unit.char+'('+unit.name+') 撃破!'});
+    unit.hp=0;unit.alive=false;unit.inField=false;
+    newLogs.push({tu:gtu,team:null,t:'info',m:'💀 '+uL(unit)+' 撃破!'});
     const pas=unit.skills.find(s=>s.type==='パ');
     if(pas&&killer){
       const pn=pas.name;
       if(pn.includes('リベンジ')&&killer.alive){
-        const ktm=killer.team==='p'?'【味方】':'【敵】';
-        if(pn.includes('スタン')){killer.tu+=300;newLogs.push({tu:gtu,team:unit.team,t:'status',m:ktm+killer.char+'：スタン(300TU)'});}
-        if(pn.includes('スリープ')){killer.statuses.sleep=true;newLogs.push({tu:gtu,team:unit.team,t:'status',m:ktm+killer.char+'：スリープ'});}
-        if(pn.includes('カース')){killer.statuses.curse=true;newLogs.push({tu:gtu,team:unit.team,t:'status',m:ktm+killer.char+'：カース'});}
-        if(pn.includes('ポイズン')){killer.statuses.poison={atk:unit.atk};newLogs.push({tu:gtu,team:unit.team,t:'status',m:ktm+killer.char+'：ポイズン'});}
-        if(pn.includes('俊敏性ダウン')){killer.statuses.speedDown=true;delete killer.statuses.speedUp;newLogs.push({tu:gtu,team:unit.team,t:'status',m:ktm+killer.char+'：俊敏性ダウン'});}
+        if(pn.includes('スタン')){killer.tu+=300;newLogs.push({tu:gtu,team:unit.team,t:'status',m:uL(killer)+'：スタン(300TU)'});}
+        if(pn.includes('スリープ')){killer.statuses.sleep=true;newLogs.push({tu:gtu,team:unit.team,t:'status',m:uL(killer)+'：スリープ'});}
+        if(pn.includes('カース')){killer.statuses.curse=true;newLogs.push({tu:gtu,team:unit.team,t:'status',m:uL(killer)+'：カース'});}
+        if(pn.includes('ポイズン')){killer.statuses.poison={atk:unit.atk};newLogs.push({tu:gtu,team:unit.team,t:'status',m:uL(killer)+'：ポイズン'});}
+        if(pn.includes('俊敏性ダウン')){killer.statuses.speedDown=true;delete killer.statuses.speedUp;newLogs.push({tu:gtu,team:unit.team,t:'status',m:uL(killer)+'：俊敏性ダウン'});}
       }
     }
     checkReinforcements(all,unit.team,newLogs,gtu);
+  }
+
+  function checkUniqueSkill(unit,all,newLogs,gtu){
+    // Check and log unique skill activation
+    const ue=unit.ue;if(!ue)return;
+    const me=uL(unit);
+    const enemies=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField);
+    const allies=all.filter(u=>u.team===unit.team&&u.alive&&u.inField);
+    const deadEnemies=all.filter(u=>u.team!==unit.team&&!u.alive);
+    let activated=false;
+    if(ue.includes('レイジ状態の時')&&unit.statuses.rage)activated=true;
+    if(ue.includes('チャージ状態の時')&&unit.statuses.charge)activated=true;
+    if(ue.includes('HPが75%以上')&&unit.hp>=unit.maxHp*0.75)activated=true;
+    if(ue.includes('HPが50%以下')&&unit.hp<=unit.maxHp*0.5)activated=true;
+    if(ue.includes('カース状態の敵')&&enemies.some(e=>e.statuses.curse))activated=true;
+    if(ue.includes('ポイズン状態の敵')&&enemies.some(e=>e.statuses.poison))activated=true;
+    if(ue.includes('スリープ状態の敵')&&enemies.some(e=>e.statuses.sleep))activated=true;
+    if(ue.includes('TUが300以上の敵')&&enemies.some(e=>e.tu>=300))activated=true;
+    if(ue.includes('敵を2体倒している')&&deadEnemies.length>=2)activated=true;
+    if(ue.includes('2体の味方を倒した敵')){/*complex check skip for now*/}
+    if(ue.includes('1人で戦っている')&&allies.length===1)activated=true;
+    if(ue.includes('400TU以上経過')&&unit.tuElapsed>=400)activated=true;
+    if(ue.includes('200TU経過するまで')&&unit.tuElapsed<=200)activated=true;
+    if(activated){newLogs.push({tu:gtu,team:unit.team,t:'status',m:'✨ '+me+'：ユニークスキル「'+unit.un+'」発動！ ('+ue+')'});}
   }
 
   function executeSkill(unit,skill,all,newLogs,targetIdx,gtu){
@@ -481,26 +519,32 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
     if(unit.statuses.speedUp)tuCost=Math.floor(tuCost*0.8);
     if(unit.statuses.speedDown)tuCost=Math.floor(tuCost*1.2);
     unit.tu+=tuCost;
-    const tm=unit.team==='p'?'【味方】':'【敵】';
+    unit.firstAttackDone=true;
+    const me=uL(unit);
     const sn=skill.name;
-    newLogs.push({tu:gtu,team:unit.team,t:'info',m:tm+unit.char+' → '+sn});
+    newLogs.push({tu:gtu,team:unit.team,t:'info',m:me+' → '+sn+' (TU:'+tuCost+', MP:'+(skill.mp>=0?'+':'')+skill.mp+')'});
+
+    // Check unique skill
+    checkUniqueSkill(unit,all,newLogs,gtu);
 
     if(sn==='ライフフリップ'){
-      const lost=unit.maxHp-unit.hp;unit.hp=Math.max(1,lost);unit.lifeFlipUsed=true;
-      newLogs.push({tu:gtu,team:unit.team,t:'heal',m:tm+unit.char+': HP='+unit.hp});return;
+      const bef=unit.hp;const lost=unit.maxHp-unit.hp;unit.hp=Math.max(1,lost);unit.lifeFlipUsed=true;
+      newLogs.push({tu:gtu,team:unit.team,t:'heal',m:me+': ライフフリップ HP '+bef+'→'+unit.hp});return;
     }
-    if(sn==='ディフェンスブースト'){unit.pd=Math.floor(unit.pd*1.1);unit.sd=Math.floor(unit.sd*1.1);
-      newLogs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+': 防御力UP'});return;}
-    if(sn==='物攻アップ'){unit.pa=Math.floor(unit.pa*1.1);newLogs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+': 物攻UP'});return;}
-    if(sn==='特攻アップ'){unit.sa=Math.floor(unit.sa*1.1);newLogs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+': 特攻UP'});return;}
+    if(sn==='ディフェンスブースト'){const bp=unit.pd,bs=unit.sd;unit.pd=Math.floor(unit.pd*1.1);unit.sd=Math.floor(unit.sd*1.1);
+      newLogs.push({tu:gtu,team:unit.team,t:'status',m:me+': 防御力UP 物防'+bp+'→'+unit.pd+' 特防'+bs+'→'+unit.sd});return;}
+    if(sn==='物攻アップ'){const bef=unit.pa;unit.pa=Math.floor(unit.pa*1.1);
+      newLogs.push({tu:gtu,team:unit.team,t:'status',m:me+': 物攻UP '+bef+'→'+unit.pa});return;}
+    if(sn==='特攻アップ'){const bef=unit.sa;unit.sa=Math.floor(unit.sa*1.1);
+      newLogs.push({tu:gtu,team:unit.team,t:'status',m:me+': 特攻UP '+bef+'→'+unit.sa});return;}
     if(sn==='俊敏性アップ'){unit.statuses.speedUp=true;delete unit.statuses.speedDown;
-      newLogs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+': 俊敏性UP'});return;}
-    if(sn==='憤怒（レイジ）'){unit.statuses.rage=3;newLogs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+': レイジ状態'});return;}
+      newLogs.push({tu:gtu,team:unit.team,t:'status',m:me+': 俊敏性UP'});return;}
+    if(sn==='憤怒（レイジ）'){unit.statuses.rage=3;newLogs.push({tu:gtu,team:unit.team,t:'status',m:me+': レイジ状態'});return;}
     if(sn==='チャージブースト'||sn==='チャージ'){
       unit.statuses.charge=true;unit.hp=Math.min(unit.maxHp,unit.hp+Math.floor(unit.maxHp*0.05));
-      unit.pd=Math.floor(unit.pd*1.1);unit.sd=Math.floor(unit.sd*1.1);
-      newLogs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+': チャージ状態'});return;}
-    if(sn.includes('ブロック')){unit.statuses.block=true;newLogs.push({tu:gtu,team:unit.team,t:'status',m:tm+unit.char+': ブロック状態'});return;}
+      const bp=unit.pd,bs=unit.sd;unit.pd=Math.floor(unit.pd*1.1);unit.sd=Math.floor(unit.sd*1.1);
+      newLogs.push({tu:gtu,team:unit.team,t:'status',m:me+': チャージ状態 物防'+bp+'→'+unit.pd+' 特防'+bs+'→'+unit.sd});return;}
+    if(sn.includes('ブロック')){unit.statuses.block=true;newLogs.push({tu:gtu,team:unit.team,t:'status',m:me+': ブロック状態'});return;}
 
     // カースブルー/グリーン/レッド → 対応属性のみ
     if(sn==='カースブルー'||sn==='カースグリーン'||sn==='カースレッド'){
@@ -508,9 +552,8 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
       const targetAttr=attrMap[sn];
       const enemies=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField&&u.attr===targetAttr);
       enemies.forEach(t=>{
-        let dmg=calcDmg(unit,t,skill);t.hp-=dmg;t.statuses.curse=true;
-        const etm=t.team==='p'?'【味方】':'【敵】';
-        newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:etm+t.char+'に'+dmg+'ダメージ+カース(残HP:'+Math.max(0,t.hp)+')'});
+        const r=calcDmgDetail(unit,t,skill);t.hp-=r.dmg;t.statuses.curse=true;
+        newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:uL(t)+'に'+r.dmg+'ダメージ+カース ['+r.detail+'] (残HP:'+Math.max(0,t.hp)+')'});
         if(t.hp<=0)handleDeath(t,unit,all,newLogs,gtu);
       });
       if(!enemies.length)newLogs.push({tu:gtu,team:unit.team,t:'info',m:'対象属性の敵なし'});
@@ -519,9 +562,43 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
     if(sn==='カースアタック'){
       const targets=getTargets(unit,skill,all,targetIdx);
       targets.forEach(t=>{if(!t.alive)return;
-        let dmg=calcDmg(unit,t,skill);t.hp-=dmg;t.statuses.curse=true;
-        const etm=t.team==='p'?'【味方】':'【敵】';
-        newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:etm+t.char+'に'+dmg+'ダメージ+カース(残HP:'+Math.max(0,t.hp)+')'});
+        const r=calcDmgDetail(unit,t,skill);t.hp-=r.dmg;t.statuses.curse=true;
+        newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:uL(t)+'に'+r.dmg+'ダメージ+カース ['+r.detail+'] (残HP:'+Math.max(0,t.hp)+')'});
+        if(t.hp<=0)handleDeath(t,unit,all,newLogs,gtu);
+      });return;
+    }
+
+    // カースイーター: only targets cursed enemies
+    if(sn==='カースイーター'){
+      const cursed=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField&&u.statuses.curse);
+      let targets;
+      if(skill.target==='敵1体'){
+        if(typeof targetIdx==='number'){const alive=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField);targets=[alive[targetIdx]].filter(t=>t&&t.statuses.curse);}
+        else targets=cursed.slice(0,1);
+      }else if(skill.target==='敵2体'){
+        if(targetIdx&&targetIdx.length){const alive=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField);targets=targetIdx.map(i=>alive[i]).filter(t=>t&&t.statuses.curse);}
+        else targets=cursed.slice(0,2);
+      }else targets=cursed;
+      if(!targets||!targets.length){newLogs.push({tu:gtu,team:unit.team,t:'info',m:'カース状態の敵なし'});return;}
+      targets.forEach(t=>{if(!t.alive)return;
+        const r=calcDmgDetail(unit,t,skill);t.hp-=r.dmg;
+        newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:uL(t)+'に'+r.dmg+'ダメージ ['+r.detail+'] (残HP:'+Math.max(0,t.hp)+')'});
+        if(t.hp<=0&&t.ironHeart&&!t.ironHeartUsed){t.hp=1;t.ironHeartUsed=true;newLogs.push({tu:gtu,team:t.team,t:'status',m:uL(t)+': アイアンハートで耐えた!'});}
+        if(t.hp<=0)handleDeath(t,unit,all,newLogs,gtu);
+      });return;
+    }
+
+    // ドリームイーター: only targets sleeping enemies
+    if(sn==='ドリームイーター'){
+      const sleeping=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField&&u.statuses.sleep);
+      let targets;
+      if(typeof targetIdx==='number'){const alive=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField);targets=[alive[targetIdx]].filter(t=>t&&t.statuses.sleep);}
+      else targets=sleeping.slice(0,1);
+      if(!targets||!targets.length){newLogs.push({tu:gtu,team:unit.team,t:'info',m:'スリープ状態の敵なし'});return;}
+      targets.forEach(t=>{if(!t.alive)return;delete t.statuses.sleep;
+        const r=calcDmgDetail(unit,t,skill);t.hp-=r.dmg;
+        newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:uL(t)+'に'+r.dmg+'ダメージ(ドリームイーター) ['+r.detail+'] (残HP:'+Math.max(0,t.hp)+')'});
+        if(t.hp<=0&&t.ironHeart&&!t.ironHeartUsed){t.hp=1;t.ironHeartUsed=true;newLogs.push({tu:gtu,team:t.team,t:'status',m:uL(t)+': アイアンハートで耐えた!'});}
         if(t.hp<=0)handleDeath(t,unit,all,newLogs,gtu);
       });return;
     }
@@ -529,23 +606,20 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
     const targets=getTargets(unit,skill,all,targetIdx);
     if(!targets.length){newLogs.push({tu:gtu,team:unit.team,t:'info',m:'対象なし'});return;}
     if(sn==='チャージインパクト')unit.statuses.charge=false;
-    if(sn==='ドリームイーター')targets.forEach(t=>{if(t.statuses.sleep)delete t.statuses.sleep;});
 
     targets.forEach(t=>{
       if(!t.alive)return;
-      if(t.statuses.sleep&&sn!=='ドリームイーター'){delete t.statuses.sleep;
-        const etm=t.team==='p'?'【味方】':'【敵】';
-        newLogs.push({tu:gtu,team:unit.team,t:'status',m:etm+t.char+': 目覚めた'});}
-      let dmg=calcDmg(unit,t,skill);t.hp-=dmg;
-      const etm=t.team==='p'?'【味方】':'【敵】';
-      newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:etm+t.char+'に'+dmg+'ダメージ(残HP:'+Math.max(0,t.hp)+')'});
+      if(t.statuses.sleep){delete t.statuses.sleep;
+        newLogs.push({tu:gtu,team:unit.team,t:'status',m:uL(t)+': 目覚めた'});}
+      const r=calcDmgDetail(unit,t,skill);t.hp-=r.dmg;
+      newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:uL(t)+'に'+r.dmg+'ダメージ ['+r.detail+'] (残HP:'+Math.max(0,t.hp)+')'});
       if(t.hp<=0&&t.ironHeart&&!t.ironHeartUsed){t.hp=1;t.ironHeartUsed=true;
-        newLogs.push({tu:gtu,team:t.team,t:'status',m:etm+t.char+': アイアンハートで耐えた!'});}
+        newLogs.push({tu:gtu,team:t.team,t:'status',m:uL(t)+': アイアンハートで耐えた!'});}
       if(t.hp<=0)handleDeath(t,unit,all,newLogs,gtu);
     });
     if(sn.includes('ペイン')){
       const sd=Math.floor(unit.maxHp*0.1);unit.hp-=sd;
-      newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:tm+unit.char+': 反動'+sd+'ダメージ'});
+      newLogs.push({tu:gtu,team:unit.team,t:'dmg',m:me+': 反動'+sd+'ダメージ(残HP:'+Math.max(0,unit.hp)+')'});
       if(unit.hp<=0)handleDeath(unit,null,all,newLogs,gtu);
     }
   }
@@ -558,8 +632,7 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
     if(!active)return;
     if(active.statuses.sleep){
       delete active.statuses.sleep;active.tu+=100;
-      const tm=active.team==='p'?'【味方】':'【敵】';
-      nl.push({tu:gtu,team:active.team,t:'status',m:tm+active.char+': スリープから目覚めた'});
+      nl.push({tu:gtu,team:active.team,t:'status',m:uL(active)+': スリープから目覚めた'});
     }else{
       let skill;
       if(active.team==='p')skill=skillChoice;
@@ -568,16 +641,15 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
     }
     nu.filter(u=>u.alive&&u.inField&&u.statuses.poison).forEach(u=>{
       const pd=Math.floor(u.statuses.poison.atk*0.05);u.hp-=pd;
-      const utm=u.team==='p'?'【味方】':'【敵】';
-      nl.push({tu:gtu,team:null,t:'dmg',m:utm+u.char+': 毒ダメージ'+pd+'(残HP:'+Math.max(0,u.hp)+')'});
+      nl.push({tu:gtu,team:null,t:'dmg',m:uL(u)+': 毒ダメージ'+pd+'(残HP:'+Math.max(0,u.hp)+')'});
       if(u.hp<=0)handleDeath(u,null,nu,nl,gtu);
     });
     nu.filter(u=>u.statuses.rage).forEach(u=>{u.statuses.rage--;if(u.statuses.rage<=0){delete u.statuses.rage;
-      const utm=u.team==='p'?'【味方】':'【敵】';nl.push({tu:gtu,team:u.team,t:'status',m:utm+u.char+': レイジ解除'});}});
+      nl.push({tu:gtu,team:u.team,t:'status',m:uL(u)+': レイジ解除'});}});
     const w=checkWin(nu);
     setBs({units:nu,logs:nl,turn:bs.turn+1,globalTU:gtu});
     if(w)setWinner(w);
-    setSelSkill(null);setWaitTarget(false);setChosenTargets([]);
+    setSelSkill(null);setWaitTarget(false);setChosenTargets([]);setTargetFilter(null);
   }
 
   useEffect(()=>{
@@ -599,12 +671,17 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
 
   function onSkillSelect(skill){
     if(!canUseSkill(activeUnit,skill,units))return;
-    const tg=skill.target;
-    if(tg==='敵1体'){setSelSkill(skill);setWaitTarget(true);setTargetCount(1);setChosenTargets([]);}
+    const tg=skill.target;const sn=skill.name;
+    // カースイーター/ドリームイーター: filter targets
+    let filter=null;
+    if(sn==='カースイーター')filter='curse';
+    if(sn==='ドリームイーター')filter='sleep';
+    if(tg==='敵1体'){setSelSkill(skill);setWaitTarget(true);setTargetCount(1);setChosenTargets([]);setTargetFilter(filter);}
     else if(tg==='敵2体'){
       const enemies=units.filter(u=>u.team==='e'&&u.alive&&u.inField);
-      if(enemies.length<=2){processTurn(skill);return;}
-      setSelSkill(skill);setWaitTarget(true);setTargetCount(2);setChosenTargets([]);
+      const valid=filter?enemies.filter(u=>filter==='curse'?u.statuses.curse:u.statuses.sleep):enemies;
+      if(valid.length<=2){processTurn(skill);return;}
+      setSelSkill(skill);setWaitTarget(true);setTargetCount(2);setChosenTargets([]);setTargetFilter(filter);
     }
     else{processTurn(skill);}
   }
@@ -646,13 +723,18 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
     const hpPct=Math.max(0,u.hp/u.maxHp*100);const mpPct=u.mp/10*100;
     const hpC=hpPct>50?'hp-high':hpPct>25?'hp-mid':'hp-low';
     const isAct=activeUnit&&u.id===activeUnit.id;
-    const isTgt=waitTarget&&isEnemy&&u.alive;
-    const isTgtSel=isTgt&&chosenTargets.includes(units.filter(x=>x.team==='e'&&x.inField&&x.alive).indexOf(u));
+    // Check if this enemy is a valid target (considering filters)
+    let isTgt=waitTarget&&isEnemy&&u.alive;
+    if(isTgt&&targetFilter){
+      if(targetFilter==='curse'&&!u.statuses.curse)isTgt=false;
+      if(targetFilter==='sleep'&&!u.statuses.sleep)isTgt=false;
+    }
+    const enemyAlive=units.filter(x=>x.team==='e'&&x.inField&&x.alive);
+    const isTgtSel=isTgt&&chosenTargets.includes(enemyAlive.indexOf(u));
     return h('div',{key:u.id,
       className:'unit-card'+(isAct?' active':'')+(u.alive?'':' dead')+(isTgt?' targeted':'')+(isTgtSel?' target-selected':''),
       onClick:()=>{if(isTgt){
-        const enemies=units.filter(x=>x.team==='e'&&x.inField&&x.alive);
-        const idx=enemies.indexOf(u);if(idx>=0)onTargetClick(idx);
+        const idx=enemyAlive.indexOf(u);if(idx>=0)onTargetClick(idx);
       }else{setPreviewUnit(u);}}},
       h('div',{className:'card-attr-line attr-'+u.attr}),
       h('img',{className:'unit-thumb',src:u.img,alt:'',loading:'lazy',onError:e=>{e.target.style.background='#333'}}),
@@ -665,7 +747,7 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
         h('span',{className:'bar-label bar-label-mp'},'MP'),
         h('div',{className:'bar-wrap bar-wrap-mp'},h('div',{className:'mp-fill',style:{width:mpPct+'%'}})),
         h('span',{className:'bar-val'},u.mp+'/10')),
-      h('div',{className:'tu-badge'},'TU:'+u.tu),
+      h('div',{className:'tu-badge'},'TU:'+u.tu+(!u.firstAttackDone?' 速:'+u.spd:'')),
       h('div',{className:'status-icons'},...statusBadges(u)));
   }
 
@@ -716,11 +798,11 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
             s.cond?h('div',{style:{fontSize:8,color:'var(--accent)',marginTop:1}},s.cond):null);})))
     :h('div',{style:{padding:10,textAlign:'center',color:'var(--text2)',fontSize:10,background:'var(--surface)',borderTop:'1px solid #222'}},'相手のターン...'),
     waitTarget?h('div',{className:'target-overlay'},
-      h('div',{className:'target-title'},targetCount===1?'ターゲットを選択（上の敵をタップ）':'2体のターゲットを選択（上の敵をタップ）'),
+      h('div',{className:'target-title'},targetFilter==='curse'?'カース状態の敵を選択':targetFilter==='sleep'?'スリープ状態の敵を選択':targetCount===1?'ターゲットを選択（上の敵をタップ）':'2体のターゲットを選択（上の敵をタップ）'),
       targetCount===2?h('div',{className:'target-info'},'選択中: '+chosenTargets.length+'/'+targetCount):null,
       h('div',{className:'target-actions'},
         targetCount===2&&chosenTargets.length===targetCount?h('button',{className:'btn btn-sm btn-primary',onClick:confirmTargets},'決定'):null,
-        h('button',{className:'btn btn-sm btn-secondary',onClick:()=>{setWaitTarget(false);setSelSkill(null);setChosenTargets([]);}},'キャンセル'))):null,
+        h('button',{className:'btn btn-sm btn-secondary',onClick:()=>{setWaitTarget(false);setSelSkill(null);setChosenTargets([]);setTargetFilter(null);}},'キャンセル'))):null,
     previewUnit?h(BattleCardModal,{unit:previewUnit,onClose:()=>setPreviewUnit(null)}):null);
 }
 
@@ -757,7 +839,7 @@ function BattleCardModal({unit,onClose}){
         h('button',{className:'modal-close',onClick:onClose},'×')),
       h('div',{className:'modal-body'},
         h('div',{className:'modal-card-name'},u.name),
-        h('div',{className:'modal-char-name'},(u.team==='p'?'【味方】':'【敵】')+u.char+' / '+ATTR_NAME[u.attr]+' / '+(u.at==='P'?'物理':u.at==='S'?'特殊':'混合')+(u.alive?'':' [戦闘不能]')),
+        h('div',{className:'modal-char-name'},uL(u)+' / '+ATTR_NAME[u.attr]+' / '+(u.at==='P'?'物理':u.at==='S'?'特殊':'混合')+(u.alive?'':' [戦闘不能]')),
         h('div',{className:'bm-section'},
           h('div',{className:'bm-section-title'},'現在のステータス'),
           ...statRows.map(r=>{
