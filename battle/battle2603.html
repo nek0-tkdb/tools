@@ -90,7 +90,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .team-area{margin-bottom:2px}
 .team-label{font-size:8px;color:var(--text2);padding:2px 6px;font-weight:700;display:flex;justify-content:space-between}
 .unit-row{display:flex;gap:3px;padding:2px 4px}
-.unit-card{background:var(--surface);border-radius:6px;padding:3px;width:calc(25% - 3px);text-align:center;position:relative;transition:all .2s;border:2px solid transparent;flex-shrink:0}
+.unit-card{background:var(--surface);border-radius:6px;padding:3px;width:calc(25% - 3px);text-align:center;position:relative;transition:all .2s;border:2px solid transparent;flex-shrink:0;cursor:pointer}
 .unit-card.active{border-color:var(--gold);transform:scale(1.03);box-shadow:0 0 10px rgba(255,215,0,0.3)}
 .unit-card.dead{opacity:0.25;filter:grayscale(1)}
 .unit-card.targeted{border-color:var(--red);box-shadow:0 0 6px rgba(255,71,87,0.3);cursor:pointer}
@@ -161,6 +161,15 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .result-btns{display:flex;gap:8px;flex-direction:column;align-items:center}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
 .shake{animation:shake .2s}
+.bm-stat-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px}
+.bm-stat-label{color:var(--text2)}
+.bm-stat-cur{font-weight:700}
+.bm-stat-base{font-size:9px;color:var(--text2);margin-left:4px}
+.bm-stat-up{color:var(--green)}.bm-stat-dn{color:var(--red)}
+.bm-section{margin-bottom:10px}
+.bm-section-title{font-size:9px;color:var(--accent);font-weight:700;margin-bottom:4px;border-bottom:1px solid rgba(168,85,247,0.2);padding-bottom:2px}
+.bm-status-list{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.bm-status-tag{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700}
 </style>
 </head>
 <body>
@@ -380,6 +389,7 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
   const[targetCount,setTargetCount]=useState(1);
   const[chosenTargets,setChosenTargets]=useState([]);
   const[logExpanded,setLogExpanded]=useState(false);
+  const[previewUnit,setPreviewUnit]=useState(null);
   const logRef=useRef(null);const autoRef=useRef(null);
   const{units,logs,globalTU}=bs;
   const fieldUnits=units.filter(u=>u.inField);
@@ -643,7 +653,7 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
       onClick:()=>{if(isTgt){
         const enemies=units.filter(x=>x.team==='e'&&x.inField&&x.alive);
         const idx=enemies.indexOf(u);if(idx>=0)onTargetClick(idx);
-      }}},
+      }else{setPreviewUnit(u);}}},
       h('div',{className:'card-attr-line attr-'+u.attr}),
       h('img',{className:'unit-thumb',src:u.img,alt:'',loading:'lazy',onError:e=>{e.target.style.background='#333'}}),
       h('div',{className:'unit-name-sm'},u.char),
@@ -710,7 +720,77 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
       targetCount===2?h('div',{className:'target-info'},'選択中: '+chosenTargets.length+'/'+targetCount):null,
       h('div',{className:'target-actions'},
         targetCount===2&&chosenTargets.length===targetCount?h('button',{className:'btn btn-sm btn-primary',onClick:confirmTargets},'決定'):null,
-        h('button',{className:'btn btn-sm btn-secondary',onClick:()=>{setWaitTarget(false);setSelSkill(null);setChosenTargets([]);}},'キャンセル'))):null);
+        h('button',{className:'btn btn-sm btn-secondary',onClick:()=>{setWaitTarget(false);setSelSkill(null);setChosenTargets([]);}},'キャンセル'))):null,
+    previewUnit?h(BattleCardModal,{unit:previewUnit,onClose:()=>setPreviewUnit(null)}):null);
+}
+
+function BattleCardModal({unit,onClose}){
+  const u=unit;const card=CARDS[u.cardId];
+  const activeSkills=u.skills.filter(s=>s.type==='ア');
+  const passiveSkill=u.skills.find(s=>s.type==='パ');
+  const hpPct=Math.max(0,u.hp/u.maxHp*100);
+  const statRows=[
+    {l:'HP',cur:Math.max(0,u.hp)+'/'+u.maxHp,base:card.hp,color:hpPct>50?'var(--green)':hpPct>25?'var(--gold)':'var(--red)'},
+    {l:'MP',cur:u.mp+'/10',base:'4',color:'var(--blue)'},
+    {l:'攻撃力',cur:u.atk,base:card.atk},{l:'物理攻撃',cur:u.pa,base:card.pa},
+    {l:'特殊攻撃',cur:u.sa,base:card.sa},{l:'物理防御',cur:u.pd,base:card.pd},
+    {l:'特殊防御',cur:u.sd,base:card.sd},{l:'俊敏性',cur:u.spd,base:card.spd},
+    {l:'TU',cur:u.tu,base:'-'},{l:'経過TU',cur:u.tuElapsed,base:'-'},
+  ];
+  const stList=[];
+  if(u.statuses.curse)stList.push({n:'カース',c:'st-curse'});
+  if(u.statuses.poison)stList.push({n:'ポイズン',c:'st-poison'});
+  if(u.statuses.sleep)stList.push({n:'スリープ',c:'st-sleep'});
+  if(u.statuses.rage)stList.push({n:'レイジ('+u.statuses.rage+')',c:'st-rage'});
+  if(u.statuses.charge)stList.push({n:'チャージ',c:'st-charge'});
+  if(u.statuses.block)stList.push({n:'ブロック',c:'st-block'});
+  if(u.statuses.speedUp)stList.push({n:'俊敏性UP',c:'st-spdup'});
+  if(u.statuses.speedDown)stList.push({n:'俊敏性DOWN',c:'st-spddn'});
+  if(u.ironHeart&&!u.ironHeartUsed)stList.push({n:'アイアンハート',c:'st-iron'});
+  if(u.ironHeartUsed)stList.push({n:'アイアンハート(済)',c:''});
+
+  return h('div',{className:'modal-overlay',onClick:e=>{if(e.target===e.currentTarget)onClose();}},
+    h('div',{className:'modal-content'},
+      h('div',{className:'modal-header'},
+        h('div',{className:'card-attr-line attr-'+u.attr}),
+        h('img',{className:'modal-img',src:u.img,alt:u.name,loading:'lazy',onError:e=>{e.target.style.display='none'}}),
+        h('button',{className:'modal-close',onClick:onClose},'×')),
+      h('div',{className:'modal-body'},
+        h('div',{className:'modal-card-name'},u.name),
+        h('div',{className:'modal-char-name'},(u.team==='p'?'【味方】':'【敵】')+u.char+' / '+ATTR_NAME[u.attr]+' / '+(u.at==='P'?'物理':u.at==='S'?'特殊':'混合')+(u.alive?'':' [戦闘不能]')),
+        h('div',{className:'bm-section'},
+          h('div',{className:'bm-section-title'},'現在のステータス'),
+          ...statRows.map(r=>{
+            const diff=typeof r.cur==='number'&&typeof r.base==='number'?r.cur-r.base:0;
+            return h('div',{key:r.l,className:'bm-stat-row'},
+              h('span',{className:'bm-stat-label'},r.l),
+              h('span',null,
+                h('span',{className:'bm-stat-cur',style:r.color?{color:r.color}:null},r.cur),
+                typeof r.base==='number'?h('span',{className:'bm-stat-base'+(diff>0?' bm-stat-up':diff<0?' bm-stat-dn':'')},
+                  diff!==0?' ('+(diff>0?'+':'')+diff+')':' (基礎:'+r.base+')'):null));})),
+        stList.length?h('div',{className:'bm-section'},
+          h('div',{className:'bm-section-title'},'状態異常・バフ'),
+          h('div',{className:'bm-status-list'},...stList.map(s=>h('span',{key:s.n,className:'bm-status-tag status-icon '+s.c},s.n)))):null,
+        card.un?h('div',{className:'unique-box'},
+          h('div',{className:'unique-label'},'ユニークスキル'),
+          h('div',{className:'unique-name'},card.un),
+          h('div',{className:'unique-effect'},card.ue)):null,
+        h('div',{className:'bm-section'},
+          h('div',{className:'bm-section-title'},'スキル'),
+          h('div',{className:'skill-list'},
+            passiveSkill?h('div',{className:'skill-item'},
+              h('div',{className:'skill-header'},h('span',{className:'skill-name'},passiveSkill.name),h('span',{className:'skill-badge badge-passive'},'パッシブ')),
+              h('div',{className:'skill-effect'},passiveSkill.effect),
+              passiveSkill.cond?h('div',{className:'skill-condition'},passiveSkill.cond):null):null,
+            ...activeSkills.map(s=>h('div',{key:s.order,className:'skill-item'},
+              h('div',{className:'skill-header'},h('span',{className:'skill-name'},s.name),h('span',{className:'skill-badge badge-active'},'アクティブ')),
+              h('div',{className:'skill-costs'},
+                h('span',{className:'skill-tu'},s.tu+'TU'),h('span',{className:s.mp>=0?'skill-mp-plus':'skill-mp-minus'},(s.mp>=0?'+':'')+s.mp+'MP'),
+                s.dmg?h('span',null,s.dmg+'倍'):null,s.target?h('span',null,s.target):null),
+              h('div',{className:'skill-effect'},s.effect),
+              s.cond?h('div',{className:'skill-condition'},s.cond):null)))),
+        h('div',{style:{marginTop:12}},
+          h('button',{className:'btn btn-secondary',style:{width:'100%'},onClick:onClose},'閉じる')))));
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(App));
