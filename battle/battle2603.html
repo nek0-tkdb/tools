@@ -50,6 +50,14 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text
 .slot img{width:100%;height:100%;object-fit:cover}
 .slot .remove-btn{position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;background:var(--red);color:white;font-size:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none}
 .party-actions{display:flex;gap:6px;justify-content:flex-end}
+.preset-panel{padding:6px 8px;background:var(--surface);border-top:1px solid #222}
+.preset-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.preset-chip{padding:4px 8px;border-radius:12px;font-size:9px;cursor:pointer;border:1px solid #444;background:var(--surface2);color:var(--text);font-family:inherit;display:flex;align-items:center;gap:3px}
+.preset-chip:active{opacity:0.7}
+.preset-chip .preset-del{color:var(--red);font-size:7px;margin-left:2px;cursor:pointer}
+.preset-save-row{display:flex;gap:4px;margin-top:4px}
+.preset-input{flex:1;padding:4px 8px;border-radius:6px;border:1px solid #333;background:var(--surface2);color:var(--text);font-size:10px;font-family:inherit}
+.preset-label{font-size:9px;color:var(--text2);font-weight:700}
 .enemy-select-mode{display:flex;gap:6px;padding:6px 8px}
 .tab-btn{flex:1;padding:6px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
 .tab-btn.active{background:var(--accent);color:white}
@@ -286,6 +294,35 @@ function getTargets(unit,skill,allUnits,chosen){
   return[];
 }
 
+// Preset save/load
+function loadPresets(){try{return JSON.parse(localStorage.getItem('tucr_presets')||'[]');}catch(e){return[];}}
+function savePresets(p){try{localStorage.setItem('tucr_presets',JSON.stringify(p));}catch(e){}}
+function presetToIds(party){return party.map(c=>c.id);}
+function idsToParty(ids){return ids.map(id=>CARDS[id]).filter(Boolean);}
+
+// Global unique skill check (used at battle start and reinforcement entry)
+function checkUniqueSkillGlobal(unit,all,newLogs,gtu){
+  const ue=unit.ue;if(!ue)return;
+  const me=uL(unit);
+  const enemies=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField);
+  const allies=all.filter(u=>u.team===unit.team&&u.alive&&u.inField);
+  const deadEnemies=all.filter(u=>u.team!==unit.team&&!u.alive);
+  let activated=false;
+  if(ue.includes('レイジ状態の時')&&unit.statuses.rage)activated=true;
+  if(ue.includes('チャージ状態の時')&&unit.statuses.charge)activated=true;
+  if(ue.includes('HPが75%以上')&&unit.hp>=unit.maxHp*0.75)activated=true;
+  if(ue.includes('HPが50%以下')&&unit.hp<=unit.maxHp*0.5)activated=true;
+  if(ue.includes('カース状態の敵')&&enemies.some(e=>e.statuses.curse))activated=true;
+  if(ue.includes('ポイズン状態の敵')&&enemies.some(e=>e.statuses.poison))activated=true;
+  if(ue.includes('スリープ状態の敵')&&enemies.some(e=>e.statuses.sleep))activated=true;
+  if(ue.includes('TUが300以上の敵')&&enemies.some(e=>e.tu>=300))activated=true;
+  if(ue.includes('敵を2体倒している')&&deadEnemies.length>=2)activated=true;
+  if(ue.includes('1人で戦っている')&&allies.length===1)activated=true;
+  if(ue.includes('400TU以上経過')&&unit.tuElapsed>=400)activated=true;
+  if(ue.includes('200TU経過するまで')&&unit.tuElapsed<=200)activated=true;
+  if(activated){newLogs.push({tu:gtu,team:unit.team,t:'status',m:'✨ '+me+'：ユニークスキル「'+unit.un+'」発動！ ('+ue+')'});}
+}
+
 function App(){
   const[screen,setScreen]=useState('title');
   const[pp,setPp]=useState([]);const[ep,setEp]=useState([]);
@@ -296,6 +333,8 @@ function App(){
     const pU=pp.map((c,i)=>mkUnit(c,'p',i));const eU=ep.map((c,i)=>mkUnit(c,'e',i));
     const all=[...pU,...eU];const logs=[];
     all.forEach(u=>{if(u.inField){u.tu=Math.max(10,500-u.spd);applyPassive(u,all,logs,0);}});
+    // 前衛ユニットのユニークスキルチェック（戦闘開始時）
+    all.filter(u=>u.inField).forEach(u=>checkUniqueSkillGlobal(u,all,logs,0));
     setBs({units:all,logs,turn:0,globalTU:0});setWinner(null);setScreen('battle');
   }
   if(screen==='title')return h(TitleScreen,{onStart:startSelect});
@@ -352,7 +391,11 @@ function CardModal({card,onClose,onSelect,selected}){
 function PartySelect({pp,setPp,ep,setEp,sf,setSf,onStart}){
   const[preview,setPreview]=useState(null);
   const[af,setAf]=useState('all');const[search,setSearch]=useState('');const[cf,setCf]=useState('all');
+  const[presets,setPresetsState]=useState(loadPresets());
+  const[presetName,setPresetName]=useState('');
+  const[showPresets,setShowPresets]=useState(false);
   const party=sf==='player'?pp:ep;const setParty=sf==='player'?setPp:setEp;
+  const side=sf==='player'?'player':'enemy';
   const chars=[...new Set(CARDS.map(c=>c.char))].sort();
   let fil=CARDS;
   if(af!=='all')fil=fil.filter(c=>c.attr===af);
@@ -361,10 +404,18 @@ function PartySelect({pp,setPp,ep,setEp,sf,setSf,onStart}){
   const isSel=c=>party.some(x=>x.id===c.id);
   function toggle(c){if(isSel(c))setParty(party.filter(x=>x.id!==c.id));else if(party.length<6)setParty([...party,c]);}
   function randomE(){setEp([...CARDS].sort(()=>Math.random()-0.5).slice(0,6));}
+  function doSavePreset(){
+    if(!presetName.trim()||party.length!==6)return;
+    const np=[...presets,{name:presetName.trim(),side:side,ids:presetToIds(party)}];
+    savePresets(np);setPresetsState(np);setPresetName('');
+  }
+  function doLoadPreset(p){const cards=idsToParty(p.ids);if(cards.length===6)setParty(cards);}
+  function doDeletePreset(idx){const np=presets.filter((_,i)=>i!==idx);savePresets(np);setPresetsState(np);}
+  const sidePresets=presets.map((p,i)=>({...p,idx:i}));
   const canBattle=pp.length===6&&ep.length===6;
   return h('div',{className:'app'},
     h('div',{className:'screen-header'},
-      h('div',null,h('div',{className:'screen-title'},sf==='player'?'自分のパーティ':'対戦相手'),h('div',{className:'slot-count'},party.length+'/6')),
+      h('div',null,h('div',{className:'screen-title'},sf==='player'?'自分の班編成':'対戦相手の班編成'),h('div',{className:'slot-count'},party.length+'/6')),
       sf==='player'&&pp.length===6?h('button',{className:'btn btn-sm btn-primary',onClick:()=>setSf('enemy')},'次へ→'):
       sf==='enemy'&&canBattle?h('button',{className:'btn btn-sm btn-primary',onClick:onStart},'戦闘開始!'):null),
     h('div',{className:'enemy-select-mode'},
@@ -379,7 +430,7 @@ function PartySelect({pp,setPp,ep,setEp,sf,setSf,onStart}){
       h('button',{className:'filter-btn'+(af==='G'?' active':''),onClick:()=>setAf('G'),style:{color:'var(--green)'}},'緑'),
       h('select',{value:cf,onChange:e=>setCf(e.target.value),style:{padding:'4px',borderRadius:14,fontSize:10,background:'var(--surface2)',color:'var(--text)',border:'1px solid #333',fontFamily:'inherit'}},
         h('option',{value:'all'},'全キャラ'),...chars.map(ch=>h('option',{key:ch,value:ch},ch)))),
-    h('div',{className:'card-grid',style:{paddingBottom:120}},
+    h('div',{className:'card-grid',style:{paddingBottom:showPresets?210:160}},
       ...fil.map(card=>h('div',{key:card.id,className:'card-item'+(isSel(card)?' selected':''),onClick:()=>setPreview(card)},
         h('div',{className:'card-attr-line attr-'+card.attr}),
         h('img',{className:'card-img',src:card.img,alt:card.name,loading:'lazy',onError:e=>{e.target.style.background='#333';e.target.style.minHeight='60px'}}),
@@ -395,7 +446,24 @@ function PartySelect({pp,setPp,ep,setEp,sf,setSf,onStart}){
       h('div',{className:'slots-row'},...[4,5].map(i=>h('div',{key:i,className:'slot'},
         party[i]?h(Fragment,null,h('img',{src:party[i].img,alt:'',onError:e=>{e.target.style.background='#555'}}),
           h('button',{className:'remove-btn',onClick:e=>{e.stopPropagation();setParty(party.filter((_,j)=>j!==i))}},'×')):h('span',{style:{fontSize:8,color:'#555'}},i-3)))),
-      h('div',{className:'party-actions'},h('button',{className:'btn btn-sm btn-secondary',onClick:()=>setParty([])},'リセット'))),
+      h('div',{className:'party-actions'},
+        h('button',{className:'btn btn-sm btn-secondary',onClick:()=>setShowPresets(!showPresets)},showPresets?'📁 閉じる':'📁 班を保存/呼出'),
+        h('button',{className:'btn btn-sm btn-secondary',onClick:()=>setParty([])},'リセット')),
+      showPresets?h('div',{className:'preset-panel'},
+        h('div',{className:'preset-label'},'💾 班の保存'),
+        party.length===6?h('div',{className:'preset-save-row'},
+          h('input',{className:'preset-input',placeholder:'班の名前を入力',value:presetName,onChange:e=>setPresetName(e.target.value),
+            onKeyDown:e=>{if(e.key==='Enter')doSavePreset();}}),
+          h('button',{className:'btn btn-sm btn-primary',onClick:doSavePreset},'保存')
+        ):h('div',{style:{fontSize:9,color:'var(--text2)',marginTop:4}},'6枚選択すると保存できます'),
+        h('div',{className:'preset-label',style:{marginTop:8}},'📂 保存済みの班'),
+        sidePresets.length?h('div',{className:'preset-row'},
+          ...sidePresets.map(p=>h('button',{key:p.idx,className:'preset-chip',onClick:()=>doLoadPreset(p)},
+            h('span',null,p.name),
+            p.side==='player'?h('span',{style:{fontSize:7,color:'var(--blue)'}},'自'):h('span',{style:{fontSize:7,color:'var(--red)'}},'敵'),
+            h('span',{className:'preset-del',onClick:e=>{e.stopPropagation();doDeletePreset(p.idx);}},'✕')))
+        ):h('div',{style:{fontSize:9,color:'var(--text2)',marginTop:4}},'保存された班はありません')
+      ):null),
     preview?h(CardModal,{card:preview,onClose:()=>setPreview(null),onSelect:c=>{toggle(c);setPreview(null)},selected:isSel(preview)}):null);
 }
 
@@ -435,6 +503,8 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
         applyEntrySkill(nxt,all,newLogs,gtu);
       }
       applyPassive(nxt,all,newLogs,gtu);
+      // 増援参加時にユニークスキル条件をチェック
+      checkUniqueSkill(nxt,all,newLogs,gtu);
     }
   }
 
@@ -490,27 +560,7 @@ function BattleScreen({bs,setBs,winner,setWinner,onBack}){
   }
 
   function checkUniqueSkill(unit,all,newLogs,gtu){
-    // Check and log unique skill activation
-    const ue=unit.ue;if(!ue)return;
-    const me=uL(unit);
-    const enemies=all.filter(u=>u.team!==unit.team&&u.alive&&u.inField);
-    const allies=all.filter(u=>u.team===unit.team&&u.alive&&u.inField);
-    const deadEnemies=all.filter(u=>u.team!==unit.team&&!u.alive);
-    let activated=false;
-    if(ue.includes('レイジ状態の時')&&unit.statuses.rage)activated=true;
-    if(ue.includes('チャージ状態の時')&&unit.statuses.charge)activated=true;
-    if(ue.includes('HPが75%以上')&&unit.hp>=unit.maxHp*0.75)activated=true;
-    if(ue.includes('HPが50%以下')&&unit.hp<=unit.maxHp*0.5)activated=true;
-    if(ue.includes('カース状態の敵')&&enemies.some(e=>e.statuses.curse))activated=true;
-    if(ue.includes('ポイズン状態の敵')&&enemies.some(e=>e.statuses.poison))activated=true;
-    if(ue.includes('スリープ状態の敵')&&enemies.some(e=>e.statuses.sleep))activated=true;
-    if(ue.includes('TUが300以上の敵')&&enemies.some(e=>e.tu>=300))activated=true;
-    if(ue.includes('敵を2体倒している')&&deadEnemies.length>=2)activated=true;
-    if(ue.includes('2体の味方を倒した敵')){/*complex check skip for now*/}
-    if(ue.includes('1人で戦っている')&&allies.length===1)activated=true;
-    if(ue.includes('400TU以上経過')&&unit.tuElapsed>=400)activated=true;
-    if(ue.includes('200TU経過するまで')&&unit.tuElapsed<=200)activated=true;
-    if(activated){newLogs.push({tu:gtu,team:unit.team,t:'status',m:'✨ '+me+'：ユニークスキル「'+unit.un+'」発動！ ('+ue+')'});}
+    checkUniqueSkillGlobal(unit,all,newLogs,gtu);
   }
 
   function executeSkill(unit,skill,all,newLogs,targetIdx,gtu){
