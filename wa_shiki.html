@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>和織 -Wa-Shiki- サクラエディタ配色カスタマイザー</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts (Noto Serif JP & Noto Sans JP) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #f7f5f2; /* 上品な温かみのあるグレージュ */
+      color: #3e3a36;
+    }
+    .serif-text {
+      font-family: 'Noto Serif JP', serif;
+    }
+    /* 和風パターン */
+    .bg-pattern {
+      background-color: #f7f5f2;
+      background-image: radial-gradient(#e5dec9 0.5px, transparent 0.5px), radial-gradient(#e5dec9 0.5px, #f7f5f2 0.5px);
+      background-size: 20px 20px;
+      background-position: 0 0, 10px 10px;
+    }
+    /* カスタマイズ用のカラー変数（JSで制御） */
+    :root {
+      --txt-txt: #1c2d42;
+      --txt-bg: #edf4f8;
+      --rul-txt: #53727d;
+      --rul-bg: #dce7ec;
+      --car-bg: #2792c3;
+      --cbk-bg: #dfeaf0;
+      --lno-txt: #6c848d;
+      --lno-bg: #e2edf2;
+      --sel-txt: #ffffff;
+      --sel-bg: #2ca9e1;
+      --zen-txt: #83ccd2;
+      --tab-txt: #9ed1d3;
+      --eol-txt: #72c1c8;
+      --eof-txt: #84b9cb;
+      --cmt-txt: #5c9291;
+      --sqt-txt: #3e62ad;
+      --wqt-txt: #4c6cb3;
+      --url-txt: #1853b5;
+      --num-txt: #43676b;
+      --preview-font: 'Noto Serif JP', serif;
+    }
+
+    /* サクラエディタ風リアルタイムプレビューのスタイル */
+    .editor-container {
+      background-color: var(--txt-bg);
+      color: var(--txt-txt);
+      transition: all 0.3s ease;
+    }
+    .editor-ruler {
+      background-color: var(--rul-bg);
+      color: var(--rul-txt);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+    .editor-line-numbers {
+      background-color: var(--lno-bg);
+      color: var(--lno-txt);
+      border-right: 1px solid rgba(0, 0, 0, 0.06);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+    }
+    .editor-body {
+      font-family: var(--preview-font);
+      font-size: 15px;
+      line-height: 1.85;
+    }
+    .editor-active-line {
+      background-color: var(--cbk-bg);
+    }
+    /* 全角スペース記号 */
+    .zenkaku-space {
+      color: var(--zen-txt);
+      font-weight: normal;
+      user-select: none;
+      font-family: monospace;
+      margin: 0 1px;
+      display: inline-block;
+      transform: scale(0.9);
+    }
+    /* 改行記号 */
+    .eol-symbol {
+      color: var(--eol-txt);
+      font-weight: normal;
+      user-select: none;
+      font-family: monospace;
+      margin-left: 2px;
+    }
+    /* TAB記号 */
+    .tab-symbol {
+      color: var(--tab-txt);
+      font-weight: normal;
+      user-select: none;
+      font-family: monospace;
+    }
+    /* EOF */
+    .eof-symbol {
+      color: var(--eof-txt);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      font-weight: bold;
+      user-select: none;
+    }
+    /* 選択部分 */
+    .selection-text {
+      color: var(--sel-txt) !important;
+      background-color: var(--sel-bg);
+    }
+    /* コメント */
+    .comment-text {
+      color: var(--cmt-txt);
+      font-style: italic;
+    }
+    /* URL */
+    .url-text {
+      color: var(--url-txt);
+      text-decoration: underline;
+    }
+    /* 数値 */
+    .num-text {
+      color: var(--num-txt);
+    }
+    /* 文字列（クォーテーション等） */
+    .quote-text {
+      color: var(--wqt-txt);
+    }
+
+    /* カーソルの点滅 */
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 1; }
+    }
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      background-color: var(--car-bg);
+      vertical-align: middle;
+      animation: cursor-blink 1s infinite;
+      margin-left: -2px;
+    }
+
+    /* カスタムスクロールバー */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1ebd9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #dcd1b4;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #c5b897;
+    }
+  </style>
+</head>
+<body class="bg-pattern min-h-screen pb-12">
+
+  <!-- ヘッダーデザイン -->
+  <header class="relative overflow-hidden py-10 px-6 border-b border-[#e5dec9] bg-white bg-opacity-70 backdrop-blur-sm shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="text-center md:text-left">
+        <div class="flex items-center justify-center md:justify-start gap-2 mb-2">
+          <span class="text-xs tracking-[0.4em] text-[#bda06d] font-bold">和風サクラエディタ配色</span>
+          <span class="h-[1px] w-12 bg-[#bda06d]"></span>
+        </div>
+        <h1 class="serif-text text-3xl md:text-4xl font-semibold tracking-wider text-[#4a3a2a] flex items-center justify-center md:justify-start gap-2">
+          和織 <span class="text-xl text-[#bda06d] font-light">-Wa-Shiki-</span>
+        </h1>
+        <p class="text-xs md:text-sm text-[#70685e] mt-2 tracking-wide font-light">
+          心地よいテキスト環境をあなたに。日本の伝統色から生まれた、サクラエディタ配色カスタマイザー。
+        </p>
+      </div>
+      <!-- 水引風グラフィック -->
+      <div class="flex gap-1.5 items-center justify-center">
+        <span class="w-2.5 h-2.5 rounded-full bg-[#e9546b]"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-[#f4b3c2]"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-[#bda06d]"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-[#83ccd2]"></span>
+        <span class="w-2.5 h-2.5 rounded-full bg-[#5654a2]"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="max-w-7xl mx-auto px-4 md:px-6 mt-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- 左カラム：設定パネル (lg:col-span-7) -->
+      <section class="lg:col-span-7 space-y-6">
+        
+        <!-- 1. プリセットセレクター -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e5dec9]">
+          <h2 class="serif-text text-lg font-medium text-[#4a3a2a] mb-4 flex items-center gap-2">
+            <span class="w-1 h-5 bg-[#e9546b] inline-block"></span>
+            1. 伝統色の調合（プリセット選択）
+          </h2>
+          <p class="text-xs text-[#70685e] mb-5 font-light">
+            ライト（明るめ・日中の作業用）とダーク（暗め・落ち着いた作業用）の16種。日々のテキスト編集が楽しくなる名前の配色。
+          </p>
+          
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="presetGrid">
+            <!-- プリセットボタンはJavaScriptで動的に追加されます -->
+          </div>
+          
+          <!-- 選択中プリセットの説明 -->
+          <div class="mt-4 p-4 bg-[#fcfbf9] rounded-xl border border-[#ece7d8]" id="presetDescription">
+            <h3 class="serif-text text-sm font-semibold text-[#4a3a2a]" id="activePresetName">白群の朝</h3>
+            <p class="text-xs text-[#70685e] mt-1 font-light leading-relaxed" id="activePresetDesc">説明</p>
+          </div>
+        </div>
+
+        <!-- 2. 和色パレット（クリックで瞬時に色適用） -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e5dec9]">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="serif-text text-lg font-medium text-[#4a3a2a] flex items-center gap-2">
+              <span class="w-1 h-5 bg-[#bda06d] inline-block"></span>
+              2. 伝統和色パレット
+            </h2>
+            <span class="text-[10px] bg-[#f1ebd9] text-[#70685e] px-2 py-0.5 rounded">選択中の項目に適用</span>
+          </div>
+          <p class="text-xs text-[#70685e] mb-4 font-light">
+            下の詳細設定で色調整中、theseの和色をクリックするとその色を適用できます。
+          </p>
+          
+          <div class="space-y-3">
+            <!-- 各色系統 -->
+            <div>
+              <span class="text-[10px] text-[#8e7a68] font-bold block mb-1">【紅・桜・桃】</span>
+              <div class="flex flex-wrap gap-2" id="palette-red"></div>
+            </div>
+            <div>
+              <span class="text-[10px] text-[#8e7a68] font-bold block mb-1">【黄・ベージュ・茶】</span>
+              <div class="flex flex-wrap gap-2" id="palette-yellow"></div>
+            </div>
+            <div>
+              <span class="text-[10px] text-[#8e7a68] font-bold block mb-1">【青・水】</span>
+              <div class="flex flex-wrap gap-2" id="palette-blue"></div>
+            </div>
+            <div>
+              <span class="text-[10px] text-[#8e7a68] font-bold block mb-1">【紫・藤】</span>
+              <div class="flex flex-wrap gap-2" id="palette-purple"></div>
+            </div>
+            <div>
+              <span class="text-[10px] text-[#8e7a68] font-bold block mb-1">【緑・苔・墨】</span>
+              <div class="flex flex-wrap gap-2" id="palette-green"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 詳細な色調整（カスタマイズ） -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e5dec9]">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="serif-text text-lg font-medium text-[#4a3a2a] flex items-center gap-2">
+              <span class="w-1 h-5 bg-[#5654a2] inline-block"></span>
+              3. 細部の手仕事（カスタマイズ）
+            </h2>
+            <button onclick="resetToPreset()" class="text-xs text-[#e9546b] hover:underline focus:outline-none font-light">プリセットの初期値に戻す</button>
+          </div>
+          <p class="text-xs text-[#70685e] mb-6 font-light">
+            テキスト編集の邪魔にならないよう、行番号や改行記号などは少し薄め（コントラスト控えめ）にすることをおすすめします。
+          </p>
+
+          <!-- カスタマイズのアコーディオンセクション -->
+          <div class="space-y-4">
+            
+            <!-- A. 基本と背景 -->
+            <div class="border-b border-[#f1ebd9] pb-4">
+              <button onclick="toggleAccordion('acc-base')" class="w-full flex justify-between items-center text-sm font-semibold text-[#4a3a2a] focus:outline-none">
+                <span class="serif-text">A. 画面の基軸（本文・背景・カーソル）</span>
+                <span id="icon-acc-base" class="text-xs transform transition-transform duration-200">▼</span>
+              </button>
+              <div id="acc-base" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">本文・テキスト</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-TXT_txt" onchange="updateColor('TXT_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">文字色</span>
+                      <input type="text" id="text-TXT_txt" onchange="updateColor('TXT_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">背景色</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-TXT_bg" onchange="updateColor('TXT_bg', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">背景全体</span>
+                      <input type="text" id="text-TXT_bg" onchange="updateColor('TXT_bg', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">カーソル色</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-CAR_bg" onchange="updateColor('CAR_bg', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">カーソル縦線</span>
+                      <input type="text" id="text-CAR_bg" onchange="updateColor('CAR_bg', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">カーソル行の背景色</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-CBK_bg" onchange="updateColor('CBK_bg', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">現在選択中の一行</span>
+                      <input type="text" id="text-CBK_bg" onchange="updateColor('CBK_bg', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- B. 記号とガイド -->
+            <div class="border-b border-[#f1ebd9] pb-4">
+              <button onclick="toggleAccordion('acc-symbols')" class="w-full flex justify-between items-center text-sm font-semibold text-[#4a3a2a] focus:outline-none">
+                <span class="serif-text">B. リズムを整える（全角空白・改行・記号）</span>
+                <span id="icon-acc-symbols" class="text-xs transform transition-transform duration-200">▼</span>
+              </button>
+              <div id="acc-symbols" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">全角スペース（インデント・空白）</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-ZEN_txt" onchange="updateColor('ZEN_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">四角枠の記号色</span>
+                      <input type="text" id="text-ZEN_txt" onchange="updateColor('ZEN_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">改行記号（行の終端）</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-EOL_txt" onchange="updateColor('EOL_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">矢印（↓）色</span>
+                      <input type="text" id="text-EOL_txt" onchange="updateColor('EOL_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">TAB記号</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-TAB_txt" onchange="updateColor('TAB_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">矢印（→）色</span>
+                      <input type="text" id="text-TAB_txt" onchange="updateColor('TAB_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">EOF記号（ファイルの終端）</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-EOF_txt" onchange="updateColor('EOF_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">[EOF]文字色</span>
+                      <input type="text" id="text-EOF_txt" onchange="updateColor('EOF_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- C. 外枠と定規 -->
+            <div class="border-b border-[#f1ebd9] pb-4">
+              <button onclick="toggleAccordion('acc-frame')" class="w-full flex justify-between items-center text-sm font-semibold text-[#4a3a2a] focus:outline-none">
+                <span class="serif-text">C. レイアウト（行番号・ルーラー・選択範囲）</span>
+                <span id="icon-acc-frame" class="text-xs transform transition-transform duration-200">▼</span>
+              </button>
+              <div id="acc-frame" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-1">行番号の文字と背景</label>
+                  <div class="flex items-center gap-2 mb-2">
+                    <input type="color" id="picker-LNO_txt" onchange="updateColor('LNO_txt', this.value)" class="w-6 h-6 rounded cursor-pointer border-0">
+                    <span class="text-[10px] text-[#70685e]">文字:</span>
+                    <input type="text" id="text-LNO_txt" onchange="updateColor('LNO_txt', this.value)" class="text-xs px-1.5 py-0.5 border border-[#e5dec9] rounded w-16">
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="picker-LNO_bg" onchange="updateColor('LNO_bg', this.value)" class="w-6 h-6 rounded cursor-pointer border-0">
+                    <span class="text-[10px] text-[#70685e]">背景:</span>
+                    <input type="text" id="text-LNO_bg" onchange="updateColor('LNO_bg', this.value)" class="text-xs px-1.5 py-0.5 border border-[#e5dec9] rounded w-16">
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-1">ルーラーの文字と背景</label>
+                  <div class="flex items-center gap-2 mb-2">
+                    <input type="color" id="picker-RUL_txt" onchange="updateColor('RUL_txt', this.value)" class="w-6 h-6 rounded cursor-pointer border-0">
+                    <span class="text-[10px] text-[#70685e]">文字:</span>
+                    <input type="text" id="text-RUL_txt" onchange="updateColor('RUL_txt', this.value)" class="text-xs px-1.5 py-0.5 border border-[#e5dec9] rounded w-16">
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="picker-RUL_bg" onchange="updateColor('RUL_bg', this.value)" class="w-6 h-6 rounded cursor-pointer border-0">
+                    <span class="text-[10px] text-[#70685e]">背景:</span>
+                    <input type="text" id="text-RUL_bg" onchange="updateColor('RUL_bg', this.value)" class="text-xs px-1.5 py-0.5 border border-[#e5dec9] rounded w-16">
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9] md:col-span-2">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-1">選択範囲（反転表示箇所）</label>
+                  <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center gap-2">
+                      <input type="color" id="picker-SEL_txt" onchange="updateColor('SEL_txt', this.value)" class="w-6 h-6 rounded cursor-pointer border-0">
+                      <span class="text-[10px] text-[#70685e]">文字色:</span>
+                      <input type="text" id="text-SEL_txt" onchange="updateColor('SEL_txt', this.value)" class="text-xs px-1.5 py-0.5 border border-[#e5dec9] rounded w-16">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <input type="color" id="picker-SEL_bg" onchange="updateColor('SEL_bg', this.value)" class="w-6 h-6 rounded cursor-pointer border-0">
+                      <span class="text-[10px] text-[#70685e]">背景色:</span>
+                      <input type="text" id="text-SEL_bg" onchange="updateColor('SEL_bg', this.value)" class="text-xs px-1.5 py-0.5 border border-[#e5dec9] rounded w-16">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- D. 文飾とコメント -->
+            <div class="pb-2">
+              <button onclick="toggleAccordion('acc-decorations')" class="w-full flex justify-between items-center text-sm font-semibold text-[#4a3a2a] focus:outline-none">
+                <span class="serif-text">D. テキストの強調（コメント・文字列・URL・数値）</span>
+                <span id="icon-acc-decorations" class="text-xs transform transition-transform duration-200">▼</span>
+              </button>
+              <div id="acc-decorations" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">コメント行 (// コメントやメモ)</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-CMT_txt" onchange="updateColor('CMT_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">コメント文字色</span>
+                      <input type="text" id="text-CMT_txt" onchange="updateColor('CMT_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">ダブルクォーテーション等 (&quot;文字列&quot;・「」)</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-WQT_txt" onchange="updateColor('WQT_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">引用・リテラル文字色</span>
+                      <input type="text" id="text-WQT_txt" onchange="updateColor('WQT_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">URL表示</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-URL_txt" onchange="updateColor('URL_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">URL部分の文字色</span>
+                      <input type="text" id="text-URL_txt" onchange="updateColor('URL_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+                <div class="p-3 bg-[#fcfbf9] rounded-xl border border-[#f1ebd9]">
+                  <label class="text-xs font-semibold text-[#4a3a2a] block mb-2">半角数値</label>
+                  <div class="flex items-center gap-3">
+                    <input type="color" id="picker-NUM_txt" onchange="updateColor('NUM_txt', this.value)" class="w-8 h-8 rounded cursor-pointer border-0">
+                    <div>
+                      <span class="text-[10px] text-[#70685e] block">数字の文字色</span>
+                      <input type="text" id="text-NUM_txt" onchange="updateColor('NUM_txt', this.value)" class="text-xs px-2 py-0.5 border border-[#e5dec9] rounded w-20">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- 右カラム：リアルタイムプレビュー＆ダウンロード (lg:col-span-5) -->
+      <section class="lg:col-span-5 space-y-6">
+        
+        <!-- プレビュー＆操作エリア -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-[#e5dec9] lg:sticky lg:top-6">
+          
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 class="serif-text text-lg font-medium text-[#4a3a2a] flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#e9546b]"></span>
+              サクラエディタ擬似プレビュー
+            </h2>
+            
+            <div class="flex items-center justify-between sm:justify-end gap-2">
+              <!-- テキストコピーボタン -->
+              <button onclick="copyPreviewText()" class="flex items-center gap-1.5 px-3 py-1 text-xs bg-white hover:bg-[#f1ebd9] active:bg-[#ece7d8] border border-[#e5dec9] rounded-lg text-[#70685e] transition-all duration-200 focus:outline-none">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                <span>テキストをコピー</span>
+              </button>
+
+              <!-- 書体変更トグル -->
+              <div class="flex bg-[#f1ebd9] rounded-lg p-0.5">
+                <button onclick="setFont('serif')" id="btn-font-serif" class="px-3 py-1 text-xs rounded-md focus:outline-none transition-all duration-200 font-bold bg-white text-[#4a3a2a] shadow-sm">明朝</button>
+                <button onclick="setFont('sans')" id="btn-font-sans" class="px-3 py-1 text-xs rounded-md focus:outline-none transition-all duration-200 font-light text-[#70685e]">ゴシック</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- エディタ本体 -->
+          <div class="editor-container rounded-xl overflow-hidden shadow-inner border border-black border-opacity-10 mb-5 text-left select-none md:select-text">
+            
+            <!-- ルーラー -->
+            <div class="editor-ruler py-1.5 px-3 whitespace-pre overflow-x-auto select-none" id="rulerContent">..10....20....30....40....50....60....70....80</div>
+            
+            <!-- 本文領域 -->
+            <div class="flex items-stretch min-h-[360px] editor-body">
+              
+              <!-- 行番号 -->
+              <div class="editor-line-numbers py-3 text-right pr-2 pl-3 select-none flex flex-col space-y-0.5" style="min-width: 3rem;">
+                <span>  1</span>
+                <span>  2</span>
+                <span>  3</span>
+                <span>  4</span>
+                <span>  5</span>
+                <span>  6</span>
+                <span>  7</span>
+                <span>  8</span>
+                <span>  9</span>
+                <span> 10</span>
+              </div>
+              
+              <!-- テキスト -->
+              <div class="py-3 px-4 flex-grow overflow-x-auto flex flex-col space-y-0.5 whitespace-nowrap">
+                <!-- 1行目 -->
+                <div class="editor-active-line w-full">
+                  <span class="zenkaku-space" title="全角スペース">⬚</span>美しい伝統色に包まれて、画面上の文字が、<span class="cursor"></span><span class="eol-symbol">↵</span>
+                </div>
+                <!-- 2行目 -->
+                <div>
+                  <span class="zenkaku-space" title="全角スペース">⬚</span>しっくりと、心地よく、静かに馴染んでいく。<span class="eol-symbol">↵</span>
+                </div>
+                <!-- 3行目 -->
+                <div>
+                  <span class="eol-symbol">↵</span>
+                </div>
+                <!-- 4行目 -->
+                <div>
+                  <span class="quote-text">&quot;いつでも快適に入力・閲覧ができること。&quot;</span><span class="eol-symbol">↵</span>
+                </div>
+                <!-- 5行目 -->
+                <div>
+                  <span class="eol-symbol">↵</span>
+                </div>
+                <!-- 6行目 -->
+                <div>
+                  <span class="zenkaku-space" title="全角スペース">⬚</span>テキストワーク、メモ書き、ドキュメント作成。<span class="tab-symbol">→</span><span class="eol-symbol">↵</span>
+                </div>
+                <!-- 7行目 -->
+                <div>
+                  様々なシーンに寄り添う、穏やかで気品ある色彩。<span class="eol-symbol">↵</span>
+                </div>
+                <!-- 8行目 -->
+                <div>
+                  選択した範囲は、<span class="selection-text">このように鮮やかに</span>ハイライト表示されます。<span class="eol-symbol">↵</span>
+                </div>
+                <!-- 9行目 -->
+                <div class="comment-text">
+                  // TODO: サクラエディタのカラー設定（.col）に調合中。<span class="num-text">2026</span> 年のテーマ<span class="eol-symbol">↵</span>
+                </div>
+                <!-- 10行目 -->
+                <div>
+                  <span class="url-text">https://sakura-editor.github.io/</span><span class="eol-symbol">↵</span>
+                </div>
+                <!-- EOF -->
+                <div>
+                  <span class="eof-symbol">[EOF]</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 配布ダウンロードボタン -->
+          <button onclick="downloadColFile()" class="w-full serif-text bg-[#e9546b] hover:bg-[#d63b53] active:bg-[#c22d44] text-white py-4 px-6 rounded-xl shadow-md transition-all duration-200 font-medium tracking-widest text-base flex items-center justify-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            和色カラー設定 (.col) を手に入れる
+          </button>
+          
+          <!-- 配布のワンポイント説明 -->
+          <div class="mt-5 p-4 bg-[#fbf9f4] rounded-xl border border-[#e5dec9] text-left space-y-4">
+            <div>
+              <h4 class="serif-text text-xs font-semibold text-[#8e7a68] mb-2 flex items-center gap-1.5">
+                <span>✿</span>サクラエディタへの適用方法
+              </h4>
+              <ol class="text-[11px] text-[#70685e] space-y-1.5 list-decimal list-inside leading-relaxed font-light">
+                <li>上のダウンロードボタンからファイルを保存します。</li>
+                <li>サクラエディタを開き、メニューの <b class="font-medium text-[#4a3a2a]">「設定」→「タイプ別設定」</b> を開きます。</li>
+                <li><b class="font-medium text-[#4a3a2a]">「カラー」タブ</b> を選択。</li>
+                <li>右下の <b class="font-medium text-[#4a3a2a]">「インポート」</b> を押し、今ダウンロードした <code class="bg-[#f0ebda] px-1 rounded font-mono">.col</code> ファイルを読み込ませます。</li>
+                <li>「適用」ボタンを押すと、この配色に切り替わります。</li>
+              </ol>
+            </div>
+
+            <div class="border-t border-[#e5dec9] pt-3">
+              <h4 class="serif-text text-xs font-semibold text-[#8e7a68] mb-2 flex items-center gap-1.5">
+                <span>✿</span>コメント（メモ書き）が色分けされない時は？
+              </h4>
+              <p class="text-[11px] text-[#70685e] leading-relaxed font-light mb-2">
+                サクラエディタの標準テキスト設定（.txt）では、初期のコメント記号設定が空欄になっています。3秒でできる以下の設定で、美しいコメント色に変更されます。
+              </p>
+              <ol class="text-[11px] text-[#70685e] space-y-1.5 list-decimal list-inside leading-relaxed font-light">
+                <li>サクラエディタのメニューから <b class="font-medium text-[#4a3a2a]">「設定」➔「タイプ別設定」</b> を開きます。</li>
+                <li>上部にある <b class="font-medium text-[#4a3a2a]">「カラー」タブ</b> を選択します。</li>
+                <li>画面下部にある <b class="font-medium text-[#4a3a2a]">「コメントスタイル」</b> グループを見つけます。</li>
+                <li>その中にある <b class="font-medium text-[#4a3a2a]">「行型」</b>（または <b class="font-medium text-[#4a3a2a]">「行型(M)」</b>）の入力欄に半角で <code class="bg-[#f0ebda] px-1 rounded font-mono">//</code> と入力します。</li>
+                <li>「適用」➔「OK」を押すと、// 以降の文章が即座に美しい伝統色で色分けされるようになります。</li>
+              </ol>
+            </div>
+          </div>
+          
+        </div>
+        
+      </section>
+
+    </div>
+  </main>
+
+  <!-- 和織について・フッター -->
+  <footer class="max-w-7xl mx-auto px-4 md:px-6 mt-12 text-center text-xs text-[#90867a] border-t border-[#e5dec9] pt-8 space-y-3">
+    <p class="font-light">
+      本ツールはサクラエディタのカラー定義に準拠した設定ファイルを出力します。<br>
+      テキストに向き合う時間が、より穏やかで洗練された時間となりますように。
+    </p>
+    <p class="serif-text text-[10px] tracking-widest text-[#bda06d] mt-2">和織 / SAKURA EDITOR COLOR CONFIGURATION PRESETS</p>
+  </footer>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-[#3e3a36] text-[#f7f5f2] px-5 py-3 rounded-xl shadow-lg transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2 text-sm z-50 serif-text">
+    <span class="text-[#f4b3c2]">✿</span>
+    <span id="toast-message">コピーしました</span>
+  </div>
+
+  <script>
+    // 16種類の伝統色プリセットの完全なデータ定義
+    const presets = {
+      "blue_light": {
+        name: "白群の朝 (びゃくぐんのあさ)",
+        desc: "静かで澄み切った、薄霧が晴れる夜明けの空。透き通るような白群色の全角スペースが目印に。心を静めて、清らかな言葉をタイピングしたいときに。",
+        type: "light",
+        theme: "blue",
+        colors: {
+          TXT_txt: "#1C2D42", // 藍鼠風の深い紺
+          TXT_bg: "#EDF4F8",  // 月白
+          RUL_txt: "#53727D",  // 錆御納戸
+          RUL_bg: "#DCE7EC",  
+          CAR_txt: "#1C2D42", // 背景色ではなくテキストと視認性の良い色に割り当て
+          CAR_bg: "#2792C3",  // 縹色
+          CBK_bg: "#DFEAF0",  // アクティブ行
+          LNO_txt: "#6C848D",  
+          LNO_bg: "#E2EDF2",  
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#2CA9E1",  // 天色
+          ZEN_txt: "#83CCD2",  // 白群
+          TAB_txt: "#9ED1D3",
+          EOL_txt: "#72C1C8",  // 水縹
+          EOF_txt: "#84B9CB",
+          CMT_txt: "#5C9291",  // 錆浅葱
+          SQT_txt: "#3E62AD",
+          WQT_txt: "#4C6CB3",
+          URL_txt: "#1853B5",
+          NUM_txt: "#43676B"
+        }
+      },
+      "blue_dark": {
+        name: "鉄紺の夜 (てつこんのよる)",
+        desc: "深い静寂に包まれた深夜、星明かりを映す海の青。光を抑えた極上のダークテーマ。静まり返った部屋で、作業に深く没頭したい時に。",
+        type: "dark",
+        theme: "blue",
+        colors: {
+          TXT_txt: "#EAF4FC", // 月白
+          TXT_bg: "#0F1A24",  // 鉄紺ベース
+          RUL_txt: "#5B7E91",
+          RUL_bg: "#162533",
+          CAR_txt: "#EAF4FC",
+          CAR_bg: "#2CA9E1",
+          CBK_bg: "#152838",
+          LNO_txt: "#83959F",
+          LNO_bg: "#13212E",
+          SEL_txt: "#0F1A24",
+          SEL_bg: "#89C3EB",
+          ZEN_txt: "#507EA4",
+          TAB_txt: "#59B9C6",
+          EOL_txt: "#2A83A2",
+          EOF_txt: "#53727D",
+          CMT_txt: "#80ABA9", // 水浅葱
+          SQT_txt: "#ABCED8",
+          WQT_txt: "#BBC8E6",
+          URL_txt: "#00A3AF",
+          NUM_txt: "#9ED1D3"
+        }
+      },
+      "yellow_light": {
+        name: "鳥の子の午後 (とりのこのごご)",
+        desc: "ぽかぽかと温かい陽だまり、紅茶と楽しむ穏やかな創作時間。白すぎない「鳥の子色」の背景が非常に優しく、長時間の作業でも目が疲れにくい配色です。",
+        type: "light",
+        theme: "yellow",
+        colors: {
+          TXT_txt: "#3C3228", // 焦茶
+          TXT_bg: "#FCF9F2",  // 鳥の子色
+          RUL_txt: "#8E7A68",
+          RUL_bg: "#F2EBE0",
+          CAR_txt: "#3C3228",
+          CAR_bg: "#D3A243",
+          CBK_bg: "#F5ECD8",
+          LNO_txt: "#A58F86",
+          LNO_bg: "#EFE6D7",
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#BC763C",
+          ZEN_txt: "#CBB994", // 白橡
+          TAB_txt: "#E0C38C", // 枯色
+          EOL_txt: "#B68D4C",
+          EOF_txt: "#A68868",
+          CMT_txt: "#8C7042", // 路考茶
+          SQT_txt: "#B14329",
+          WQT_txt: "#AA4F37",
+          URL_txt: "#A22041",
+          NUM_txt: "#9D896C"
+        }
+      },
+      "yellow_dark": {
+        name: "琥珀の灯 (こはくのともしび)",
+        desc: "アンティークな洋館の書斎、そっと揺れるオイルランプの灯火。深いセピアと琥珀色に囲まれて、落ち着いた雰囲気で集中してドキュメントを綴りたい時に。",
+        type: "dark",
+        theme: "yellow",
+        colors: {
+          TXT_txt: "#FFFBF0",
+          TXT_bg: "#1D1610",  // 暗い焦茶
+          RUL_txt: "#B4866B",
+          RUL_bg: "#2A2118",
+          CAR_txt: "#FFFBF0",
+          CAR_bg: "#FCD575",
+          CBK_bg: "#2A231A",
+          LNO_txt: "#9B7853",
+          LNO_bg: "#251C14",
+          SEL_txt: "#1D1610",
+          SEL_bg: "#DE9A41",
+          ZEN_txt: "#956F29", // 桑茶
+          TAB_txt: "#AE7C58",
+          EOL_txt: "#BF783A",
+          EOF_txt: "#7C5B0C",
+          CMT_txt: "#AD7D4C",
+          SQT_txt: "#CD8C5C",
+          WQT_txt: "#CB8347",
+          URL_txt: "#FFB02A",
+          NUM_txt: "#EEC362"
+        }
+      },
+      "orange_light": {
+        name: "洗柿の夕暮れ (あらいがきのおゆうぐれ)",
+        desc: "西の窓から差し込む、まあるい夕日のオレンジ。ほんのりとした薄橙（洗柿）が、日々のデスクワークやメモ書きに愛おしさと温かみを添えてくれます。",
+        type: "light",
+        theme: "orange",
+        colors: {
+          TXT_txt: "#4A3225", // 昔唐茶
+          TXT_bg: "#FEF7F2",  // 洗柿
+          RUL_txt: "#9F6F55",
+          RUL_bg: "#F6EAE2",
+          CAR_txt: "#4A3225",
+          CAR_bg: "#EB6238",
+          CBK_bg: "#F9EDE4",
+          LNO_txt: "#B4866B",
+          LNO_bg: "#F3E3D8",
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#CD5E3C",
+          ZEN_txt: "#EFAB93", // 宍色
+          TAB_txt: "#F7BD8F",
+          EOL_txt: "#E09E87",
+          EOF_txt: "#B78161",
+          CMT_txt: "#975E45",
+          SQT_txt: "#D3381C",
+          WQT_txt: "#B55233",
+          URL_txt: "#ED6D3D",
+          NUM_txt: "#C37854"
+        }
+      },
+      "orange_dark": {
+        name: "落葉の暖炉 (おちばのだんろ)",
+        desc: "暖炉のぬくもりを想わせる、温かみのある落葉柿の差し色。深い焦茶ベースで光を優しく和らげ、深い集中力を必要とする作業に適しています。",
+        type: "dark",
+        theme: "orange",
+        colors: {
+          TXT_txt: "#FEF5EB",
+          TXT_bg: "#1F120A",  // 黒茶・樺茶
+          RUL_txt: "#AD7D4C",
+          RUL_bg: "#2E1B10",
+          CAR_txt: "#FEF5EB",
+          CAR_bg: "#ED6D3D",
+          CBK_bg: "#2A190F",
+          LNO_txt: "#9B7853",
+          LNO_bg: "#28170D",
+          SEL_txt: "#1F120A",
+          SEL_bg: "#EE7800",
+          ZEN_txt: "#954E2A", // 柿茶
+          TAB_txt: "#AE7C4F",
+          EOL_txt: "#CB8347",
+          EOF_txt: "#783C1D",
+          CMT_txt: "#975E45",
+          SQT_txt: "#EB6238",
+          WQT_txt: "#C9582C",
+          URL_txt: "#F56A29",
+          NUM_txt: "#DB8449"
+        }
+      },
+      "red_light": {
+        name: "珊瑚のまどろみ (さんごのまどろみ)",
+        desc: "愛らしい珊瑚の花のような、ロマンチックなピンクベージュ。華やかで上品な色合いが、毎日のテキスト入力やお気に入りの文章作成を楽しく彩ります。",
+        type: "light",
+        theme: "red",
+        colors: {
+          TXT_txt: "#4A1D23", // 小豆色
+          TXT_bg: "#FEF4F4",  // 桜色
+          RUL_txt: "#A86965",
+          RUL_bg: "#F9E7E7",
+          CAR_txt: "#4A1D23",
+          CAR_bg: "#E9546B",
+          CBK_bg: "#F9ECEC",
+          LNO_txt: "#C099A0",
+          LNO_bg: "#F3E1E1",
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#D0576B",
+          ZEN_txt: "#F5B1AA", // 珊瑚色
+          TAB_txt: "#F2A0A1",
+          EOL_txt: "#E9546B", // 薔薇色
+          EOF_txt: "#B88884",
+          CMT_txt: "#A25768",
+          SQT_txt: "#E60033",
+          WQT_txt: "#C53D43",
+          URL_txt: "#BA2636",
+          NUM_txt: "#DE8397"
+        }
+      },
+      "red_dark": {
+        name: "深緋の書架 (こきあけのしょか)",
+        desc: "重厚な洋書をぎっしりと敷き詰めたような、趣ある深緋（こきあけ）のダークテーマ。クリエイティブな発想や集中力を高めたいデスクワークのお供に。",
+        type: "dark",
+        theme: "red",
+        colors: {
+          TXT_txt: "#FFF2F2",
+          TXT_bg: "#1F0F11",  // 深緋ベース
+          RUL_txt: "#C53D43",
+          RUL_bg: "#2F161A",
+          CAR_txt: "#FFF2F2",
+          CAR_bg: "#E60033",
+          CBK_bg: "#2A1517",
+          LNO_txt: "#A06F70",
+          LNO_bg: "#2A1416",
+          SEL_txt: "#FFF2F2",
+          SEL_bg: "#9E3D3F",
+          ZEN_txt: "#A73836", // 紅海老茶
+          TAB_txt: "#D0576B",
+          EOL_txt: "#E60033",
+          EOF_txt: "#753035",
+          CMT_txt: "#91453F",
+          SQT_txt: "#EE827C",
+          WQT_txt: "#DF7163",
+          URL_txt: "#E95464",
+          NUM_txt: "#EF9683"
+        }
+      },
+      "purple_light": {
+        name: "藤波の小径 (ふじなみのこみち)",
+        desc: "風にそよぐ気品あふれる藤の華をイメージ。知的な雰囲力を湛えた、ほんのり紫がかった背景。思考をスマートに整理し、美しく整ったドキュメントを作成したい時に。",
+        type: "light",
+        theme: "purple",
+        colors: {
+          TXT_txt: "#281D33", // 紫紺ベース
+          TXT_bg: "#F6F2FB",  // 白藤色
+          RUL_txt: "#867BA9",
+          RUL_bg: "#EDE6F5",
+          CAR_txt: "#281D33",
+          CAR_bg: "#9079AD",
+          CBK_bg: "#EFEAF7",
+          LNO_txt: "#9790A4",
+          LNO_bg: "#EAE2F2",
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#867BA9",
+          ZEN_txt: "#A59ACA", // 藤紫
+          TAB_txt: "#BBC8E6",
+          EOL_txt: "#867BA9", // 紫苑色
+          EOF_txt: "#A69ABD",
+          CMT_txt: "#775580",
+          SQT_txt: "#65318E",
+          WQT_txt: "#7058A3",
+          URL_txt: "#5654A2",
+          NUM_txt: "#84A2D4"
+        }
+      },
+      "purple_dark": {
+        name: "茄子紺の宇宙 (なすこんのうちゅう)",
+        desc: "神秘的な茄子紺を基調とし、暗がりに優しく灯る藤紫色のガイドが特徴。画面をクリアにし、毎日のタイピング作業を滑らかに先導します。",
+        type: "dark",
+        theme: "purple",
+        colors: {
+          TXT_txt: "#F5F0FA",
+          TXT_bg: "#120E1A",  // 茄子紺ベース
+          RUL_txt: "#A59ACA",
+          RUL_bg: "#1D162B",
+          CAR_txt: "#F5F0FA",
+          CAR_bg: "#A15DC4",
+          CBK_bg: "#1A1528",
+          LNO_txt: "#9790A4",
+          LNO_bg: "#1B1426",
+          SEL_txt: "#120E1A",
+          SEL_bg: "#867BA9",
+          ZEN_txt: "#706CAA", // 藤納戸
+          TAB_txt: "#A69ABD",
+          EOL_txt: "#674598",
+          EOF_txt: "#493759",
+          CMT_txt: "#775580",
+          SQT_txt: "#CCA6BF",
+          WQT_txt: "#CC7EB1",
+          URL_txt: "#744F97",
+          NUM_txt: "#A59ACA"
+        }
+      },
+      "green_light": {
+        name: "白緑の風 (びゃくろくのかぜ)",
+        desc: "若葉の香りが漂うような、目に優しく安定感のある白緑（淡いグリーン）ベース of 極上配色。集中力をすっきりと研ぎ澄ませ、テキストワークをサポートします。",
+        type: "light",
+        theme: "green",
+        colors: {
+          TXT_txt: "#15251F", // 鉄色
+          TXT_bg: "#F0F7F3",  // 白緑
+          RUL_txt: "#6E8252",
+          RUL_bg: "#E1EDE6",
+          CAR_txt: "#F0F7F3",
+          CAR_bg: "#3EB370",
+          CBK_bg: "#E2EFE7",
+          LNO_txt: "#8B968D",
+          LNO_bg: "#DCECE1",
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#50A06E",
+          ZEN_txt: "#93CA76", // 若緑
+          TAB_txt: "#92B5A9",
+          EOL_txt: "#50A06E",
+          EOF_txt: "#81A96E",
+          CMT_txt: "#6E7955",
+          SQT_txt: "#00552E",
+          WQT_txt: "#316745",
+          URL_txt: "#028760",
+          NUM_txt: "#7B8D42"
+        }
+      },
+      "green_dark": {
+        name: "千歳緑の杜 (ちとせみどりのもり)",
+        desc: "深緑をベースにしたダークテーマ。文字がコントラスト高く綺麗に浮き上がり、静かな夜の作業や長文ドキュメントの編集、コーディングに好適です。",
+        type: "dark",
+        theme: "green",
+        colors: {
+          TXT_txt: "#EEF5F2",
+          TXT_bg: "#0D1613",  // 千歳緑ベース
+          RUL_txt: "#81A96E",
+          RUL_bg: "#15241F",
+          CAR_txt: "#0D1613",
+          CAR_bg: "#3EB370",
+          CBK_bg: "#13211D",
+          LNO_txt: "#8B968D",
+          LNO_bg: "#111E1A",
+          SEL_txt: "#0D1613",
+          SEL_bg: "#3B7960",
+          ZEN_txt: "#3B7960", // 木賊色
+          TAB_txt: "#5C9291",
+          EOL_txt: "#008899",
+          EOF_txt: "#2F5D50",
+          CMT_txt: "#6E7955",
+          SQT_txt: "#92B5A9",
+          WQT_txt: "#7EBEAB",
+          URL_txt: "#38B48B",
+          NUM_txt: "#B0CA71"
+        }
+      },
+      "redpurple_light": {
+        name: "今様の調べ (いまようのしらべ)",
+        desc: "梅鼠色のほんのり上品な大人ピンクを基調とした配色。日記やブログの下書き、アイデアスケッチなど、プライベートな作業空間を優美に演出します。",
+        type: "light",
+        theme: "redpurple",
+        colors: {
+          TXT_txt: "#3D1A2C", // 葡萄茶ベース
+          TXT_bg: "#FAF2F5",  // 梅鼠
+          RUL_txt: "#BC64A4",
+          RUL_bg: "#F2E5EC",
+          CAR_txt: "#FAF2F5",
+          CAR_bg: "#D0576B",
+          CBK_bg: "#F2E4EA",
+          LNO_txt: "#A46A92",
+          LNO_bg: "#EFE1E7",
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#A46A92",
+          ZEN_txt: "#D0576B", // 今様色
+          TAB_txt: "#C0A2C7",
+          EOL_txt: "#B44C97", // 紅紫
+          EOF_txt: "#9D5B8B",
+          CMT_txt: "#824880",
+          SQT_txt: "#E95295",
+          WQT_txt: "#A22041",
+          URL_txt: "#AA4C8F",
+          NUM_txt: "#C97586"
+        }
+      },
+      "redpurple_dark": {
+        name: "葡萄の秘め事 (ぶどうのひめごと)",
+        desc: "グラスで静かに揺れる葡萄色の果実酒のような、深いダークテーマ。上品かつ少し個性的なカラーで気分転換をしながら、集中してタイピング作業を行いたいときに。",
+        type: "dark",
+        theme: "redpurple",
+        colors: {
+          TXT_txt: "#FAF0F6",
+          TXT_bg: "#1C0D17",  // 葡萄色ベース
+          RUL_txt: "#BC64A4",
+          RUL_bg: "#2A1523",
+          CAR_txt: "#1C0D17",
+          CAR_bg: "#E95295",
+          CBK_bg: "#24111E",
+          LNO_txt: "#A46A92",
+          LNO_bg: "#25121F",
+          SEL_txt: "#FAF0F6",
+          SEL_bg: "#7A4171",
+          ZEN_txt: "#7A4171", // 蒲葡
+          TAB_txt: "#CC7EB1",
+          EOL_txt: "#A46A92",
+          EOF_txt: "#522F60",
+          CMT_txt: "#725B63",
+          SQT_txt: "#E597B2",
+          WQT_txt: "#C85179",
+          URL_txt: "#AA4C8F",
+          NUM_txt: "#BC64A4"
+        }
+      },
+      "pink_light": {
+        name: "薄桜の初恋 (うすざくらのはつこい)",
+        desc: "儚げで美しい淡い桜色の背景。柔らかい色合いが、日々のアイデア出しや日常メモのタイピングを穏やかに、そして楽しくサポートしてくれます。",
+        type: "light",
+        theme: "pink",
+        colors: {
+          TXT_txt: "#4A1B22", // 紅海老茶
+          TXT_bg: "#FDF5F6",  // 薄桜
+          RUL_txt: "#DF9D9F",
+          RUL_bg: "#FAEBED",
+          CAR_txt: "#FDF5F6",
+          CAR_bg: "#E597B2",
+          CBK_bg: "#F9ECEE",
+          LNO_txt: "#C099A0",
+          LNO_bg: "#F5E2E4",
+          SEL_txt: "#FFFFFF",
+          SEL_bg: "#E597B2",
+          ZEN_txt: "#F4B3C2", // 鴇色
+          TAB_txt: "#E597B2",
+          EOL_txt: "#E7609E",
+          EOF_txt: "#D69090",
+          CMT_txt: "#A06F70",
+          SQT_txt: "#F09199",
+          WQT_txt: "#F2A0A1",
+          URL_txt: "#E9546B",
+          NUM_txt: "#DE8397"
+        }
+      },
+      "pink_dark": {
+        name: "一重梅の追憶 (ひとえうめのついおく)",
+        desc: "一輪咲き誇る紅梅の陰影。落ち着いた臙脂（えんじ）の躑躅色が暗がりに灯り、凛とした美しさと目の負担の少なさがテキスト編集をスムーズにします。",
+        type: "dark",
+        theme: "pink",
+        colors: {
+          TXT_txt: "#FEF0F3",
+          TXT_bg: "#211215",  // 臙脂ベース
+          RUL_txt: "#E597B2",
+          RUL_bg: "#301A1E",
+          CAR_txt: "#211215",
+          CAR_bg: "#F73B70",
+          CBK_bg: "#2A171B",
+          LNO_txt: "#A06F70",
+          LNO_bg: "#291518",
+          SEL_txt: "#FEF0F3",
+          SEL_bg: "#9D5B8B",
+          ZEN_txt: "#DE8397", // 一重梅
+          TAB_txt: "#CCA6BF",
+          EOL_txt: "#E95295",
+          EOF_txt: "#5C2D36",
+          CMT_txt: "#725B63",
+          SQT_txt: "#E5ABBE",
+          WQT_txt: "#EEBBCB",
+          URL_txt: "#E7609E",
+          NUM_txt: "#C97586"
+        }
+      }
+    };
+
+    // クイックパレット
+    const traditionalColors = {
+      red: [
+        { name: "鴇色", hex: "#F4B3C2" },
+        { name: "桜色", hex: "#FEF4F4" },
+        { name: "桃色", hex: "#F09199" },
+        { name: "薄桜", hex: "#FDEFF2" },
+        { name: "灰桜", hex: "#E8D3D1" },
+        { name: "紅梅色", hex: "#F2A0A1" },
+        { name: "珊瑚色", hex: "#F5B1AA" },
+        { name: "茜色", hex: "#B7282E" },
+        { name: "小豆色", hex: "#96514D" }
+      ],
+      yellow: [
+        { name: "鳥の子色", hex: "#FFF1CF" },
+        { name: "象牙色", hex: "#F8F4E6" },
+        { name: "練色", hex: "#EDE4CD" },
+        { name: "枯色", hex: "#E0C38C" },
+        { name: "白茶", hex: "#DDBB99" },
+        { name: "淡香", hex: "#F3BF88" },
+        { name: "杏色", hex: "#F7B977" },
+        { name: "黄土色", hex: "#C39143" },
+        { name: "焦茶", hex: "#6F4B3E" }
+      ],
+      blue: [
+        { name: "月白", hex: "#EAF4FC" },
+        { name: "白群", hex: "#83CCD2" },
+        { name: "水色", hex: "#BCE2E8" },
+        { name: "浅葱色", hex: "#00A3AF" },
+        { name: "空色", hex: "#A0D8EF" },
+        { name: "瓶覗", hex: "#A2D7DD" },
+        { name: "藍色", hex: "#165E83" },
+        { name: "鉄紺", hex: "#17184B" },
+        { name: "藍鼠", hex: "#6C848D" }
+      ],
+      purple: [
+        { name: "白藤色", hex: "#DBD0E6" },
+        { name: "藤色", hex: "#BBBCDE" },
+        { name: "紫苑色", hex: "#867BA9" },
+        { name: "桔梗色", hex: "#5654A2" },
+        { name: "茄子紺", hex: "#824880" },
+        { name: "藤紫", hex: "#A59ACA" },
+        { name: "梅鼠", hex: "#C099A0" },
+        { name: "古代紫", hex: "#895B8A" },
+        { name: "葡萄色", hex: "#5D2369" }
+      ],
+      green: [
+        { name: "白緑", hex: "#D6E9CA" },
+        { name: "青磁色", hex: "#7EBEA5" },
+        { name: "若緑", hex: "#98D98E" },
+        { name: "常盤色", hex: "#007B43" },
+        { name: "千歳緑", hex: "#3B7960" },
+        { name: "深緑", hex: "#00552E" },
+        { name: "利休鼠", hex: "#888E7E" },
+        { name: "鉄色", hex: "#005243" },
+        { name: "墨", hex: "#595857" }
+      ]
+    };
+
+    // アプリケーションの状態
+    let currentPresetKey = "blue_light";
+    let customColors = JSON.parse(JSON.stringify(presets[currentPresetKey].colors)); // 現在のカスタマイズ色
+    let currentInputTarget = "TXT_txt"; // 和色パレットをクリックしたときに書き換えるターゲット
+
+    // 初期化処理
+    window.onload = function() {
+      renderPresetButtons();
+      renderTraditionalPalette();
+      applyPreset(currentPresetKey);
+      
+      // 最初のアコーディオン（基本と背景）を開いておく
+      toggleAccordion('acc-base');
+    };
+
+    // プリセットボタンを描画する
+    function renderPresetButtons() {
+      const grid = document.getElementById("presetGrid");
+      grid.innerHTML = "";
+      
+      for (const [key, preset] of Object.entries(presets)) {
+        const btn = document.createElement("button");
+        btn.id = `preset-btn-${key}`;
+        btn.onclick = () => applyPreset(key);
+        
+        const isDark = preset.type === "dark";
+        const dotBg = preset.colors.TXT_bg;
+        const dotTxt = preset.colors.TXT_txt;
+        const themeBorder = isDark ? 'border-gray-700' : 'border-[#e5dec9]';
+        
+        btn.className = `flex flex-col items-center justify-between p-3 rounded-xl border text-center transition-all duration-200 focus:outline-none hover:shadow-sm hover:border-[#bda06d]`;
+        btn.innerHTML = `
+          <div class="w-10 h-10 rounded-full border ${themeBorder} flex items-center justify-center shadow-inner relative overflow-hidden" style="background-color: ${dotBg}">
+            <span class="text-xs font-bold" style="color: ${dotTxt}">あ</span>
+            <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border border-white" style="background-color: ${preset.colors.ZEN_txt}"></span>
+          </div>
+          <span class="text-[10px] sm:text-xs font-medium text-[#4a3a2a] mt-2 block tracking-tight line-clamp-1">${preset.name.split(' (')[0]}</span>
+          <span class="text-[8px] px-1 py-0.2 mt-1 rounded ${isDark ? 'bg-[#3e3a36] text-[#f7f5f2]' : 'bg-[#f1ebd9] text-[#8e7a68]'}">${isDark ? '夜・暗' : '昼・明'}</span>
+        `;
+        
+        grid.appendChild(btn);
+      }
+    }
+
+    // 和色パレットの描画
+    function renderTraditionalPalette() {
+      for (const [category, colors] of Object.entries(traditionalColors)) {
+        const container = document.getElementById(`palette-${category}`);
+        container.innerHTML = "";
+        
+        colors.forEach(col => {
+          const block = document.createElement("button");
+          block.onclick = () => applyTraditionalColor(col.hex);
+          block.className = "flex items-center gap-1 px-2 py-1 bg-[#fcfbf9] hover:bg-[#f1ebd9] rounded-lg border border-[#e5dec9] transition-all duration-150 focus:outline-none text-left group";
+          block.innerHTML = `
+            <span class="w-3.5 h-3.5 rounded-full border border-black border-opacity-10 shadow-sm" style="background-color: ${col.hex}"></span>
+            <div class="flex flex-col">
+              <span class="text-[9px] text-[#4a3a2a] leading-none font-medium">${col.name}</span>
+              <span class="text-[8px] text-[#90867a] font-mono leading-none mt-0.5">${col.hex}</span>
+            </div>
+          `;
+          container.appendChild(block);
+        });
+      }
+    }
+
+    // 伝統色パレットをクリックしたときに詳細項目に適用する
+    function applyTraditionalColor(hex) {
+      if (currentInputTarget) {
+        updateColor(currentInputTarget, hex);
+        
+        const picker = document.getElementById(`picker-${currentInputTarget}`);
+        if (picker) {
+          picker.parentElement.classList.add("ring-2", "ring-[#bda06d]");
+          setTimeout(() => {
+            picker.parentElement.classList.remove("ring-2", "ring-[#bda06d]");
+          }, 600);
+        }
+      }
+    }
+
+    // プリセット適用
+    function applyPreset(key) {
+      currentPresetKey = key;
+      const preset = presets[key];
+      
+      customColors = JSON.parse(JSON.stringify(preset.colors));
+      
+      for (const k of Object.keys(presets)) {
+        const btn = document.getElementById(`preset-btn-${k}`);
+        if (btn) {
+          if (k === key) {
+            btn.className = btn.className.replace(/border-[^ ]+/g, '');
+            btn.classList.add("border-[#e9546b]", "ring-2", "ring-[#f4b3c2]", "bg-white");
+          } else {
+            btn.classList.remove("border-[#e9546b]", "ring-2", "ring-[#f4b3c2]", "bg-white");
+            btn.classList.add("border-[#e5dec9]");
+          }
+        }
+      }
+
+      document.getElementById("activePresetName").innerText = preset.name;
+      document.getElementById("activePresetDesc").innerText = preset.desc;
+
+      updateControlUIs();
+      applyAllCSSVariables();
+    }
+
+    // 初期状態にリセット
+    function resetToPreset() {
+      applyPreset(currentPresetKey);
+    }
+
+    // UI更新
+    function updateControlUIs() {
+      for (const [id, value] of Object.entries(customColors)) {
+        const picker = document.getElementById(`picker-${id}`);
+        const text = document.getElementById(`text-${id}`);
+        
+        if (picker) picker.value = value;
+        if (text) text.value = value;
+      }
+    }
+
+    // カラー変更
+    function updateColor(id, hex) {
+      if (!hex.startsWith('#')) {
+        hex = '#' + hex;
+      }
+      if (/^#[0-9A-F]{6}$/i.test(hex)) {
+        customColors[id] = hex.toUpperCase();
+        
+        const picker = document.getElementById(`picker-${id}`);
+        const text = document.getElementById(`text-${id}`);
+        if (picker) picker.value = hex;
+        if (text) text.value = hex.toUpperCase();
+
+        const cssVarName = `--${id.toLowerCase().replace('_', '-')}`;
+        document.documentElement.style.setProperty(cssVarName, hex);
+        
+        handleSpecialColorLinks(id, hex);
+        currentInputTarget = id;
+      }
+    }
+
+    // 特殊連携
+    function handleSpecialColorLinks(id, hex) {
+      if (id === 'CAR_bg') {
+        const isDark = isColorDark(hex);
+        const carTxt = isDark ? '#FFFFFF' : '#000000';
+        customColors['CAR_txt'] = carTxt;
+        document.documentElement.style.setProperty('--car-txt', carTxt);
+      }
+    }
+
+    // CSSカスタム変数全体適用
+    function applyAllCSSVariables() {
+      const root = document.documentElement;
+      for (const [id, value] of Object.entries(customColors)) {
+        const cssVarName = `--${id.toLowerCase().replace('_', '-')}`;
+        root.style.setProperty(cssVarName, value);
+      }
+    }
+
+    // 明るさ判定
+    function isColorDark(hex) {
+      const rgb = hexToRgb(hex);
+      if (!rgb) return false;
+      const yiq = ((rgb.r * 299) + (rgb.g * 587) + (rgb.b * 114)) / 1000;
+      return yiq < 128;
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    // サクラエディタBGRフォーマット
+    function rgbToBgr(rgbHex) {
+      const r = rgbHex.substring(1, 3);
+      const g = rgbHex.substring(3, 5);
+      const b = rgbHex.substring(5, 7);
+      return `${b}${g}${r}`.toLowerCase();
+    }
+
+    // 書体変更
+    function setFont(fontType) {
+      const preview = document.documentElement;
+      const btnSerif = document.getElementById("btn-font-serif");
+      const btnSans = document.getElementById("btn-font-sans");
+
+      if (fontType === 'serif') {
+        preview.style.setProperty('--preview-font', "'Noto Serif JP', serif");
+        btnSerif.className = "px-3 py-1 text-xs rounded-md focus:outline-none transition-all duration-200 font-bold bg-white text-[#4a3a2a] shadow-sm";
+        btnSans.className = "px-3 py-1 text-xs rounded-md focus:outline-none transition-all duration-200 font-light text-[#70685e]";
+      } else {
+        preview.style.setProperty('--preview-font', "'Noto Sans JP', sans-serif");
+        btnSans.className = "px-3 py-1 text-xs rounded-md focus:outline-none transition-all duration-200 font-bold bg-white text-[#4a3a2a] shadow-sm";
+        btnSerif.className = "px-3 py-1 text-xs rounded-md focus:outline-none transition-all duration-200 font-light text-[#70685e]";
+      }
+    }
+
+    // アコーディオン制御
+    function toggleAccordion(id) {
+      const el = document.getElementById(id);
+      const icon = document.getElementById(`icon-${id}`);
+      
+      if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      } else {
+        el.classList.add('hidden');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      }
+
+      if (id === 'acc-base') currentInputTarget = 'TXT_txt';
+      if (id === 'acc-symbols') currentInputTarget = 'ZEN_txt';
+      if (id === 'acc-frame') currentInputTarget = 'LNO_txt';
+      if (id === 'acc-decorations') currentInputTarget = 'WQT_txt';
+    }
+
+    // 和風トースト通知の表示
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      const toastMsg = document.getElementById("toast-message");
+      toastMsg.innerText = message;
+      toast.classList.remove("translate-y-10", "opacity-0", "pointer-events-none");
+      toast.classList.add("translate-y-0", "opacity-100");
+      
+      setTimeout(() => {
+        toast.classList.remove("translate-y-0", "opacity-100");
+        toast.classList.add("translate-y-10", "opacity-0", "pointer-events-none");
+      }, 2500);
+    }
+
+    // 擬似プレビュー用のテキストをコピー
+    function copyPreviewText() {
+      const textToCopy = `　美しい伝統色に包まれて、画面上の文字が、
+　しっくりと、心地よく、静かに馴染んでいく。
+
+"いつでも快適に入力・閲覧ができること。"
+
+　テキストワーク、メモ書き、ドキュメント作成。
+様々なシーンに寄り添う、穏やかで気品ある色彩。
+選択した範囲は、このように鮮やかにハイライト表示されます。
+// TODO: サクラエディタのカラー設定（.col）に調合中。2026 年のテーマ
+https://sakura-editor.github.io/`;
+
+      const tempTextArea = document.createElement("textarea");
+      tempTextArea.value = textToCopy;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      try {
+        document.execCommand('copy');
+        showToast("プレビューの文章をコピーしました ✿");
+      } catch (err) {
+        showToast("コピーに失敗しました");
+        console.error("コピーに失敗しました", err);
+      }
+      document.body.removeChild(tempTextArea);
+    }
+
+    // .colカラー設定ファイルをダウンロード
+    function downloadColFile() {
+      const filename = `${presets[currentPresetKey].name.split(' (')[0]}_和織.col`;
+      
+      const bgHex = rgbToBgr(customColors.TXT_bg);
+      const lnoBg = rgbToBgr(customColors.LNO_bg);
+      const rulBg = rgbToBgr(customColors.RUL_bg);
+      const carBg = rgbToBgr(customColors.CAR_bg);
+
+      // 連動用カラーの補完（サクラエディタの各種記号や境界・縦線のトーンを美しく統一）
+      const clnTxt = customColors.CAR_bg; // カーソル行アンダーラインはカーソル色と同期
+      const nolTxt = customColors.LNO_txt; // ノート線は行番号文字色と同期
+      const cvlTxt = customColors.CAR_bg; // カーソル位置縦線はカーソル色と同期
+
+      let colContent = `; テキストエディタ色設定 Ver3
+
+[SakuraColor]
+C[BRC]=1,1,000080,${bgHex},0
+C[CAR]=1,0,${rgbToBgr(customColors.CAR_txt)},${carBg},0
+C[CBK]=1,0,000000,${rgbToBgr(customColors.CBK_bg)},0
+C[CMT]=1,0,${rgbToBgr(customColors.CMT_txt)},${bgHex},0
+C[CTL]=1,0,00ffff,${bgHex},0
+C[CVL]=1,0,${rgbToBgr(cvlTxt)},${bgHex},0
+C[CLN]=1,0,${rgbToBgr(clnTxt)},${bgHex},0
+C[NOL]=1,0,${rgbToBgr(nolTxt)},${bgHex},0
+C[DFA]=1,0,d20000,ffd0a2,0
+C[DFC]=1,0,006f00,c0fdbd,0
+C[DFD]=1,0,006ad5,ace9ff,0
+C[EBK]=0,0,000000,f3f3f3,0
+C[EOF]=1,0,${rgbToBgr(customColors.EOF_txt)},${bgHex},0
+C[EOL]=1,0,${rgbToBgr(customColors.EOL_txt)},${bgHex},0
+C[FN2]=1,0,000000,ffffa0,0
+C[FN3]=1,0,000000,99ff99,0
+C[FN4]=1,0,000000,9999ff,0
+C[FN5]=1,0,000000,ff66ff,0
+C[FND]=1,0,000000,00ffff,0
+C[HDC]=0,0,400080,${bgHex},0
+C[IME]=1,0,${rgbToBgr(customColors.CAR_txt)},${carBg},0
+C[KW1]=1,0,ff0000,${bgHex},0
+C[KW2]=1,0,0080ff,${bgHex},0
+C[KW3]=1,0,0080ff,${bgHex},0
+C[KW4]=1,0,0080ff,${bgHex},0
+C[KW5]=1,0,0080ff,${bgHex},0
+C[KW6]=1,0,0080ff,${bgHex},0
+C[KW7]=1,0,0080ff,${bgHex},0
+C[KW8]=1,0,0080ff,${bgHex},0
+C[KW9]=1,0,0080ff,${bgHex},0
+C[KWA]=1,0,0080ff,${bgHex},0
+C[LNO]=1,0,${rgbToBgr(customColors.LNO_txt)},${lnoBg},0
+C[MOD]=1,1,${rgbToBgr(customColors.LNO_txt)},${lnoBg},0
+C[MRK]=1,0,${bgHex},c08000,0
+C[NOT]=0,0,ffc0c0,${bgHex},0
+C[NUM]=1,0,${rgbToBgr(customColors.NUM_txt)},${bgHex},0
+C[PGV]=1,0,${bgHex},ffe6be,0
+C[RAP]=1,0,ff00ff,${bgHex},0
+C[RK1]=0,0,ff0000,${bgHex},0
+C[RK2]=0,0,ff0000,${bgHex},0
+C[RK3]=0,0,ff0000,${bgHex},0
+C[RK4]=0,0,ff0000,${bgHex},0
+C[RK5]=0,0,ff0000,${bgHex},0
+C[RK6]=0,0,ff0000,${bgHex},0
+C[RK7]=0,0,ff0000,${bgHex},0
+C[RK8]=0,0,ff0000,${bgHex},0
+C[RK9]=0,0,ff0000,${bgHex},0
+C[RKA]=0,0,ff0000,${bgHex},0
+C[RUL]=1,0,${rgbToBgr(customColors.RUL_txt)},${rulBg},0
+C[SEL]=1,0,${rgbToBgr(customColors.SEL_txt)},${rgbToBgr(customColors.SEL_bg)},0
+C[SPC]=0,0,c0c0c0,${bgHex},0
+C[SQT]=1,0,${rgbToBgr(customColors.SQT_txt)},${bgHex},0
+C[TAB]=1,0,${rgbToBgr(customColors.TAB_txt)},${bgHex},0
+C[TXT]=1,0,${rgbToBgr(customColors.TXT_txt)},${bgHex},0
+C[UND]=1,0,ff0000,${bgHex},0
+C[URL]=1,0,${rgbToBgr(customColors.URL_txt)},${bgHex},1
+C[VER]=0,0,c0c0c0,${bgHex},0
+C[WQT]=1,0,${rgbToBgr(customColors.WQT_txt)},${bgHex},0
+C[ZEN]=1,0,${rgbToBgr(customColors.ZEN_txt)},${bgHex},0
+`;
+
+      // 【極めて重要】サクラエディタが後半の行を正しく解析（パース）できるよう、改行コードをすべて確実にCRLF (\r\n) に変換・統一します。
+      colContent = colContent.replace(/\r?\n/g, "\r\n");
+
+      const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), colContent], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showToast("カラー設定 (.col) をダウンロードしました ✿");
+    }
+  </script>
+</body>
+</html>
