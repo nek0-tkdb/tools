@@ -145,6 +145,17 @@ html, body {
   text-anchor: middle;
 }
 .node.center .label { fill: #fff; font-size: 12px; }
+.node-play {
+  font-size: 13px;
+  fill: rgba(255,255,255,0.0);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  transition: fill .2s;
+}
+.node.playing .node-play { fill: var(--green); }
+.node.center .node-play { fill: rgba(255,255,255,0.7); }
+.node:not(.center):not(.playing) .node-play { fill: rgba(255,255,255,0.25); }
 
 /* ── 空状態 ── */
 #empty {
@@ -544,6 +555,7 @@ function render() {
     .on('click', (e, d) => { e.stopPropagation(); if (!d.__dragged) onNodeTap(d); });
   enter.append('circle').attr('class', 'ring');
   enter.append('circle').attr('class', 'node-circle');
+  enter.append('text').attr('class', 'node-play').attr('y', 0).text('▶');
   enter.append('text').attr('class', 'label').text(d => d.label);
   nodeSel = enter.merge(nodeSel);
   sizeNodes(); applyClasses();
@@ -667,7 +679,8 @@ async function onNodeTap(d) {
       } catch { /* 個別失敗は無視 */ }
     }));
 
-    render(); fitAll();
+    render();
+    // fitAllはタップ時に呼ばない（縮小防止）
   } catch (err) {
     showToast('展開に失敗: ' + (err.message || err));
   } finally { setSpinner(false); }
@@ -678,7 +691,7 @@ async function expand(d) { /* onNodeTapに統合 */ }
 /* ── 再生 ── */
 const audio = document.getElementById('audio');
 let currentYt = '#';
-let autoplayEnabled = false;  // 一度▶を押したらtrueになる
+let autoplayEnabled = true;   // 最初から自動再生ON
 
 async function play(k) {
   playingKey = k; applyClasses();
