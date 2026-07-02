@@ -83,6 +83,9 @@ button.ui{text-align:center}
   writing-mode:vertical-rl;height:7.5em;
 }
 .title-screen p{color:var(--dim);font-size:.8rem;letter-spacing:.2em}
+.notice{margin-top:6px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.notice p{font-size:.65rem;letter-spacing:.12em;color:var(--dim);opacity:.85}
+.notice .limited{color:var(--blood);border:1px solid rgba(200,67,79,.35);padding:3px 12px;letter-spacing:.15em}
 .ending-tag{
   font-family:"Shippori Mincho",serif;color:var(--blood);
   letter-spacing:.4em;font-size:.8rem;border:1px solid rgba(200,67,79,.4);
@@ -105,7 +108,7 @@ footer{color:var(--dim);font-size:.65rem;text-align:center;padding-top:14px;lett
     <div id="chapter"></div>
   </header>
   <div id="scene"></div>
-  <footer>KYUSAI NO YAKATA — 7/7まで限定公開</footer>
+  <footer>REKYU NO YAKATA — a fan-made interactive fiction<br>Claude Fable 5 制作 / 2026年7月7日まで期間限定公開</footer>
 </main>
 <button id="tap" aria-label="次へ"></button>
 
@@ -214,15 +217,27 @@ const STORY = {
     {s:"", t:"扉の外に転がり出た瞬間、背後の悲鳴が途切れた。"},
     {s:"", t:"あなたは助かった。ただし、独りで。以来、夜ごとに聞こえる——「心臓の音が、聞こえる」と。"},
   ]},
-  end_good:{ ending:"GOOD END — 氷の階（きざはし）", good:true, lines:[
+  end_good:{ ending:"GOOD END — 雪解けの手", good:true, lines:[
     {s:"", t:"屋敷は轟音とともに崩れ、怪異の巣は瓦礫の下に消えた。子供たちはヘリで新しい施設へ。"},
-    {s:"", t:"後日、フロストハイム寮の舞踏会。氷細工のシャンデリアの下で、カイトが不満げに、ルカが不器用に、あなたへ手を差し出す。"},
-    {s:"ルカ", t:"君たちの弱さは、俺が守る。——これからも。"},
+    {s:"", t:"後日、フロストハイム寮の舞踏会。氷細工のシャンデリアの下、カイトが照れくさそうに、ルカが少し早口で、同時にあなたへ手を差し出す。"},
+    {s:"カイト", t:"あ——え、その、先に言ったの俺だから。一曲だけな。次からは……ちゃんと予約しろよ、ルカ。"},
+    {s:"ルカ", t:"次はない。今夜、俺が最後まで踊る。"},
+    {s:"", t:"二人分の熱が、両手を包む。凍てついた広間のはずなのに、なぜか少しも寒くなかった。"},
+    {s:"ルカ", t:"君の弱さも、強さも、俺が守る。……それだけじゃ足りないな。君の隣にいたいんだ、これからも。"},
+    {s:"カイト", t:"（小声で）ずるいだろ、それ先に言うの。……俺だって、同じ気持ちだからな。"},
+    {s:"", t:"シャンデリアの光が、三人の影を一つに重ねる。物語はまだ、この夜から始まったばかり。"},
   ]},
-  end_true:{ ending:"TRUE END — 兄弟", good:true, lines:[
-    {s:"", t:"あなたはリクの手を引き、隠し通路を駆け抜けた。背中を守るのは寮長たちの氷刃。"},
+  end_true:{ ending:"TRUE END — 誓いの夜", good:true, lines:[
+    {s:"", t:"あなたはリクの手を引き、隠し通路を駆け抜けた。背中を守るのは寮長の氷刃。"},
     {s:"", t:"朝焼けの中、リクは本物のソラを抱きしめて泣いた。「信じてくれて、ありがとう」"},
-    {s:"", t:"——顔のない男の噂は、その夜を最後に途絶えた。あなたの呪いを解く旅は、まだ始まったばかりだ。"},
+    {s:"", t:"事件の後、あなたは寮長室に呼び出された。ジンは書類から顔も上げずに言う。"},
+    {s:"ジン", t:"殿を任せた時、正直、お前が死ぬ可能性も考えていた。……使える駒が減るのは困る。それだけだ。"},
+    {s:"", t:"素っ気ない言葉の割に、こちらを見る視線は長く、逸らされなかった。"},
+    {s:"", t:"ペンを置き、ジンが初めて立ち上がる。窓辺に並ぶと、彼は珍しく間を置いてから続けた。"},
+    {s:"ジン", t:"駒、というのは嘘だ。……お前がいなければ、あの夜、俺は誰かを守り切れなかった。それがどういう意味か、わからないほど鈍くはないだろう。"},
+    {s:"", t:"氷のような瞳の奥に、隠しきれない熱がある。差し出された手は、意外なほど温かかった。"},
+    {s:"ジン", t:"お前の呪いは、俺が総裁の名にかけて解く。……その先も、俺のそばにいろ。これは命令じゃない、頼みだ。"},
+    {s:"", t:"——顔のない男の噂は、その夜を最後に途絶えた。あなたとジンの物語は、まだ始まったばかりだ。"},
   ]},
 };
 
@@ -245,7 +260,12 @@ function showTitle(){
     <div style="display:flex;flex-direction:column;gap:12px;width:min(280px,80vw)">
       <button class="ui" id="newG">はじめから</button>
       ${s?'<button class="ui" id="cont">つづきから</button>':''}
-    </div></div>`;
+    </div>
+    <div class="notice">
+      <p>Claude Fable 5 で制作</p>
+      <p class="limited">2026年7月7日までの期間限定公開</p>
+    </div>
+  </div>`;
   document.getElementById("newG").onclick=()=>{flags=new Set();go("n1");};
   const c=document.getElementById("cont");
   if(c)c.onclick=()=>{flags=new Set(s.flags);go(s.id);};
