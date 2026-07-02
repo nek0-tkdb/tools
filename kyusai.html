@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>救済の館 — 分岐ノベル</title>
+<meta name="description" content="スマホ向け分岐ノベルゲーム。夜の洋館に潜む「救済」の正体を暴け。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#dfe8f2;        /* 霜の白 */
+  --dim:#8ea0b5;        /* 靄 */
+  --bg0:#070b12;        /* 夜 */
+  --bg1:#0c1420;        /* 群青の底 */
+  --frost:#7fd4ff;      /* 氷光 */
+  --blood:#c8434f;      /* 凶兆 */
+  --line:rgba(127,212,255,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(120% 80% at 50% -10%, #12203a 0%, transparent 60%),
+    linear-gradient(180deg, var(--bg1), var(--bg0) 70%);
+  color:var(--ink);
+  font-family:"Zen Kaku Gothic New",sans-serif;
+  line-height:1.9;
+  letter-spacing:.03em;
+  display:flex;flex-direction:column;
+  min-height:100dvh;
+  overflow-x:hidden;
+}
+/* 雪片 */
+#snow{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5}
+main{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;max-width:640px;width:100%;margin:0 auto;padding:16px 20px calc(24px + env(safe-area-inset-bottom))}
+
+header{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:8px 0 14px;border-bottom:1px solid var(--line);
+}
+header h1{
+  font-family:"Shippori Mincho",serif;font-weight:800;font-size:1.05rem;
+  letter-spacing:.35em;color:var(--frost);
+  text-shadow:0 0 18px rgba(127,212,255,.35);
+}
+#chapter{font-size:.7rem;color:var(--dim);letter-spacing:.2em}
+
+#scene{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:22px}
+#speaker{
+  font-family:"Shippori Mincho",serif;font-weight:600;
+  color:var(--frost);font-size:.85rem;letter-spacing:.25em;
+  min-height:1.6em;margin-bottom:6px;
+}
+#text{
+  font-size:1rem;min-height:9em;white-space:pre-wrap;
+}
+#text.narr{color:var(--dim);font-style:normal}
+.cursor{display:inline-block;width:.55em;color:var(--frost);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+#choices{display:flex;flex-direction:column;gap:12px;margin-top:26px}
+button.choice, button.ui{
+  font:inherit;color:var(--ink);text-align:left;
+  background:linear-gradient(180deg, rgba(127,212,255,.07), rgba(127,212,255,.02));
+  border:1px solid var(--line);border-radius:2px;
+  padding:14px 16px;min-height:52px;cursor:pointer;
+  transition:transform .08s, border-color .2s, background .2s;
+}
+button.choice:active{transform:scale(.98);border-color:var(--frost)}
+button.choice::before{content:"❄ ";color:var(--frost);opacity:.7;font-size:.8em}
+button.ui{text-align:center}
+#tap{position:fixed;inset:0;z-index:2;background:transparent;border:0;display:none}
+.hint{color:var(--dim);font-size:.7rem;text-align:center;margin-top:10px;letter-spacing:.15em}
+
+/* タイトル / エンディング */
+.title-screen{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;text-align:center}
+.title-screen h2{
+  font-family:"Shippori Mincho",serif;font-weight:800;font-size:2.1rem;
+  letter-spacing:.3em;color:var(--ink);
+  text-shadow:0 0 30px rgba(127,212,255,.45);
+  writing-mode:vertical-rl;height:7.5em;
+}
+.title-screen p{color:var(--dim);font-size:.8rem;letter-spacing:.2em}
+.ending-tag{
+  font-family:"Shippori Mincho",serif;color:var(--blood);
+  letter-spacing:.4em;font-size:.8rem;border:1px solid rgba(200,67,79,.4);
+  padding:4px 14px;margin-bottom:14px;align-self:center;
+}
+.ending-tag.good{color:var(--frost);border-color:var(--line)}
+footer{color:var(--dim);font-size:.65rem;text-align:center;padding-top:14px;letter-spacing:.1em}
+.flash{animation:flash .4s}
+@keyframes flash{0%{background:#fff}100%{background:transparent}}
+@media (prefers-reduced-motion: reduce){
+  .cursor{animation:none}#snow{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="snow"></canvas>
+<main>
+  <header>
+    <h1>救済の館</h1>
+    <div id="chapter"></div>
+  </header>
+  <div id="scene"></div>
+  <footer>REKYU NO YAKATA — a fan-made interactive fiction</footer>
+</main>
+<button id="tap" aria-label="次へ"></button>
+
+<script>
+"use strict";
+/* ================= シナリオデータ =================
+   node: { ch, lines:[{s:話者, t:本文}], choices:[{t, to, set, req}], to, ending }
+   set: フラグ付与 / req: フラグ必須
+=====================================================*/
+const STORY = {
+  start:{ title:true },
+
+  n1:{ ch:"第一夜", lines:[
+    {s:"", t:"「あらゆる傷も病も治す男がいる」——そんな噂を追って、あなたたち三人は都心の高級住宅街に建つ洋館へ来た。"},
+    {s:"ルカ", t:"見ることは信じることだ。噂の『救済』とやらを、この目で確かめよう。"},
+    {s:"カイト", t:"どうせインチキだって。……けど、万が一本物なら、君の呪いも解けるかもな。"},
+    {s:"", t:"門は開け放たれ、警備の影すらない。礼拝堂には杖をつく人々が列を成していた。"},
+  ], choices:[
+    {t:"礼拝堂で「救済」を見届ける", to:"n2a"},
+    {t:"先に屋敷の周囲を調べる", to:"n2b", set:"cautious"},
+  ]},
+
+  n2a:{ ch:"第一夜", lines:[
+    {s:"", t:"壇上に立つ痩身の男——あしながさん。彼が手をかざすと、失われたはずの腕が淡い光の中で形を取り戻していく。"},
+    {s:"カイト", t:"……嘘だろ。低ランク任務の案件だぞ、これ。"},
+    {s:"ルカ", t:"人の善意にしては、出来すぎている。"},
+    {s:"", t:"閉会後、着飾った婦人があなたたちを晩餐会へ誘った。"},
+  ], choices:[
+    {t:"晩餐会に潜り込む", to:"n3"},
+    {t:"断って裏庭を探る", to:"n2b", set:"cautious"},
+  ]},
+
+  n2b:{ ch:"第一夜", lines:[
+    {s:"", t:"裏庭で、車椅子の弟と兄らしき少年に出会う。兄・リクは俯いたまま言った。"},
+    {s:"リク", t:"あの人は……お父様なんかじゃない。夜に、顔のない男を見たんだ。誰も信じてくれないけど。"},
+    {s:"", t:"弟のソラは笑う。「兄ちゃんは嘘つきなんだ」——だが、その笑顔がどこか作り物めいて見えた。"},
+    {s:"ルカ", t:"のっぺらぼう、か。……約束しよう。見つけたら、俺たちが必ず倒す。"},
+  ], choices:[
+    {t:"晩餐会に潜り込む", to:"n3"},
+  ]},
+
+  n3:{ ch:"第一夜", lines:[
+    {s:"", t:"燭台の光が長いテーブルを照らす。給仕たちの足音は、不自然なほど揃っていた。"},
+    {s:"カイト", t:"（小声で）なあ……厨房で変な話を聞いた。『特別な晩餐』『まるまると肥えた食材』って。"},
+    {s:"", t:"その夜、廊下の突き当たりで、月明かりが落とすには長すぎる影を見た。影は、こちらを向いた。——顔がない。"},
+  ], choices:[
+    {t:"ルカと共に影を追う", to:"n4a", set:"brave"},
+    {t:"一度撤退して報告する", to:"n4b", set:"report"},
+  ]},
+
+  n4a:{ ch:"第二夜", lines:[
+    {s:"", t:"追撃は空振りに終わった。だが翌日、副寮長トーマが現れる。手には、どんな錠も開けるという合鍵。"},
+    {s:"トーマ", t:"山中で、心臓を抜かれた子供の遺体が三体。しかも死んだはずの子が、前日に街を歩く姿が映っていた。——この館の孤児を調べます。"},
+    {s:"", t:"あなたはルカたちと、あしながさんの部屋の監視を命じられた。"},
+  ], to:"n5"},
+
+  n4b:{ ch:"第二夜", lines:[
+    {s:"", t:"報告は正解だった。学園はすでに独自の調査を進めており、副寮長トーマが合流する。"},
+    {s:"トーマ", t:"賢明な判断です。単独行動していれば、今頃あなたも『食材』でしたよ。"},
+    {s:"", t:"心臓を抜かれた子供の遺体、街を歩く死者の映像——事件は上級怪異の領域に踏み込んでいた。"},
+  ], to:"n5"},
+
+  n5:{ ch:"第二夜", lines:[
+    {s:"", t:"深夜。監視していた部屋のクローゼットから、饐えた臭いが漏れていた。扉を開けると——"},
+    {s:"", t:"あしながさん本人の、干からびた死体。"},
+    {s:"ルカ", t:"……壇上にいたのは、彼じゃない。『何か』が、彼に成り代わっていたんだ。"},
+    {s:"", t:"床下から、低い唸りが響く。地下室へ続く隠し階段が、口を開けている。"},
+  ], choices:[
+    {t:"地下室へ降りる", to:"n6a", set:"basement"},
+    {t:"先に子供たちを探す", to:"n6b", set:"kids"},
+  ]},
+
+  n6a:{ ch:"地下", lines:[
+    {s:"", t:"闇の底で、無数の気配が蠢いていた。人の皮を被った怪異たち。彼らの『最後の晩餐』——今夜の食材は、救済に群がった後援者たち、そして子供たち。"},
+    {s:"？？？", t:"「心臓の音が、聞こえる」"},
+    {s:"", t:"背後で扉が閉まる。捕まった。縄が食い込む手首の先で、カイトが震えている。"},
+  ], choices:[
+    {t:"隙を見てルカの双剣を投げ渡す", to:"n7", set:"trust"},
+    {t:"一人なら逃げられる——扉へ走る", to:"end_flee"},
+  ]},
+
+  n6b:{ ch:"地下", lines:[
+    {s:"", t:"子供たちは地下に集められていた。リクが血の気のない顔で駆け寄る。"},
+    {s:"リク", t:"弟が……ソラが、変なんだ。歩けないはずなのに、立ってた。"},
+    {s:"", t:"暗がりから現れた『ソラ』が、ゆっくりと首を傾ける。その顔が、蝋のように溶け落ちた。"},
+    {s:"ルカ", t:"下がれ! あれは怪異だ!"},
+    {s:"", t:"乱戦の中、あなたたちは捕らえられてしまう。"},
+  ], choices:[
+    {t:"隙を見てルカの双剣を投げ渡す", to:"n7", set:"trust"},
+    {t:"一人なら逃げられる——扉へ走る", to:"end_flee"},
+  ]},
+
+  n7:{ ch:"晩餐の終わり", lines:[
+    {s:"", t:"縄を解いた指先が双剣を掴む。刃が唸り、闇を裂いた。ルカの剣戟は、子供の泣き声のような残響を曳く。"},
+    {s:"カイト", t:"く……そ! 俺だって——当たれっ!"},
+    {s:"", t:"震える弓から放たれた矢が、怪異を射抜く。その時、階段の上から冷気が雪崩れ込んだ。"},
+    {s:"ジン", t:"「跪け」"},
+    {s:"", t:"たった一言。言葉が現実を捻じ伏せ、怪異たちが一斉に崩れ落ちる。引きこもりと噂された寮長は、すべてを見越してここにいた。"},
+  ], choices:[
+    {t:"子供たちを先導して脱出する", to:"end_true", req:"kids"},
+    {t:"寮長たちと共に殿を務める", to:"end_good"},
+  ]},
+
+  /* ===== エンディング ===== */
+  end_flee:{ ending:"BAD END — 独り", lines:[
+    {s:"", t:"扉の外に転がり出た瞬間、背後の悲鳴が途切れた。"},
+    {s:"", t:"あなたは助かった。ただし、独りで。以来、夜ごとに聞こえる——「心臓の音が、聞こえる」と。"},
+  ]},
+  end_good:{ ending:"GOOD END — 氷の階（きざはし）", good:true, lines:[
+    {s:"", t:"屋敷は轟音とともに崩れ、怪異の巣は瓦礫の下に消えた。子供たちはヘリで新しい施設へ。"},
+    {s:"", t:"後日、フロストハイム寮の舞踏会。氷細工のシャンデリアの下で、カイトが不満げに、ルカが不器用に、あなたへ手を差し出す。"},
+    {s:"ルカ", t:"君たちの弱さは、俺が守る。——これからも。"},
+  ]},
+  end_true:{ ending:"TRUE END — 兄弟", good:true, lines:[
+    {s:"", t:"あなたはリクの手を引き、隠し通路を駆け抜けた。背中を守るのは寮長たちの氷刃。"},
+    {s:"", t:"朝焼けの中、リクは本物のソラを抱きしめて泣いた。「信じてくれて、ありがとう」"},
+    {s:"", t:"——顔のない男の噂は、その夜を最後に途絶えた。あなたの呪いを解く旅は、まだ始まったばかりだ。"},
+  ]},
+};
+
+/* ================= エンジン ================= */
+const scene = document.getElementById("scene");
+const chapterEl = document.getElementById("chapter");
+const tap = document.getElementById("tap");
+let flags = new Set(), node=null, li=0, typing=null;
+
+const SAVE="kyusai_save";
+function save(id){ try{localStorage.setItem(SAVE, JSON.stringify({id,flags:[...flags]}));}catch(e){} }
+function load(){ try{return JSON.parse(localStorage.getItem(SAVE));}catch(e){return null} }
+
+function showTitle(){
+  chapterEl.textContent="";
+  const s=load();
+  scene.innerHTML=`<div class="title-screen">
+    <h2>救済の館</h2>
+    <p>顔のない男が、夜を歩く。</p>
+    <div style="display:flex;flex-direction:column;gap:12px;width:min(280px,80vw)">
+      <button class="ui" id="newG">はじめから</button>
+      ${s?'<button class="ui" id="cont">つづきから</button>':''}
+    </div></div>`;
+  document.getElementById("newG").onclick=()=>{flags=new Set();go("n1");};
+  const c=document.getElementById("cont");
+  if(c)c.onclick=()=>{flags=new Set(s.flags);go(s.id);};
+}
+
+function go(id){
+  node=STORY[id]; li=0;
+  if(!node) return showTitle();
+  save(id);
+  chapterEl.textContent=node.ch||"";
+  scene.innerHTML=`<div id="speaker"></div><div id="text"></div><div id="choices"></div><div class="hint" id="hint">タップで進む</div>`;
+  if(node.ending){
+    chapterEl.textContent="";
+    const tag=document.createElement("div");
+    tag.className="ending-tag"+(node.good?" good":"");
+    tag.textContent=node.ending;
+    scene.prepend(tag);
+  }
+  nextLine();
+}
+
+function nextLine(){
+  if(typing){ // スキップ:全文表示
+    clearInterval(typing); typing=null;
+    document.getElementById("text").innerHTML=escapeHtml(cur().t);
+    return;
+  }
+  if(li>=node.lines.length){ endOfNode(); return; }
+  const l=node.lines[li];
+  const sp=document.getElementById("speaker"), tx=document.getElementById("text");
+  sp.textContent=l.s||"";
+  tx.className=l.s?"":"narr";
+  let i=0; tx.innerHTML="";
+  tap.style.display="block";
+  typing=setInterval(()=>{
+    i++;
+    tx.innerHTML=escapeHtml(l.t.slice(0,i))+'<span class="cursor">▌</span>';
+    if(i>=l.t.length){clearInterval(typing);typing=null;tx.innerHTML=escapeHtml(l.t);}
+  },28);
+  li++;
+}
+function cur(){return node.lines[li-1];}
+
+function endOfNode(){
+  tap.style.display="none";
+  document.getElementById("hint").textContent="";
+  const box=document.getElementById("choices");
+  if(node.choices){
+    node.choices.filter(c=>!c.req||flags.has(c.req)).forEach(c=>{
+      const b=document.createElement("button");
+      b.className="choice"; b.textContent=c.t;
+      b.onclick=()=>{ if(c.set)flags.add(c.set); document.body.classList.remove("flash"); go(c.to); };
+      box.appendChild(b);
+    });
+  }else if(node.to){
+    const b=document.createElement("button");
+    b.className="choice"; b.textContent="——続く";
+    b.onclick=()=>go(node.to);
+    box.appendChild(b);
+  }else if(node.ending){
+    const b=document.createElement("button");
+    b.className="ui"; b.textContent="タイトルへ戻る";
+    b.onclick=()=>{try{localStorage.removeItem(SAVE)}catch(e){};showTitle();};
+    box.appendChild(b);
+  }
+}
+tap.addEventListener("click",()=>{ if(li<=node.lines.length) nextLine(); });
+function escapeHtml(s){return s.replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
+
+/* 雪 */
+const cv=document.getElementById("snow"),ctx=cv.getContext("2d");
+let W,H,fl=[];
+function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;}
+addEventListener("resize",resize);resize();
+for(let i=0;i<50;i++)fl.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.6+.4,v:Math.random()*.5+.2,d:Math.random()*1});
+(function loop(){
+  ctx.clearRect(0,0,W,H);ctx.fillStyle="rgba(200,225,255,.8)";
+  fl.forEach(f=>{f.y+=f.v;f.x+=Math.sin(f.y*.01+f.d)*.3;
+    if(f.y>H){f.y=-5;f.x=Math.random()*W}
+    ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,7);ctx.fill();});
+  requestAnimationFrame(loop);
+})();
+
+showTitle();
+</script>
+</body>
+</html>
